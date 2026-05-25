@@ -1,0 +1,9 @@
+# pnpm workspace definition (Modular Monolith — one repo, one backend).
+# See /docs/05_ARCHITECTURE.md §6 and /docs/17_ADR_MODULAR_MONOLITH.md.
+#
+# Only TypeScript/JS packages are workspace members.
+# /supabase and /docs are part of the monorepo but are NOT pnpm packages.
+# apps/mobile is the Expo app (INFRA-003); apps/admin is the Next.js app (INFRA-004).
+packages:
+  - "apps/*"
+  - "packages/*"

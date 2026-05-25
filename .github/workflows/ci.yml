@@ -1,0 +1,50 @@
+name: CI
+
+# Validation-only CI for the monorepo: format, typecheck, lint, test.
+# No deploys, no production builds, no secrets, no Supabase/analytics/AI calls.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Reads the pnpm version from the root package.json "packageManager" field.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # Requires a committed pnpm-lock.yaml. Generate it once locally with
+      # `pnpm install` (needs network) and commit it before CI can run.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      # Infrastructure smoke tests (Vitest, shared packages only).
+      - name: Test
+        run: pnpm test

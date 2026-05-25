@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Environment / secrets — never commit real secrets; only *.example templates are tracked.
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Per-app env files (same rule: real values ignored, templates tracked)
+apps/mobile/.env
+apps/mobile/.env.*
+!apps/mobile/.env.example
+!apps/mobile/.env.*.example
+apps/admin/.env
+apps/admin/.env.*
+!apps/admin/.env.example
+!apps/admin/.env.*.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Expo / React Native (added in INFRA-003)
+.expo/
+.expo-shared/
+
+# Next.js (added in INFRA-004)
+.next/
+out/
+
+# Supabase local artifacts (schema/migrations added in a later phase)
+supabase/.branches/
+supabase/.temp/
+
+# Test / coverage
+coverage/

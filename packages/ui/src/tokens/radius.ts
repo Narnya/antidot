@@ -1,0 +1,11 @@
+// Corner radius scale. `full` is an effectively-pill value.
+export const radius = {
+  none: 0,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 22,
+  full: 999,
+} as const;
+
+export type Radius = typeof radius;

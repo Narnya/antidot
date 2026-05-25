@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Antidot — Promo v1 Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0E0E0D;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, "Inter", system-ui, sans-serif;
+    color: #888;
+    overflow: hidden;
+  }
+
+  /* 9:16 stage scaled to viewport — full bleed phone-screen, no bezel */
+  .stage {
+    height: 92vh;
+    aspect-ratio: 9 / 16;
+    max-width: 92vw;
+    background: #000;
+    border-radius: 28px;
+    overflow: hidden;
+    position: relative;
+    box-shadow:
+      0 40px 100px rgba(255, 107, 74, 0.08),
+      0 24px 60px rgba(0, 0, 0, 0.7);
+  }
+
+  .kadr {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    will-change: opacity, transform;
+    animation: 23s linear infinite;
+  }
+  .kadr img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .k1 { animation-name: k1; }
+  .k2 { animation-name: k2; }
+  .k3 { animation-name: k3; }
+  .k4 { animation-name: k4; }
+  .k5 { animation-name: k5; }
+  .k6 { animation-name: k6; }
+
+  /* ─── Timing reference (in % of 23s) ─────────────
+       k1: 0-4s    →  0.0% –  17.4%
+       k2: 4-9s    → 17.4% –  39.1%
+       k3: 9-13s   → 39.1% –  56.5%
+       k4: 13-17s  → 56.5% –  73.9%
+       k5: 17-20s  → 73.9% –  87.0%
+       k6: 20-23s  → 87.0% – 100.0%
+       Cross-fade: ~0.4s (~1.7% of total) at each boundary.
+       Ken Burns:  scale 1.00 → 1.04 over the hold window.
+       Exception:  k4 (photo) gets scale 1.00 → 1.08 for stronger life.
+  ──────────────────────────────────────────────── */
+
+  @keyframes k1 {
+    0%    { opacity: 0; transform: scale(1.00); }
+    1.7%  { opacity: 1; }
+    15.6% { opacity: 1; transform: scale(1.04); }
+    17.4% { opacity: 0; transform: scale(1.04); }
+    100%  { opacity: 0; }
+  }
+  @keyframes k2 {
+    0%, 15.6% { opacity: 0; transform: scale(1.00); }
+    19.1%     { opacity: 1; }
+    37.4%     { opacity: 1; transform: scale(1.04); }
+    39.1%     { opacity: 0; transform: scale(1.04); }
+    100%      { opacity: 0; }
+  }
+  @keyframes k3 {
+    0%, 37.4% { opacity: 0; transform: scale(1.00); }
+    41.0%     { opacity: 1; }
+    54.7%     { opacity: 1; transform: scale(1.04); }
+    56.5%     { opacity: 0; transform: scale(1.04); }
+    100%      { opacity: 0; }
+  }
+  @keyframes k4 {
+    0%, 54.7% { opacity: 0; transform: scale(1.00); }
+    58.3%     { opacity: 1; }
+    72.2%     { opacity: 1; transform: scale(1.08); }
+    73.9%     { opacity: 0; transform: scale(1.08); }
+    100%      { opacity: 0; }
+  }
+  @keyframes k5 {
+    0%, 72.2% { opacity: 0; transform: scale(1.00); }
+    75.6%     { opacity: 1; }
+    85.2%     { opacity: 1; transform: scale(1.04); }
+    87.0%     { opacity: 0; transform: scale(1.04); }
+    100%      { opacity: 0; }
+  }
+  @keyframes k6 {
+    0%, 85.2% { opacity: 0; transform: scale(1.00); }
+    88.7%     { opacity: 1; }
+    98.3%     { opacity: 1; transform: scale(1.04); }
+    100%      { opacity: 0; transform: scale(1.04); }
+  }
+
+  /* Progress bar in coral, matches brand accent */
+  .progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    z-index: 10;
+  }
+  .progress::after {
+    content: '';
+    display: block;
+    height: 100%;
+    background: #FF6B4A;
+    width: 0;
+    animation: progress 23s linear infinite;
+  }
+  @keyframes progress {
+    from { width: 0%; }
+    to   { width: 100%; }
+  }
+
+  /* HUD: instructions panel (will NOT appear in screen recording if you
+     record only the stage rectangle, but useful while previewing) */
+  .hud {
+    position: fixed;
+    top: 24px;
+    left: 24px;
+    max-width: 320px;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #999;
+    backdrop-filter: blur(8px);
+  }
+  .hud h1 {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #e6e6e6;
+    letter-spacing: 0.02em;
+  }
+  .hud p { margin-bottom: 8px; }
+  .hud p:last-child { margin-bottom: 0; }
+  .hud kbd {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: ui-monospace, "SF Mono", monospace;
+    font-size: 11px;
+    color: #e6e6e6;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .hud .accent { color: #FF6B4A; }
+  .hud button {
+    margin-top: 8px;
+    background: #FF6B4A;
+    color: #fff;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+  }
+  .hud button:hover { background: #e55a3a; }
+
+  body.recording .hud { display: none; }
+</style>
+</head>
+<body>
+  <div class="hud">
+    <h1>Antidot · Promo v1 · 23 sec</h1>
+    <p>Ролик зациклен. Чтобы записать MP4:</p>
+    <p>1. Нажми <span class="accent">«Hide HUD»</span> ниже.</p>
+    <p>2. <kbd>⌃⌘5</kbd> → QuickTime Screen Recording → выдели прямоугольник телефона → Record.</p>
+    <p>3. Запиши минимум 25 сек (1 цикл + запас). Останови.</p>
+    <p>4. Импортируй в CapCut, обрежь до 23 сек, наложи voiceover + music.</p>
+    <button onclick="document.body.classList.add('recording')">Hide HUD</button>
+  </div>
+
+  <div class="stage">
+    <div class="kadr k1"><img src="jitter-export/01_hook.png" alt="Hook"></div>
+    <div class="kadr k2"><img src="jitter-export/02_discover.png" alt="Discover"></div>
+    <div class="kadr k3"><img src="jitter-export/03_apply.png" alt="Apply"></div>
+    <div class="kadr k4"><img src="jitter-export/04_meet.png" alt="Meet"></div>
+    <div class="kadr k5"><img src="jitter-export/05_reconnect.png" alt="Reconnect"></div>
+    <div class="kadr k6"><img src="jitter-export/06_brand.png" alt="Brand"></div>
+    <div class="progress"></div>
+  </div>
+
+  <script>
+    // Tab Escape exits "recording" mode (shows HUD again)
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') document.body.classList.remove('recording');
+    });
+  </script>
+</body>
+</html>
