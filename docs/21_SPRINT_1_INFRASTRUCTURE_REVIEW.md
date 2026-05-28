@@ -1,23 +1,26 @@
 # Sprint 1 Infrastructure Review v1 — Social Events App
 
-> **Status:** PASS WITH FIXES
+> **Status:** PASS
 > **Owner:** Technical Founder
-> **Last updated:** 2026-05-24
-> **Reviewer note:** Read-only audit of INFRA-001…014. This document does not modify implementation files. [`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md) is the first source of truth.
+> **Last updated:** 2026-05-28
+> **Reviewer note:** Read-only audit of INFRA-001…014, updated after FIX-INFRA-001 cleared the High-severity verification blocker. [`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md) is the first source of truth.
 
 ---
 
 ## 1. Review Summary
 
-- **Review date:** 2026-05-24.
-- **Review status:** **PASS WITH FIXES.**
-- **Is Sprint 1 infrastructure ready?** Structurally **yes** — the monorepo foundation, both app skeletons, shared packages, env strategy, CI definition, tokens, shells, workspace imports, config layer, and testing scaffold all exist, are consistent, and violate no safety invariant.
-- **Can the project move toward Sprint 2?** Yes, **after** one verification fix: the toolchain has never been installed/run in this environment, so the foundation is **not yet verified-runnable** and there is **no committed `pnpm-lock.yaml`** (CI cannot pass until one exists). Sprint 2 also requires a new phase gate (Infrastructure → Auth/Beta/Onboarding) + a `CLAUDE.md` §6 update.
-- **Top issues:**
-  1. (High) Nothing executed — `pnpm install`/`format:check`/`typecheck`/`lint`/`test` never ran; no lockfile (pnpm not installed, network blocked).
-  2. (Medium) Hand-authored Expo SDK 52 / Next 15 / React versions are best-effort and unverified.
-  3. (Low) Repo not under git; (Low) temporary INFRA-012 smoke markers to remove later.
-- **No Critical issues. No safety-invariant violations.**
+- **Original review date:** 2026-05-24.
+- **Re-verification date:** 2026-05-28 (after FIX-INFRA-001).
+- **Review status:** **PASS.**
+- **Is Sprint 1 infrastructure ready?** **Yes** — the monorepo foundation, both app skeletons, shared packages, env strategy, CI definition, tokens, shells, workspace imports, config layer, and testing scaffold all exist, are consistent, and violate no safety invariant. The verification toolchain has now been executed end-to-end: `pnpm install` succeeded, `pnpm-lock.yaml` is generated/committed, and `pnpm typecheck` / `pnpm lint` / `pnpm test` / `pnpm format:check` all pass.
+- **Can the project move toward Sprint 2?** Yes — Sprint 2 still requires a new phase gate (Infrastructure → Auth/Beta/Onboarding) + a `CLAUDE.md` §6 update, but no infrastructure blocker remains.
+- **Top remaining items (all non-blocking follow-ups):**
+  1. (Medium) `npx expo install --fix` was not run during FIX-INFRA-001 — Expo SDK 52 / RN 0.76.9 are aligned by hand; re-confirm via the official Expo aligner before Sprint 2 product work.
+  2. (Low) Add a git remote / push history (repo is now under git locally).
+  3. (Low) Remove temporary INFRA-012 smoke markers when real shared types/config are consumed.
+  4. (Low) Annotate `docs/14` as superseded by `docs/16`.
+  5. (Low) Residual pnpm peer warning for `react-helmet-async`'s nested `react-dom@19.2.6` (transitive of `expo-router`) — graph noise from the previous admin@19 install; not affecting checks. Can be pruned with a clean reinstall or a small `pnpm.overrides` if it persists across machines.
+- **No Critical issues. No High issues. No safety-invariant violations.**
 
 ---
 
@@ -112,12 +115,13 @@
 | secret-value grep (`.env.example`) | ✅ all empty |
 | supabase `*.sql`/code scan | ✅ none (READMEs only) |
 | CI secrets/deploy/migrate scan | ✅ none |
-| `pnpm format:check` | ❌ **not run** — `command not found: pnpm` |
-| `pnpm typecheck` | ❌ **not run** — `command not found: pnpm` |
-| `pnpm lint` | ❌ **not run** — `command not found: pnpm` |
-| `pnpm test` | ❌ **not run** — `command not found: pnpm` |
+| `pnpm format:check` | ✅ "All matched files use Prettier code style!" (2026-05-28, after FIX-INFRA-001) |
+| `pnpm typecheck` | ✅ all 7 projects pass — admin, mobile, and all 5 shared packages (2026-05-28) |
+| `pnpm lint` | ✅ clean, no errors (2026-05-28) |
+| `pnpm test` | ✅ 3/3 passed in `packages/config/src/__tests__/workspace-config.test.ts` (2026-05-28) |
+| `pnpm install` (re-run after admin React-version alignment) | ✅ lockfile generated; `pnpm-lock.yaml` now exists in the repo |
 
-**Severity of command failures:** High (operational) — pnpm is not installed and the npm registry is unreachable in this environment, so no install/validation could run. Static validation (syntax/JSON/grep) was used as a substitute throughout INFRA-001…014. The runnable validation is a required pre-Sprint-2 step, not a code defect.
+**Resolution note:** FIX-INFRA-001 aligned `apps/admin` to React 18 / `@types/react@~18.3.12` (matching mobile / Expo SDK 52) to eliminate a duplicate `@types/react` graph caused by mixed React 18 (mobile) + React 19 (admin) under `node-linker=hoisted`. After that, the four validation commands above all run green.
 
 ---
 
@@ -125,11 +129,12 @@
 
 | Issue ID | Severity | Area | Description | Impact | Recommended Fix | Blocks Sprint 2? |
 |----------|:--------:|------|-------------|--------|-----------------|:----------------:|
-| INFRA-REV-001 | High | Toolchain/CI | Nothing executed; no `pnpm-lock.yaml`. `format:check`/`typecheck`/`lint`/`test` unverified. CI uses `--frozen-lockfile` → cannot pass without a committed lockfile. | Foundation not verified-runnable; CI non-functional | Install pnpm (`npm i -g pnpm@9`), `pnpm install`, commit `pnpm-lock.yaml`, `npx expo install --fix`, `pnpm format`, then confirm `typecheck`/`lint`/`test` green | Yes — clear before product code/CI reliance |
-| INFRA-REV-002 | Medium | Versions | Hand-authored Expo SDK 52 / Next 15 / React (18 mobile vs 19 admin) pins are best-effort, unverified | Possible install/version drift | `npx expo install --fix`; reconcile admin on first install | No (resolve during 001) |
-| INFRA-REV-003 | Low | VCS | Repo is not a git repository | CI workflow inactive; no history | `git init`, initial commit, add remote | No |
+| INFRA-REV-001 | ~~High~~ **Resolved** | Toolchain/CI | Nothing executed; no `pnpm-lock.yaml`. `format:check`/`typecheck`/`lint`/`test` unverified. CI uses `--frozen-lockfile` → cannot pass without a committed lockfile. | Foundation not verified-runnable; CI non-functional | **Cleared on 2026-05-28 via FIX-INFRA-001:** pnpm installed, `pnpm-lock.yaml` generated; admin React versions aligned to 18 (matching mobile / Expo SDK 52) to remove duplicate `@types/react`; `pnpm typecheck` / `lint` / `test` / `format:check` all green. | No (resolved) |
+| INFRA-REV-002 | Medium | Versions | Hand-authored Expo SDK 52 / Next 15 / React pins are best-effort | Possible install/version drift | `npx expo install --fix` still pending; admin is now aligned to React 18 / `@types/react@~18.3.12`, mobile already matches Expo SDK 52 | No |
+| INFRA-REV-003 | Low | VCS | Repo not under git | CI workflow inactive | `git init` ✅ done; remote/push still pending | No |
 | INFRA-REV-004 | Low | Cleanup | INFRA-012 smoke markers (`workspaceConfigCheck`, `workspace-check.ts` ×2) are temporary | Minor dead scaffolding | Remove when real shared types/config are consumed | No |
 | INFRA-REV-005 | Low | Docs hygiene | `docs/14` (old pre-code gate) is superseded by `docs/16` but not annotated | Trace ambiguity | Add a one-line "superseded by 16" note on next docs pass | No |
+| INFRA-REV-006 | Low | Dep graph | Residual `react-dom@19.2.6` nested under `node_modules/react-helmet-async/` (transitive of `expo-router`) leaves a pnpm peer warning after admin downgrade | Noise only — does not affect typecheck/lint/test/format | Clean reinstall, or add a small `pnpm.overrides` if it recurs on other machines | No |
 
 ---
 
@@ -152,7 +157,7 @@
 
 ## 9. What Is Not Ready Yet (intentionally)
 
-Auth · invite/beta gate · waitlist · onboarding · profiles · events/applications/chat/report · admin auth & moderation logic · Supabase project connection · Supabase client wrappers · DB migrations · RLS policies · location reveal · trust scoring · real analytics (PostHog) · Sentry · AI moderation · real product screens / Figma UI · running CI (needs lockfile).
+Auth · invite/beta gate · waitlist · onboarding · profiles · events/applications/chat/report · admin auth & moderation logic · Supabase project connection · Supabase client wrappers · DB migrations · RLS policies · location reveal · trust scoring · real analytics (PostHog) · Sentry · AI moderation · real product screens / Figma UI.
 
 These are deferred by design and gated behind Sprint 2+ tasks and human review.
 
@@ -160,34 +165,36 @@ These are deferred by design and gated behind Sprint 2+ tasks and human review.
 
 ## 10. Recommendation
 
-### PASS WITH FIXES
+### PASS
 
-Infrastructure is structurally complete and safe — no Critical issues, no safety-invariant violations, no forbidden dependencies, no premature product logic. Before Sprint 2 **product implementation**, clear **INFRA-REV-001** (install toolchain, generate & commit `pnpm-lock.yaml`, run `format:check`/`typecheck`/`lint`/`test` green, reconciling version drift via `expo install --fix`). INFRA-REV-002…005 are non-blocking follow-ups.
+Infrastructure is structurally complete, verified-runnable, and safe — no Critical issues, no High issues, no safety-invariant violations, no forbidden dependencies, no premature product logic. The High-severity blocker INFRA-REV-001 was cleared on 2026-05-28 by FIX-INFRA-001 (admin React versions aligned to 18; `pnpm-lock.yaml` generated; `typecheck`/`lint`/`test`/`format:check` all green). INFRA-REV-002…006 are non-blocking follow-ups.
 
 ---
 
 ## 11. Next Recommended Step
 
-1. **Clear INFRA-REV-001** (verification + lockfile) — required for a functional CI and a verified foundation.
+1. ~~**Clear INFRA-REV-001**~~ — done on 2026-05-28 via FIX-INFRA-001.
 2. **Create [`/docs/22_PHASE_GATE_TO_AUTH_BETA_ONBOARDING.md`](22_PHASE_GATE_TO_AUTH_BETA_ONBOARDING.md)** — the Infrastructure → Sprint 2 phase gate, and update `CLAUDE.md` §6 to authorize Sprint 2 work:
    - Auth (email/Google/Apple, sessions, protected routes, banned gate);
    - Invite-only beta gate;
    - Waitlist;
    - Onboarding;
    - Basic profile foundation.
+3. Optional clean-ups before Sprint 2: `npx expo install --fix` (REV-002), git remote/push (REV-003), remove INFRA-012 smoke markers (REV-004), annotate `docs/14` as superseded (REV-005), prune residual `react-dom@19.2.6` nest (REV-006).
 
-> Sprint 2 product work remains **blocked** until both the new phase gate is approved (CLAUDE.md §6 currently authorizes Infrastructure only) and INFRA-REV-001 is cleared. The gate doc can be drafted in parallel with the verification fix.
+> Sprint 2 product work remains **blocked** until the new phase gate is approved (CLAUDE.md §6 currently authorizes Infrastructure only). Infrastructure verification is no longer a blocker.
 
 ---
 
 ## 12. Summary
 
-- **Sprint 1 infrastructure review result: PASS WITH FIXES.**
+- **Sprint 1 infrastructure review result: PASS** (updated 2026-05-28 after FIX-INFRA-001 cleared the High-severity verification blocker).
 - **Foundation safe?** Yes — every safety invariant is intact; no secrets, no service-role exposure, no SQL, no SDKs, no premature product logic.
+- **Foundation verified-runnable?** Yes — `pnpm-lock.yaml` exists; `pnpm typecheck` / `lint` / `test` / `format:check` all green.
 - **Product Core intact?** Yes — nothing contradicts it; the Discover→Apply→Approve→Attend→Reconnect loop is unbuilt by design.
 - **Modular Monolith intact?** Yes — one monorepo, one Supabase target, shared packages consumed in-process; no microservices/separate services/multiple databases.
-- **Can Sprint 2 be considered?** Yes — after clearing INFRA-REV-001 (verification + lockfile) and opening the Sprint 2 phase gate with a `CLAUDE.md` update.
+- **Can Sprint 2 be considered?** Yes — pending only the Sprint 2 phase gate + `CLAUDE.md` update.
 
 ---
 
-> Reminder: [`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md) is the first source of truth. This review created no code, SQL, migrations, or SDK connections; it modified no implementation files.
+> Reminder: [`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md) is the first source of truth. The original 2026-05-24 review created no code, SQL, migrations, or SDK connections. The 2026-05-28 re-verification update is a documentation-only edit to this file (the implementation change lives in FIX-INFRA-001: `apps/admin/package.json` + `pnpm-lock.yaml`).
