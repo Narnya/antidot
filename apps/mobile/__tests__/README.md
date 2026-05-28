@@ -1,4 +1,4 @@
-# apps/mobile/__tests__
+# `apps/mobile/__tests__`
 
 Placeholder for **mobile** tests. Empty for now (INFRA-014).
 

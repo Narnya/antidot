@@ -20,17 +20,17 @@ pnpm --filter @social-events/admin dev      # http://localhost:3000
 
 ## Routes (placeholders)
 
-| Path | Section |
-|---|---|
-| `/` | Overview |
-| `/moderation` | Moderation Queue |
-| `/reports` | Reports |
-| `/users` | Users |
-| `/events` | Events |
-| `/messages` | Messages |
+| Path                   | Section             |
+| ---------------------- | ------------------- |
+| `/`                    | Overview            |
+| `/moderation`          | Moderation Queue    |
+| `/reports`             | Reports             |
+| `/users`               | Users               |
+| `/events`              | Events              |
+| `/messages`            | Messages            |
 | `/suspicious-activity` | Suspicious Activity |
-| `/audit-logs` | Audit Logs |
-| `/settings` | Settings |
+| `/audit-logs`          | Audit Logs          |
+| `/settings`            | Settings            |
 
 Each route renders `PlaceholderPage` — "Infrastructure placeholder only / no real admin
 data / no Supabase/service role connected".

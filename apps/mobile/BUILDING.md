@@ -21,11 +21,11 @@ Product rules are unaffected — see [`/docs/00_PRODUCT_CORE.md`](../../docs/00_
 
 ## Build profiles ([`eas.json`](./eas.json))
 
-| Profile | Intent | Notes |
-|---|---|---|
-| `development` | Internal dev/testing later | `distribution: internal`. `developmentClient: false` — **do not** set `true` until `expo-dev-client` is added (it is **not** a dependency yet). |
-| `preview` | Closed-beta internal builds later | `distribution: internal`. |
-| `production` | App Store / Google Play later | No submit config; defaults only. |
+| Profile       | Intent                            | Notes                                                                                                                                           |
+| ------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `development` | Internal dev/testing later        | `distribution: internal`. `developmentClient: false` — **do not** set `true` until `expo-dev-client` is added (it is **not** a dependency yet). |
+| `preview`     | Closed-beta internal builds later | `distribution: internal`.                                                                                                                       |
+| `production`  | App Store / Google Play later     | No submit config; defaults only.                                                                                                                |
 
 No EAS **Submit**, no EAS **Update** channels, and no app-signing credentials are
 configured. These are deliberate later steps.

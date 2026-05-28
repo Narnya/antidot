@@ -7,7 +7,10 @@ import { Placeholder } from '../components/Placeholder';
 export default function Index() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Placeholder routeName="/ (app shell)" note="Mobile shell placeholder. No product logic implemented." />
+      <Placeholder
+        routeName="/ (app shell)"
+        note="Mobile shell placeholder. No product logic implemented."
+      />
       <Link href="/welcome" style={styles.link}>
         (public) → /welcome
       </Link>

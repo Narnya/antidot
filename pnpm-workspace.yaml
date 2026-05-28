@@ -5,5 +5,5 @@
 # /supabase and /docs are part of the monorepo but are NOT pnpm packages.
 # apps/mobile is the Expo app (INFRA-003); apps/admin is the Next.js app (INFRA-004).
 packages:
-  - "apps/*"
-  - "packages/*"
+  - 'apps/*'
+  - 'packages/*'

@@ -1,4 +1,4 @@
-# apps/admin/src/__tests__
+# `apps/admin/src/__tests__`
 
 Placeholder for **admin** tests. Empty for now (INFRA-014).
 
