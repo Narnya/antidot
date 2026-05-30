@@ -1,167 +1,379 @@
-# Design Handoff v1 — Social Events App
+# Design Handoff v2 — Antidot
 
-> **Status:** v1 (design → implementation handoff)
-> **Owner:** Founder / Product Designer / Technical Founder
-> **Last updated:** 2026-05-19
-
-> ⚠️ Этот документ — **мост между Figma и реализацией**, а не источник продуктовых правил.
-> Источник правил — [`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md) (first source of truth) и downstream-документы `01`–`12`.
-> Документ практический: его читают founder, дизайнер и инженер перед тем, как передавать экран в Claude Code.
-> Этот документ **не изменяет** другие документы. Найденные несоответствия фиксируются как заметки/open questions, не правятся здесь.
+> **Status:** v2 (design → implementation handoff, circle-first).
+> **Owner:** Founder / Product Designer / Technical Founder.
+> **Last updated:** 2026-05-30.
+> **First source of truth:** [`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md) (Product Core v2).
+> **Requirements sources:** [`/docs/01_PRD.md`](01_PRD.md) (PRD v2), [`/docs/02_USER_STORIES.md`](02_USER_STORIES.md) (User Stories v2), [`/docs/03_USER_FLOWS.md`](03_USER_FLOWS.md) (User Flows v2).
+> **Figma plan source:** [`/docs/04_FIGMA_PROTOTYPE_PLAN.md`](04_FIGMA_PROTOTYPE_PLAN.md) (Figma Prototype Plan v2).
+> **Supersedes:** Design Handoff v1 (event-first, 2026-05-19).
+> **Sequenced by:** [`/docs/27_PRODUCT_CORE_V2_DOCS_UPDATE_PLAN.md`](27_PRODUCT_CORE_V2_DOCS_UPDATE_PLAN.md) §24 Phase B step 6.
 
 ---
 
 ## 1. Source of Truth
 
-- [`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md) — **first source of truth**. Все продуктовые, security, trust и scope-правила берутся из docs, а не из Figma.
-- **Figma не может переопределять Product Core.** Figma — это визуальная спецификация (как выглядит экран и как он связан в прототипе), но не источник продуктовой логики, прав доступа, RLS, trust-формул, moderation-правил или scope.
-- Если в Figma появляется любое из перечисленного — это **ошибка дизайна**, а не новая фича:
-  - exact location / точный адрес / точечный map pin **до approval**;
-  - open DM / личные сообщения вне контекста события;
-  - raw trust score (число, например `Trust 74/100`);
-  - public user ratings / публичные негативные ярлыки;
-  - dating mechanics (swipe/match, chemistry/attractiveness, «who liked you»).
-- **Claude Code обязан проверять каждый экран against Product Core** до реализации и заявлять применимые safety-инварианты (CLAUDE.md §1, [`12_IMPLEMENTATION_READINESS_REVIEW.md`](12_IMPLEMENTATION_READINESS_REVIEW.md) §20).
-- Design Handoff — это **bridge между Figma и implementation**: он структурирует Figma, связывает экраны с docs и задаёт безопасный workflow. Он не заменяет ни Product Core, ни Figma Prototype Plan ([`04_FIGMA_PROTOTYPE_PLAN.md`](04_FIGMA_PROTOTYPE_PLAN.md)).
+- **Product Core v2** ([`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md)) — **first source of truth**.
+- **Figma не может override Product Core v2.** При конфликте Figma ↔ Core — приоритет у Core.
+- **Design Handoff v2** — мост между Figma v2 и implementation (мобильное приложение / admin dashboard).
+- Существующий event-first Figma prototype ([[figma-prototype-build]]) — **superseded conceptually**.
+- Любой старый event-first screen должен быть **смаплен на circle-first** до implementation (§7 таблица маппинга).
+- **Claude Code не должен реализовывать** старые event-first screens как product UI ([`CLAUDE.md`](../CLAUDE.md) §13).
 
-> Правило приоритета: **Product Core > downstream docs > Design Handoff > Figma**. При конфликте — выигрывает Product Core; при неясности — surface decision, не «додумывать» (CLAUDE.md §2/§3).
+**Принятая модель (binding):**
+
+- **User-facing primitive:** Circle / Круг.
+- **Operational primitive:** Meeting / Встреча круга.
+- **Circle-first UX, meeting-based operations, vibe-based discovery, context-first communication, trust-first safety model.**
+
+Downstream технические документы ([`05_ARCHITECTURE.md`](05_ARCHITECTURE.md), [`06_DATABASE_SCHEMA.md`](06_DATABASE_SCHEMA.md), [`07_SECURITY_RLS.md`](07_SECURITY_RLS.md), [`08_TRUST_SYSTEM.md`](08_TRUST_SYSTEM.md), [`09_MODERATION.md`](09_MODERATION.md), [`10_ANALYTICS.md`](10_ANALYTICS.md), [`11_SPRINT_BACKLOG.md`](11_SPRINT_BACKLOG.md)) на момент написания **ещё в v0.1 (event-first)** — известное состояние миграции. Этот handoff им и Figma Plan v2 авторитетнее.
 
 ---
 
 ## 2. Purpose of This Document
 
-Design Handoff нужен, чтобы:
+Design Handoff v2 существует, чтобы:
 
-- **структурировать Figma** так, чтобы её можно было передавать в реализацию по частям;
-- **связать Figma screens с docs** (Screen ID ↔ Flow ID ↔ Story ↔ Analytics ↔ Security);
-- **передавать Claude Code конкретные экраны/компоненты**, а не «весь продукт»;
-- обеспечить **consistency между дизайном и кодом** (tokens, naming, состояния);
-- **защитить safety-инварианты** на этапе перехода design → code;
-- **не дать Claude Code «угадывать» продукт** из картинки (схема, права доступа, scope — только из docs);
-- обеспечить **React Native / Expo-friendly** реализацию (UI-first, mocked data, без backend на первом проходе).
-
-| Кому | Что даёт документ |
-|------|-------------------|
-| Founder | Как готовить и приоритизировать экраны для передачи в код |
-| Designer | Как именовать screens/frames/components и какие Dev Notes добавлять |
-| Engineer / Claude Code | Что реализовывать, в каком объёме, с какими safety-границами |
+- **структурировать Figma v2** (page structure, screen IDs, dev notes);
+- **связать Figma screens** с circle-first документацией (Core / PRD / Stories / Flows / Figma Plan);
+- **предотвратить event-first implementation drift** — никакой случайной реализации старых экранов как актуального UI;
+- **обеспечить, что Claude Code реализует один screen / component за раз** — не «весь app по Figma»;
+- **защитить 16 safety invariants** Product Core v2 на уровне UI;
+- **сохранить Product Core v2** — любой Figma artifact, нарушающий Core, должен быть flagged, а не silently реализован;
+- **сделать React Native / Expo implementation predictable** — single language, single token system, semantic naming.
 
 ---
 
-## 3. Figma File Naming
+## 3. Current Figma Status
 
-Рекомендуемое имя Figma-файла:
+### 3.1 v1 prototype (event-first)
 
-> **Social Events App — MVP Prototype**
+| Атрибут | Значение |
+|---|---|
+| Структура | foundations / components / mobile screens / admin screens |
+| Wired across | Flow A (User core loop), B (Host), C (Safety), D (Admin moderation) |
+| Локализация | Russian |
+| Статус | **superseded conceptually** для product UI |
+| Допустимое использование | visual inspiration / interaction reference / token baseline / component baseline |
 
-Метаданные файла (заполняются по мере готовности):
+### 3.2 Cannot
+
+- использовать v1 screens **как final product UI**;
+- ссылаться на v1 как **источник правды** по экранам / flows;
+- использовать v1 event-first terminology в новых UI текстах ([CLAUDE.md §8](../CLAUDE.md)).
+
+### 3.3 Required
+
+- Создать **Figma v2 circle-first prototype** до начала product screen implementation.
+- Provide explicit **Screen IDs** на каждом frame.
+- Provide **Dev Notes** на каждом P0 frame.
+
+**Current v1 prototype** должен трактоваться как:
+
+> visual base / interaction reference / superseded product concept.
+
+**Future v2 prototype** должен быть:
+
+> circle-first / meeting-based / belonging-oriented.
+
+---
+
+## 4. Figma File Naming
+
+### 4.1 Recommended file name
+
+> **Antidot — Circle Prototype v2**
+
+(или **«Antidot — Circle-first Prototype»** — нейтрально, без версионности, если предпочтительнее).
+
+### 4.2 Placeholders (заполнить при создании файла)
 
 | Поле | Значение |
-|------|----------|
-| Figma file link | `https://www.figma.com/design/xZkaKij7DhLPpRE3Ob0Znd` (текущий рабочий файл «Social Events App — Prototype v1») |
-| P0 clickable prototype link | TODO |
-| Last design review date | TODO |
-| Current design status | `draft` (in progress — собраны 3 страницы и токены; экраны не собраны) |
+|---|---|
+| Figma v1 file link | **TODO** |
+| Figma v2 file link | **TODO** |
+| P0 circle prototype link | **TODO** |
+| Last design review date | **TODO** |
+| Current design status | `draft` / `in progress` / `ready for review` — **TODO** |
 
-> **Note (несоответствие имён):** рекомендованное имя — «Social Events App — MVP Prototype»; фактический файл создан как «Social Events App — Prototype v1». Это не блокер; при следующем обновлении дизайна стоит выровнять имя (не править другие docs автоматически — CLAUDE.md §4).
+> **Правило:** Claude Code и инженеры **не должны** работать со ссылками на v1 как с product source. Если placeholder ещё **TODO** — это означает, что implementation **не должно начинаться** для соответствующего screen / flow до получения v2 link.
 
 ---
 
-## 4. Figma Page Structure
+## 5. Figma Page Structure v2
 
-Ниже — **рекомендуемая логическая структура страниц**. Каждая страница = один логический раздел.
+Структура страниц в Figma v2 файле (зеркалит [Figma Plan v2 §5](04_FIGMA_PROTOTYPE_PLAN.md)):
 
 ### 00 — Cover / Product Context
-Содержит: product one-liner; core loop (Discover → Apply → Approve → Attend → Reconnect); key safety rules; prototype scope.
+
+- product one-liner;
+- circle-first model;
+- core loop diagram;
+- key safety rules;
+- no people marketplace;
+- no open DMs;
+- no dating mechanics.
 
 ### 01 — Foundations
-Содержит: typography; color roles; spacing scale; radius; shadows (если нужны); accessibility notes.
+
+- typography;
+- color roles;
+- spacing;
+- radius;
+- shadows;
+- icon usage;
+- accessibility notes (WCAG 2.1 AA target — PRD v2 §24).
 
 ### 02 — Components
-Содержит: buttons; inputs; cards; badges; banners; modals; chat components; empty states; error states.
+
+См. §12 inventory. Ключевые блоки:
+
+- buttons; inputs; chips; badges;
+- **CircleCard**; **CircleDetailHeader**; **VibeTag**; **RhythmBadge**; **ComfortCompositionBadge**;
+- **MembershipStatusBanner**; **MeetingCard**; **RSVPControl**;
+- **LocationPrivacyNotice**; **LocationRevealSection**;
+- ProfileCard/Safe; **RequestCard**;
+- chat components; report/block components; empty/error states.
 
 ### 03 — Mobile / Guest + Onboarding
-Содержит: Welcome; Signup/Login; Invite Code; Waitlist; Onboarding steps; Safety Principles; Profile Preview.
 
-### 04 — Mobile / User Core Loop
-Содержит: Home / Discover; Filters; Event Detail states; Apply Modal; Pending; Approved; Event Chat; Post-event.
+- Welcome; Invite Code; Waitlist; Signup/Login; Safety Principles;
+- City/Area; Interests; **Vibe**; **Rhythm**; **Comfort Composition**; Group Size; Host Willingness;
+- Profile Preview.
 
-### 05 — Mobile / Host Flow
-Содержит: Create Event; Event Preview; Hosted Event Dashboard; Applications List; Applicant Detail; Approve/Reject; Attendee Management.
+### 04 — Mobile / Circle Discovery + Request
 
-### 06 — Mobile / Safety
-Содержит: Public Safe Profile; Report User; Report Event; Report Message; Block User; Safety states.
+- Circle Discovery; Filters; Circle Card examples;
+- **Circle Detail — Not Requested**; Request Place Modal; Membership Pending;
+- Waitlist; Not This Time.
 
-### 07 — Mobile / Settings + Privacy
-Содержит: Settings; Privacy; Manage blocked users; Data export; Delete account.
+### 05 — Mobile / Circle Member + Belonging
 
-### 08 — Admin Dashboard
-Содержит: Moderation Queue; Report Detail; User Detail; Event Detail; Message Detail; Audit Logs; Action Modal.
+- **Intro Meeting Approved**; **Meeting Location Reveal**; Meeting Detail; RSVP;
+- **Circle Chat**; Become Member;
+- **My Circles**; **Circle Home**; Pause Participation; Leave Circle.
 
-### 09 — Prototype Links
-Содержит: clickable prototype map; core user loop; host flow; safety flow; admin flow.
+### 06 — Mobile / Host Flow
 
-### 10 — Dev Handoff Notes
-Содержит: screen registry; component mapping; token mapping; unresolved design questions; implementation notes.
+- Create Circle; Circle Preview; Host Circle Dashboard;
+- Membership Requests; Request Detail; Approve for Intro; Not This Time;
+- Member Management; End Participation.
 
-> **Operational note (Figma plan / Starter constraint).** Если файл на **Figma Starter** (лимит 3 страницы), 11 логических разделов сворачиваются в 3 физические страницы Figma + **Sections** внутри страниц. Рекомендуемый маппинг:
->
-> | Физическая страница Figma | Логические разделы (Sections) |
-> |---|---|
-> | `01 · Foundations & Components` | 00 Cover · 01 Foundations · 02 Components · 10 Dev Handoff Notes |
-> | `02 · Screens — Mobile` | 03 Guest+Onboarding · 04 Core Loop · 05 Host · 06 Safety · 07 Settings |
-> | `03 · Admin & Prototype` | 08 Admin Dashboard · 09 Prototype Links |
->
-> Prototype-связи в Figma работают между страницами одного файла. Логические ID разделов и Screen ID сохраняются как **имена Sections/frames** независимо от физической страницы. Это вынужденная адаптация под Starter, а не изменение Figma Prototype Plan §4 — выровнять при апгрейде плана / обновлении [`04_FIGMA_PROTOTYPE_PLAN.md`](04_FIGMA_PROTOTYPE_PLAN.md) (не в этом документе).
+### 07 — Mobile / Safety
 
----
+- Public Safe Profile; Report User; Report Circle; Report Meeting; Report Message; Report Submitted;
+- Block User; Blocked State.
 
-## 5. Screen ID Naming Rules
+### 08 — Mobile / Settings + Privacy
 
-Каждый frame экрана **обязан** называться через Screen ID из документации ([`04_FIGMA_PROTOTYPE_PLAN.md`](04_FIGMA_PROTOTYPE_PLAN.md) §7/§8).
+- Settings; Privacy; Manage Blocked Users; Data Export; Delete Account.
 
-Формат: `<SCREEN-ID> <Name>` (например `MOB-033 Event Detail — Not Applied`).
+### 09 — Admin Dashboard
 
-**Правильные названия (примеры):**
+- Moderation Queue; Report Detail; User Detail; Circle Detail; Meeting Detail; Message Detail;
+- Audit Logs; Admin Action Modal.
 
-| Screen ID | Name |
-|-----------|------|
-| MOB-001 | Welcome |
-| MOB-004 | Invite Code |
-| MOB-010 | Onboarding Welcome |
-| MOB-011 | Safety Principles |
-| MOB-030 | Home / Discover |
-| MOB-033 | Event Detail — Not Applied |
-| MOB-034 | Event Detail — Pending |
-| MOB-035 | Event Detail — Waitlisted |
-| MOB-036 | Event Detail — Approved |
-| MOB-037 | Event Detail — Rejected |
-| MOB-050 | Apply Modal |
-| MOB-060 | Create Event Start |
-| MOB-071 | Applications List |
-| MOB-072 | Applicant Detail |
-| MOB-080 | Event Chat |
-| MOB-095 | Public Safe Profile |
-| MOB-110 | Report User |
-| MOB-111 | Report Event |
-| MOB-114 | Block User Confirmation |
-| ADM-002 | Moderation Queue |
-| ADM-003 | Report Detail |
-| ADM-009 | Admin Action Modal |
+### 10 — Prototype Links
 
-**Запрещённые названия** (frame не передаётся в реализацию, пока не переименован):
+- **Flow A** — User Circle Loop;
+- **Flow B** — Host Circle Flow;
+- **Flow C** — Safety Flow;
+- **Flow D** — Admin Moderation Flow;
+- **Flow E** — Belonging Mode;
+- **Flow F** — Location Privacy Flow.
 
-`Frame 1` · `Screen copy` · `iPhone 14 - 23` · `Untitled` · `Final final` · `New screen` · любое имя без Screen ID.
+### 11 — Dev Handoff Notes
 
-> **Правило:** Claude Code реализует экраны **только по explicit Screen ID**. Нет Screen ID → нет реализации. Если в задаче нет ID — Claude Code должен запросить его, а не угадывать экран по картинке.
+- screen registry (MOB-NNN / ADM-NNN);
+- component mapping (Figma name → `/packages/ui` component name);
+- token mapping (Figma token → token namespace);
+- design-to-code rules;
+- safety notes (per screen);
+- unresolved UX questions (§23).
 
 ---
 
-## 6. Required Dev Notes per Screen
+## 6. Screen ID Naming Rules v2
 
-Рядом с каждым важным Figma-экраном (минимум — все P0) должен быть текстовый блок **Dev Notes** по шаблону.
+**Каждый frame должен использовать explicit Screen ID.** Этот ID — единственный валидный способ ссылаться на screen в implementation task'ах.
 
-**Шаблон:**
+### 6.1 Recommended IDs
+
+#### Guest / Auth
+
+- `MOB-001` Welcome
+- `MOB-002` Login
+- `MOB-003` Signup
+- `MOB-004` Invite Code
+- `MOB-005` Waitlist Signup
+- `MOB-006` Auth Error
+
+#### Onboarding
+
+- `MOB-010` Onboarding Welcome
+- `MOB-011` Safety Principles
+- `MOB-012` Basic Profile
+- `MOB-013` City / Area
+- `MOB-014` Interests
+- `MOB-015` Vibe
+- `MOB-016` Rhythm
+- `MOB-017` Comfort Composition
+- `MOB-018` Group Size
+- `MOB-019` Host Willingness
+- `MOB-020` Photo
+- `MOB-021` Verification Placeholder
+- `MOB-022` Profile Preview
+- `MOB-023` Onboarding Complete
+
+#### Circle Discovery / Detail
+
+- `MOB-030` Circle Discovery
+- `MOB-031` Circle Filters
+- `MOB-032` Circle Card Examples
+- `MOB-033` Circle Detail — Not Requested
+- `MOB-034` Circle Detail — Requested
+- `MOB-035` Circle Detail — Waitlisted
+- `MOB-036` Circle Detail — Intro Approved
+- `MOB-037` Circle Detail — Member
+- `MOB-038` Circle Detail — Full
+- `MOB-039` Circle Detail — Paused
+- `MOB-040` Circle Detail — Removed for Safety
+
+#### Request / Membership
+
+- `MOB-050` Request Place Modal
+- `MOB-051` Intro Note
+- `MOB-052` Membership Pending
+- `MOB-053` Verification Required
+- `MOB-054` Profile Completion Required
+- `MOB-055` Waitlist Offer
+- `MOB-056` Not This Time
+- `MOB-057` Become Member Confirmation
+
+#### Meetings
+
+- `MOB-060` Meeting Detail
+- `MOB-061` Meeting Location Reveal
+- `MOB-062` RSVP
+- `MOB-063` Meeting Reminder
+- `MOB-064` Meeting Completed
+- `MOB-065` Attendance Confirmation
+
+#### My Circles / Belonging
+
+- `MOB-070` My Circles
+- `MOB-071` Circle Home
+- `MOB-072` Circle Chat Preview
+- `MOB-073` Pause Participation
+- `MOB-074` Leave Circle
+- `MOB-075` Paused State
+
+#### Host
+
+- `MOB-080` Create Circle Start
+- `MOB-081` Circle Details Form
+- `MOB-082` Vibe / Rhythm Setup
+- `MOB-083` Comfort Composition Setup
+- `MOB-084` First Meeting Setup
+- `MOB-085` Circle Preview
+- `MOB-086` Publish Confirmation
+- `MOB-087` Host Circle Dashboard
+- `MOB-088` Membership Requests
+- `MOB-089` Request Detail
+- `MOB-090` Approve for Intro
+- `MOB-091` Not This Time (Host)
+- `MOB-092` Member Management
+- `MOB-093` End Participation
+
+#### Chat
+
+- `MOB-100` Circle Chat
+- `MOB-101` Message Actions
+- `MOB-102` Report Message
+- `MOB-103` Chat Frozen
+- `MOB-104` No Chat Access
+
+#### Profile / Safety
+
+- `MOB-110` My Profile
+- `MOB-111` Edit Profile
+- `MOB-112` Public Safe Profile
+- `MOB-113` Report User
+- `MOB-114` Report Circle
+- `MOB-115` Report Meeting
+- `MOB-116` Report Submitted
+- `MOB-117` Block User Confirmation
+- `MOB-118` Blocked State
+
+#### Settings
+
+- `MOB-130` Settings
+- `MOB-131` Privacy
+- `MOB-132` Manage Blocked Users
+- `MOB-133` Data Export
+- `MOB-134` Delete Account
+
+#### Admin
+
+- `ADM-001` Admin Login
+- `ADM-002` Moderation Queue
+- `ADM-003` Report Detail
+- `ADM-004` User Detail
+- `ADM-005` Circle Detail (admin view)
+- `ADM-006` Meeting Detail (admin view)
+- `ADM-007` Message Detail (admin view)
+- `ADM-008` Suspicious Activity Queue
+- `ADM-009` Audit Logs
+- `ADM-010` Admin Action Modal
+
+### 6.2 Forbidden frame names
+
+Эти имена **запрещены** для P0 / P1 screens:
+
+- ~~`Frame 1`~~
+- ~~`Copy of screen`~~
+- ~~`iPhone 14 - 23`~~
+- ~~`Final final`~~
+- ~~`Untitled`~~
+- ~~`screen_v2_new_FINAL_2`~~
+- любые имена без Screen ID или без явного описания screen state.
+
+### 6.3 Rule
+
+> **Claude Code должен реализовывать только screens с explicit Screen ID.** Если task ссылается на frame без Screen ID или с одним из forbidden names — Claude Code должен **отказаться** и попросить дать exact frame link с Screen ID.
+
+---
+
+## 7. Old-to-New Screen Mapping
+
+Таблица маппинга event-first → circle-first. Применяется при пересмотре v1 frames для v2.
+
+| Old (event-first, superseded) | New (circle-first, v2) | Notes |
+|---|---|---|
+| MOB-030 Discover | **MOB-030 Circle Discovery** | feed of circles, не events; no people |
+| MOB-033 Event Detail — Not Applied | **MOB-033 Circle Detail — Not Requested** | aggregated composition; exact location hidden |
+| MOB-050 Apply Modal | **MOB-050 Request Place Modal** | один request на circle, не на event |
+| MOB-034 Pending | **MOB-052 Membership Pending** | per-circle pending, non-stigmatizing copy |
+| MOB-036 Approved | **MOB-036 Circle Detail — Intro Approved** + **MOB-061 Meeting Location Reveal** | scoped reveal к одной intro-встрече |
+| MOB-080 Event Chat | **MOB-100 Circle Chat** | per-circle, не per-event |
+| MOB-060 Create Event | **MOB-080 Create Circle Start** (+ MOB-081…086) | multi-step circle creation |
+| MOB-071 Applications List | **MOB-088 Membership Requests** | host queue per-circle |
+| MOB-072 Applicant Detail | **MOB-089 Request Detail** | safe applicant context |
+| (v1) My Events | **MOB-070 My Circles** | belonging mode primary home |
+
+### 7.1 State
+
+- Old screens **не должны** реализовываться напрямую.
+- Они должны быть **redesigned / mapped** на v2 IDs до implementation.
+- Если task ссылается на старый screen ID, который существует и в new mapping (например MOB-030, MOB-050) — implementer должен использовать **circle-first content**, не event-first.
+
+---
+
+## 8. Required Dev Notes per Screen v2
+
+**Каждый P0 Figma screen должен иметь Dev Notes** прикреплённые к frame (в Figma — sticker / annotation; в Dev Handoff Notes странице — registry).
+
+### 8.1 Template
 
 ```
 Screen:
@@ -178,146 +390,211 @@ Implementation notes:
 Out of scope:
 ```
 
-**Пример — Event Detail — Not Applied:**
+### 8.2 Пример — Circle Detail — Not Requested
 
 ```
-Screen: MOB-033 Event Detail — Not Applied
-Flow: FLOW-007 Event Detail
+Screen: MOB-033 Circle Detail — Not Requested
+Flow: FLOW-007 Circle Detail
 Role: User
-State: not_applied
+State: not_requested
 
 Primary CTA:
-Apply
+Запросить место
 
 Secondary actions:
-Report Event
+Пожаловаться на круг
 
 Data required:
-- event title
-- category
-- date/time
-- host safe profile
-- capacity
-- approximate area
-- approval_required
+- circle title
+- vibe tags
+- rhythm indicator
+- approximate area (area only)
+- capacity / size band
+- comfort composition label
+- host safe profile (display name + verification badge)
+- next meeting summary (date + area only)
+- approval explanation block
 
 Safety notes:
-- exact location hidden
-- no event chat access
-- no full attendee list unless policy allows (OD-12)
-- no raw trust score
+- exact meeting location hidden (Инв. 1)
+- no full member list before approval
+- no circle chat preview
+- no raw trust score (Инв. 3)
 - no public ratings
+- no people marketplace (Инв. 13)
+- approval framed as fit protection (Core v2 §19)
 
 Analytics events:
-- event_viewed
+- circle_viewed
 - location_privacy_notice_viewed
-- apply_cta_tapped
-- report_event_started (если открыт report)
+- circle_join_started (on CTA tap)
 
 Related docs:
-- /docs/00_PRODUCT_CORE.md
-- /docs/03_USER_FLOWS.md
-- /docs/04_FIGMA_PROTOTYPE_PLAN.md
-- /docs/07_SECURITY_RLS.md
+- /docs/00_PRODUCT_CORE.md (§§ 6, 16, 17, 19)
+- /docs/01_PRD.md (§7.5)
+- /docs/02_USER_STORIES.md (US-CIRC-01…13)
+- /docs/03_USER_FLOWS.md (FLOW-007)
+- /docs/04_FIGMA_PROTOTYPE_PLAN.md (§13.5)
+- /docs/07_SECURITY_RLS.md (после v2 update — для RLS, не для UI)
 
 Implementation notes:
-- UI only first
+- UI only в первом проходе
 - mocked data acceptable
-- no backend logic in first implementation
+- no backend logic в первом UI pass
+- использовать /packages/ui компоненты как single source для дизайн-токенов
 
 Out of scope:
-- exact location reveal
+- exact location reveal (это FLOW-010 / MOB-061)
+- membership approval backend
 - Supabase queries
 - RLS policies
 ```
 
-> Имена аналитических событий должны совпадать с [`10_ANALYTICS.md`](10_ANALYTICS.md) §31/§32 (event taxonomy). Не выдумывать новые имена событий в Dev Notes.
+### 8.3 Правило
+
+- **P0 screen без Dev Notes — implementation не начинается.**
+- Dev Notes — обязательная часть design handoff, не «опциональная улучшалка».
 
 ---
 
-## 7. P0 Prototype Scope
+## 9. P0 Circle Prototype Scope
 
-P0 clickable prototype, который нужно собрать в Figma (см. также [`04_FIGMA_PROTOTYPE_PLAN.md`](04_FIGMA_PROTOTYPE_PLAN.md) §9/§10):
+### 9.1 User Circle Loop (Prototype A)
 
-### User Core Loop
 ```
-Welcome
-→ Invite Code
-→ Signup/Login
-→ Onboarding
-→ Safety Principles
-→ Home / Discover
-→ Event Detail — Not Applied
-→ Apply Modal
-→ Pending State
-→ Approval Notification
-→ Event Detail — Approved
-→ Exact Location Reveal
-→ Event Chat
-→ Post-event State
+MOB-001 Welcome
+→ MOB-004 Invite Code
+→ MOB-010..023 Onboarding (sampled)
+→ MOB-030 Circle Discovery
+→ MOB-033 Circle Detail — Not Requested
+→ MOB-050 Request Place Modal
+→ MOB-052 Membership Pending
+→ MOB-036 Circle Detail — Intro Approved
+→ MOB-061 Meeting Location Reveal
+→ MOB-100 Circle Chat (limited intro access per policy)
+→ MOB-057 Become Member Confirmation
+→ MOB-070 My Circles
 ```
 
-### Host Flow
+### 9.2 Host Circle Flow (Prototype B)
+
 ```
-Create Event
-→ Event Preview
-→ Hosted Event Dashboard
-→ Applications List
-→ Applicant Detail
-→ Approve / Reject
-→ Attendee Management
+MOB-080..086 Create Circle
+→ MOB-087 Host Circle Dashboard
+→ MOB-088 Membership Requests
+→ MOB-089 Request Detail
+→ MOB-090 Approve for Intro (или MOB-091 Not This Time)
+→ MOB-092 Member Management
 ```
 
-### Safety Flow
+### 9.3 Safety Flow (Prototype C)
+
 ```
-Public Safe Profile
-→ Report User
-→ Report Details
-→ Report Submitted
-→ Block User
-→ Blocked State
+MOB-112 Public Safe Profile
+→ MOB-113 Report User
+→ MOB-116 Report Submitted
+→ MOB-117 Block User Confirmation
+→ MOB-118 Blocked State
+
+И:
+MOB-033 Circle Detail
+→ MOB-114 Report Circle
+→ MOB-116 Report Submitted
 ```
 
-### Admin Low-fi Flow
+### 9.4 Admin Flow (Prototype D)
+
 ```
-Moderation Queue
-→ Report Detail
-→ Admin Action Modal
-→ Audit Log
+ADM-001 Admin Login
+→ ADM-002 Moderation Queue
+→ ADM-003 Report Detail
+→ ADM-004/005/006/007 User / Circle / Meeting / Message Context
+→ ADM-010 Action Modal
+→ ADM-009 Audit Log
 ```
 
-> P0 prototype успешен, если тестировщик понимает: что это **не dating app**; как работает approval; почему location скрыта; где report/block (см. тест-скрипт [`04_FIGMA_PROTOTYPE_PLAN.md`](04_FIGMA_PROTOTYPE_PLAN.md) §19).
+### 9.5 Belonging Flow (Prototype E)
+
+```
+MOB-070 My Circles
+→ MOB-071 Circle Home
+→ MOB-060 Meeting Detail
+→ MOB-062 RSVP
+→ MOB-100 Circle Chat
+→ MOB-073 Pause Participation
+→ MOB-074 Leave Circle
+```
 
 ---
 
-## 8. Critical Screen States
+## 10. Critical Screen States v2
 
-Экраны с состояниями нельзя реализовывать только в happy-path.
+### 10.1 Circle Detail states
 
-### Event Detail states
-`not_applied` · `pending` · `waitlisted` · `approved` · `rejected` · `full` · `cancelled` · `removed_for_safety` · `host_view`.
+- `not_requested`
+- `requested`
+- `waitlisted`
+- `rejected` / `not_this_time`
+- `approved_for_intro_meeting`
+- `member`
+- `paused`
+- `full`
+- `circle_paused` (circle сам на паузе, не user)
+- `removed_for_safety`
+- `host_view`
 
-### Application states
-`none` · `pending` · `approved` · `rejected` · `waitlisted` · `cancelled_by_user`.
+### 10.2 Membership states
 
-### Chat states
-`active` · `frozen` · `post_event_expiring` · `no_access`.
+- `none`
+- `requested`
+- `waitlisted`
+- `approved_for_intro`
+- `intro_attended`
+- `member`
+- `paused`
+- `left`
+- `removed`
+- `removed_for_safety`
+- `banned_from_circle`
 
-### Profile states
-`own_profile` · `public_safe_profile` · `blocked_user` · `restricted_user` · `moderation_pending`.
+### 10.3 Meeting states
 
-### Report states
-`report_reason` · `report_details` · `report_submitted`.
+- `scheduled`
+- `starting_soon`
+- `in_progress`
+- `completed`
+- `cancelled`
+- `removed_for_safety`
 
-> **Правило:** Claude Code никогда не реализует только happy path для safety-critical экранов. Состояния `pending/waitlisted/rejected/cancelled/removed_for_safety`, `no_access`, `frozen`, `blocked/restricted/moderation_pending` обязательны там, где применимы (см. [`04_FIGMA_PROTOTYPE_PLAN.md`](04_FIGMA_PROTOTYPE_PLAN.md) §12/§18, [`12_IMPLEMENTATION_READINESS_REVIEW.md`](12_IMPLEMENTATION_READINESS_REVIEW.md) §5).
+### 10.4 Chat states
+
+- `active`
+- `frozen` (admin freeze)
+- `no_access` (non-member или removed)
+- `removed_user` (user был removed)
+- `paused_user` (user на pause)
+- `read_only` (если policy разрешает)
+
+### 10.5 Safety states
+
+- `report_reason` (selecting reason category)
+- `report_details` (optional description)
+- `report_submitted` (confirmation)
+- `block_confirmation`
+- `blocked_state`
+
+### 10.6 Rule
+
+> **Claude Code никогда не должен реализовывать только happy path** для safety-critical screens. Если task требует Circle Detail или Meeting screen — все relevant states должны быть рассмотрены и implemented (или явно вынесены в out-of-scope с TODO).
 
 ---
 
-## 9. Design Token Naming Rules
+## 11. Design Token Naming Rules v2
 
-Токены в Figma именуются семантически, чтобы переноситься в код без «магических» значений.
+Tokens живут в [`/packages/ui`](../packages/ui/) (Sprint 1 — placeholder baseline).
 
-### Color roles (semantic)
+### 11.1 Color roles (semantic only)
+
 ```
 background/default
 background/subtle
@@ -336,129 +613,226 @@ status/danger
 status/info
 trust/verified
 safety/notice
+accent/coral
+accent/violet
+accent/lime
+accent/blue
 ```
 
-Не использовать как **основную** UI-систему semantic-less имена: `blue-500`, `green-300`, «random purple», `Rectangle color`. Сырые палитры допустимы только как **primitives**, на которые ссылаются семантические роли.
+### 11.2 Typography roles
 
-### Typography roles
-`display` · `title` · `heading` · `body` · `body_small` · `caption` · `button` · `label`.
+```
+display
+title
+heading
+section
+body
+body_small
+caption
+button
+badge
+```
 
-### Spacing scale
-`4` · `8` · `12` · `16` · `20` · `24` · `32` · `40` · `48`.
+### 11.3 Spacing scale
 
-### Radius
-`radius_sm` · `radius_md` · `radius_lg` · `radius_xl`.
+```
+4 · 8 · 12 · 16 · 20 · 24 · 32 · 40 · 48
+```
 
-> **Правило:** при реализации Claude Code маппит Figma styles на design tokens, **а не хардкодит** случайные значения, где это возможно. Если в Figma токен отсутствует — отметить в Dev Notes / open question, не выдумывать значение молча.
->
-> *Note:* в текущем рабочем файле уже созданы variable-коллекции `Primitives` / `Semantic` / `Scale` (warm-minimal направление). Имена там slash-разделённые (`color/...`, `space/...`, `radius/...`); семантический смысл соответствует ролям выше — при коде ориентироваться на семантику, а не на конкретные hex.
+### 11.4 Radius
 
----
+```
+radius_sm
+radius_md
+radius_lg
+radius_xl
+radius_full
+```
 
-## 10. Component Naming Rules
+### 11.5 Rules
 
-Рекомендуемые компоненты (см. инвентарь [`04_FIGMA_PROTOTYPE_PLAN.md`](04_FIGMA_PROTOTYPE_PLAN.md) §6):
-
-### Navigation
-`BottomTabNavigation` · `ScreenHeader` · `BackButton` · `ActionHeader` · `AdminSidebar`.
-
-### Buttons
-`Button / Primary` · `Button / Secondary` · `Button / Ghost` · `Button / Destructive` · `Button / Disabled` · `Button / Loading`.
-
-### Inputs
-`TextInput` · `TextArea` · `Select` · `MultiSelectChips` · `DateTimePickerPlaceholder` · `LocationInput` · `PhoneInput` · `SearchInput`.
-
-### Cards
-`EventCard` · `ProfileCard` · `ApplicantCard` · `NotificationCard` · `ReportCard` · `AdminQueueItem`.
-
-### Trust / Safety
-`TrustBadge` · `VerificationBadge` · `ApprovalRequiredBadge` · `CapacityBadge` · `LocationPrivacyNotice` · `SafetyNotice` · `ReportCTA` · `BlockCTA` · `ModerationStatusBadge`.
-
-### Event
-`EventCategoryChip` · `CapacityIndicator` · `ApplicationStatusBanner` · `WaitlistBanner` · `LocationRevealSection` · `HostInfoBlock` · `AttendeePreview` · `EventLifecycleBadge`.
-
-### Chat
-`ChatMessage` · `SystemMessage` · `MessageActionSheet` · `ReportMessageModal` · `ChatFrozenBanner` · `PostEventChatExpiryBanner`.
-
-### Empty / Error
-`EmptyState` · `ErrorState` · `AccessDeniedState` · `ModerationPendingState`.
+- **Только semantic токены** в screens — не hex / px values напрямую.
+- Любой component, использующий hex напрямую (вместо token), **не проходит code review**.
+- Tokens должны быть зеркалом Figma styles 1:1 — каждый Figma color style имеет ровно один token.
 
 ---
 
-## 11. Safety Checklist for Figma Screens
+## 12. Component Naming Rules v2
 
-Применять перед передачей **любого** экрана в Claude Code:
+Component naming в Figma == component naming в коде (one-to-one). Names в **PascalCase**.
 
-- [ ] Frame has correct Screen ID.
-- [ ] Frame name matches docs.
-- [ ] Dev Notes exist.
-- [ ] Exact location is not shown before approval.
-- [ ] Event card does not show exact address.
-- [ ] Pending/waitlisted/rejected states do not show exact location.
-- [ ] Chat is not available before approval.
-- [ ] No open DMs exist.
-- [ ] Raw trust score is not visible.
-- [ ] Public ratings are not visible.
-- [ ] Public negative labels are not visible.
-- [ ] Dating language is not used.
-- [ ] Report/block are accessible where relevant.
-- [ ] Safety copy is clear.
-- [ ] Primary CTA is clear.
-- [ ] Empty/error states are considered.
-- [ ] Analytics events are noted.
-- [ ] Related docs are noted.
+### 12.1 Circle
+
+- `CircleCard`
+- `CircleDetailHeader`
+- `VibeTag`
+- `RhythmBadge`
+- `ComfortCompositionBadge`
+- `CapacityBadge`
+- `CircleStatusBadge`
+- `CircleRulesBlock`
+- `HostInfoBlock`
+- `CompositionPreview`
+
+### 12.2 Meeting
+
+- `MeetingCard`
+- `MeetingDetailBlock`
+- `RSVPControl`
+- `LocationPrivacyNotice`
+- `LocationRevealSection`
+- `AttendanceStatusBanner`
+
+### 12.3 Membership
+
+- `RequestPlaceModal`
+- `IntroNoteInput`
+- `MembershipPendingBanner`
+- `IntroApprovedBanner`
+- `MemberStatusBanner`
+- `PauseParticipationModal`
+- `LeaveCircleModal`
+- `EndParticipationModal`
+- `RequestCard`
+- `RequestDetailPanel`
+
+### 12.4 Trust / Safety
+
+- `VerificationBadge`
+- `ReliableMemberBadge`
+- `HostedBeforeBadge`
+- `AttendedEventsBadge`
+- `SafetyNotice`
+- `ReportCTA`
+- `BlockCTA`
+- `ModerationStatusBadge`
+
+### 12.5 Chat
+
+- `CircleChatMessage`
+- `SystemMessage`
+- `MessageActionSheet`
+- `ReportMessageModal`
+- `ChatFrozenBanner`
+- `NoChatAccessState`
+
+### 12.6 Empty / Error
+
+- `NoCirclesEmptyState`
+- `NoRequestsEmptyState`
+- `NoMeetingsEmptyState`
+- `NoChatAccessState`
+- `AccessDeniedState`
+- `CircleRemovedState`
+- `ModerationPendingState`
+
+### 12.7 Rule
+
+> **Forbidden** — generic names типа `Card1`, `Modal2`, `Component`. Если Figma имеет такой component — переименовать перед implementation.
 
 ---
 
-## 12. Product Core Violations in Figma
+## 13. Safety Checklist for Figma Screens v2
 
-Если Figma-экран содержит любое из перечисленного — Claude Code обязан **отказаться реализовывать «как есть» и эскалировать как product decision** (CLAUDE.md §2/§3, [`12_IMPLEMENTATION_READINESS_REVIEW.md`](12_IMPLEMENTATION_READINESS_REVIEW.md) §20):
+Перед тем как любой screen уходит к Claude Code, **проверить:**
 
-| # | Нарушение в дизайне | Связанный инвариант |
-|---|---------------------|---------------------|
-| 1 | exact address before approval | Инвариант 1 |
-| 2 | exact map pin before approval | Инвариант 1/9 |
-| 3 | open DM button | Инвариант 2 |
-| 4 | raw trust score (число) | Инвариант 3 |
-| 5 | public user rating | Инвариант 5/10 |
-| 6 | negative public badge | Инвариант 3/10 |
-| 7 | dating-style match | Анти-dating |
-| 8 | chemistry score | Анти-dating |
-| 9 | attractiveness ranking | Анти-dating |
-| 10 | payments / tickets в MVP | «Не входит в MVP» |
-| 11 | public follower mechanics | «Не входит в MVP» |
-| 12 | live user location | Инвариант 9 |
-| 13 | admin-only data в mobile screen | Web-only admin |
-| 14 | report details visible to reported user | No retaliation |
-| 15 | sensitive analytics properties в Dev Notes | Privacy boundary ([`10_ANALYTICS.md`](10_ANALYTICS.md) §33) |
+- [ ] Frame имеет правильный **Screen ID**.
+- [ ] **Dev Notes** прикреплены / в registry.
+- [ ] Screen mapping на **circle-first** model.
+- [ ] **Нет** old event-first core assumptions (event = primitive, applications, attendees).
+- [ ] **Exact meeting location скрыта** before approved access (Инв. 1).
+- [ ] **Circle card не показывает exact address.**
+- [ ] **Requested / waitlisted / rejected** states **не показывают** exact location.
+- [ ] **Non-members не видят** circle chat.
+- [ ] **Non-members не видят** full member list.
+- [ ] **Нет** people marketplace layout (Инв. 13).
+- [ ] **Нет** profile shopping.
+- [ ] **Нет** open DMs (Инв. 2) — никакого «message user» CTA.
+- [ ] **Нет** raw trust score (Инв. 3).
+- [ ] **Нет** public ratings.
+- [ ] **Нет** public negative labels (Инв. 12).
+- [ ] **Нет** dating language (hearts, match, spark, chemistry).
+- [ ] **Нет** betrayal mechanics (Инв. 11).
+- [ ] **Нет** public leave / removal / rejection labels (Инв. 12).
+- [ ] **Report / block видны** там, где relevant (Инв. 6).
+- [ ] **Approval / fit protection** объяснён там, где relevant.
+- [ ] **Analytics events** записаны в Dev Notes.
+- [ ] **Related docs** перечислены в Dev Notes.
 
----
-
-## 13. Figma-to-Code Workflow
-
-1. Designer/founder создаёт Figma-экран.
-2. Экран назван через **Screen ID**.
-3. Добавлены **Dev Notes**.
-4. Пройден **Safety checklist** (§11).
-5. Скопирована **точная ссылка на frame** (не на файл).
-6. Claude Code получает задачу на **один экран/компонент**.
-7. Claude Code читает relevant docs.
-8. Claude Code заявляет применимые safety-инварианты (CLAUDE.md §1).
-9. Claude Code реализует UI с **mocked data** сначала.
-10. Human review: fidelity + safety.
-11. **Только после review** добавляется backend/data integration.
-
-> Не просить Claude Code реализовать весь app из Figma за один раз.
-
-| ✅ Correct | ❌ Incorrect |
-|-----------|-------------|
-| implement `Button` | implement all screens from Figma |
-| implement `EventCard` | build the whole app |
-| implement `MOB-033 Event Detail — Not Applied` | infer the backend from Figma |
+> Любая screen, проваливающая ≥1 пункт checklist'а — **escalated as design issue**, не сдаётся в implementation.
 
 ---
 
-## 14. Claude Code Prompt Template — Implement One Figma Screen
+## 14. Product Core Violations в Figma v2
+
+**Claude Code должен отказаться / flag implementation**, если Figma screen включает:
+
+1. **Exact meeting location** before approved access (Инв. 1).
+2. **Full member list** before approval (Core v2 §16 staged reveal).
+3. **«Message user» / DM CTA** anywhere (Инв. 2).
+4. **People marketplace layout** (browsable people catalog, Инв. 13).
+5. **Swipe / like / match** mechanics (anti-drift).
+6. **Raw trust score** (число) (Инв. 3).
+7. **Public ratings** (Hard rule 5).
+8. **Public negative labels** (no-show / removed / rejected — Инв. 12).
+9. **Betrayal mechanics** (Инв. 11) — «X ушёл к другому кругу», уведомления о transitions.
+10. **Public removal / rejection / leave labels** (Инв. 12).
+11. **Dating-style language** (RU копии, нарушающие [Figma Plan v2 §21](04_FIGMA_PROTOTYPE_PLAN.md)).
+12. **Hearts / chemistry / spark** visual language.
+13. **Payments / tickets / promoted circles** в MVP (Core rule 7).
+14. **Exact public map pins** (Инв. 1).
+15. **Live user location** (Инв. 9).
+16. **Admin-only data в mobile app** (Инв. 12 / admin-mobile boundary).
+17. **Report details visible to reported user** (Инв. 6 / privacy).
+
+### 14.1 Workflow at violation
+
+1. Claude Code распознаёт violation.
+2. Claude Code **не реализует** screen.
+3. Claude Code **flags violation** в response: «Этот screen противоречит Product Core v2 Инв. N».
+4. Founder / Product Designer **решает** — fix Figma или принять product decision о смене Core (с full migration).
+
+---
+
+## 15. Figma-to-Code Workflow v2
+
+### 15.1 Steps
+
+1. **Designer / founder создаёт Figma v2 screen.**
+2. Screen **назван с Screen ID** (§6).
+3. **Dev Notes** прикреплены (§8).
+4. **Safety checklist** заполнен (§13).
+5. **Exact Figma frame link** скопирован.
+6. **Claude Code получает task для ОДНОГО screen / component**.
+7. Claude Code **читает Product Core v2 и Design Handoff v2**.
+8. Claude Code **указывает applicable safety invariants** (CLAUDE.md §1 pre-task checklist).
+9. Claude Code **реализует UI с mocked data first**.
+10. Human **review visual fidelity и safety**.
+11. **Только после review**, backend / data integration добавляется.
+
+### 15.2 Никогда
+
+> **Никогда не просите Claude Code реализовать «весь app по Figma»**.
+
+### 15.3 Correct task wording
+
+✅ Examples:
+- «implement CircleCard»
+- «implement RequestPlaceModal»
+- «implement MOB-033 Circle Detail — Not Requested»
+- «implement Discover screen states — empty / loaded only»
+
+### 15.4 Incorrect task wording
+
+❌ Examples:
+- ~~«implement all screens from Figma»~~
+- ~~«build the whole app»~~
+- ~~«infer backend from Figma»~~
+- ~~«implement old Event Detail as current product UI»~~
+
+---
+
+## 16. Claude Code Prompt Template — Implement One Figma Screen v2
 
 ```
 Implement one screen from Figma.
@@ -467,19 +841,17 @@ Figma frame:
 [PASTE EXACT FRAME LINK]
 
 Screen:
-[SCREEN ID + SCREEN NAME]
+[SCREEN ID + SCREEN NAME, e.g. MOB-033 Circle Detail — Not Requested]
 
 Before coding, read:
 - CLAUDE.md
 - /docs/00_PRODUCT_CORE.md
 - /docs/03_USER_FLOWS.md
 - /docs/04_FIGMA_PROTOTYPE_PLAN.md
-- /docs/07_SECURITY_RLS.md
-- /docs/11_SPRINT_BACKLOG.md
 - /docs/13_DESIGN_HANDOFF.md
 
 Task:
-Create a React Native + Expo + TypeScript screen component.
+Create a React Native + Expo + TypeScript implementation of this screen.
 
 Scope:
 - UI only
@@ -487,38 +859,46 @@ Scope:
 - no backend calls
 - no Supabase integration
 - no RLS implementation
-- no real analytics implementation
+- no real analytics SDK implementation
+- no database changes
+- no migrations
 - no navigation changes unless required
+- do not implement other screens
+- do not infer missing product behavior from Figma
 
 Safety invariants:
-- exact location must not be shown before approval
+- exact meeting location must not be shown before approved access
+- no people marketplace
 - no open DMs
 - no raw trust score
 - no public ratings
 - no dating mechanics
+- no public shame
+- no betrayal mechanics
 - report/block must remain accessible where relevant
 
 Before coding, state:
 1. Which docs apply.
-2. Which files you will modify.
-3. Which safety invariants apply.
+2. Which safety invariants apply (refer to Core v2 §35 by number).
+3. Which files you plan to create or modify.
 4. Whether this task touches sensitive data.
-5. What is out of scope.
-6. What tests or visual checks are needed.
+5. What is explicitly out of scope.
+6. What visual or functional checks are needed.
 
 After coding, summarize:
 1. Files changed.
 2. How the Figma design maps to components.
 3. What assumptions were made.
 4. What needs human review.
+5. Any Product Core v2 risks noticed.
 ```
 
 ---
 
-## 15. Claude Code Prompt Template — Review Figma Screen
+## 17. Claude Code Prompt Template — Review Figma Screen v2
 
 ```
-Review this Figma screen against our product documentation.
+Review this Figma screen against Product Core v2.
 
 Figma frame:
 [PASTE FRAME LINK]
@@ -531,209 +911,233 @@ Before reviewing, read:
 - /docs/00_PRODUCT_CORE.md
 - /docs/03_USER_FLOWS.md
 - /docs/04_FIGMA_PROTOTYPE_PLAN.md
-- /docs/07_SECURITY_RLS.md
-- /docs/08_TRUST_SYSTEM.md
-- /docs/09_MODERATION.md
 - /docs/13_DESIGN_HANDOFF.md
 
 Do not write code.
 Do not modify files.
 
 Review for:
-1. Product Core alignment.
-2. Safety invariant violations.
-3. Location privacy issues.
-4. Dating-app perception.
-5. Missing report/block paths.
-6. Trust score or public rating issues.
-7. Missing states.
-8. Implementation risks.
-9. Missing Dev Notes.
-10. Missing analytics notes.
+1. Product Core v2 alignment.
+2. Circle-first consistency (no event-first carryover).
+3. Safety invariant violations (Core v2 §35 invariants 1–16).
+4. Location privacy issues (Инв. 1, 9).
+5. People marketplace risk (Инв. 13).
+6. Dating-app perception (Hard rule 6).
+7. Missing report/block paths (Инв. 6).
+8. Raw trust score or public rating issues (Инв. 3, Hard rule 5).
+9. Public shame / betrayal mechanics (Инв. 11, 12).
+10. Missing states (per §10 Critical Screen States).
+11. Missing Dev Notes (§8).
+12. Missing analytics notes (§8).
+13. Implementation risks (component reuse, token usage).
 
 Return:
 - what is good;
-- what violates Product Core;
+- what violates Product Core v2 (cite invariant number);
 - what should be fixed before implementation;
 - what can be deferred;
-- specific recommendations by section.
+- specific recommendations.
 ```
 
 ---
 
-## 16. Claude Code Prompt Template — Implement Component from Figma
+## 18. React Native Implementation Constraints
 
-```
-Implement one reusable component from Figma.
+### 18.1 Stack
 
-Figma component/frame:
-[PASTE FRAME LINK]
+- **React Native** (через Expo).
+- **Expo Router** для routing.
+- **TypeScript**.
 
-Component:
-[COMPONENT NAME]
+### 18.2 Allowed primitives
 
-Before coding, read:
-- CLAUDE.md
-- /docs/00_PRODUCT_CORE.md
-- /docs/04_FIGMA_PROTOTYPE_PLAN.md
-- /docs/11_SPRINT_BACKLOG.md
-- /docs/13_DESIGN_HANDOFF.md
+- `View`
+- `Text`
+- `Pressable` (preferred над `TouchableOpacity` — better semantics)
+- `ScrollView`
+- `FlatList`
+- `Image`
+- `TextInput`
+- `Modal`
+- (later, per platform) `SafeAreaView` от `react-native-safe-area-context`
 
-Task:
-Create a reusable React Native + Expo + TypeScript component.
+### 18.3 Forbidden
 
-Scope:
-- component only
-- no backend
-- no navigation
-- no analytics
-- no business logic
-- use mocked props
-- use design tokens if available
+- ~~HTML `div` / `span` / `button`~~ (это RN, не web)
+- ~~web CSS files~~
+- ~~Tailwind~~ (если явно не adopted — на момент написания не adopted)
+- ~~web-only components~~
+- ~~browser-only APIs~~ (`window`, `document`, etc.)
 
-Requirements:
-- support variants shown in Figma
-- support loading/disabled/error states if applicable
-- use accessible labels where appropriate
-- avoid hardcoding sensitive/product logic
+### 18.4 Use
 
-Before coding, state files to modify and assumptions.
+- **TypeScript** strict (per Sprint 1 baseline);
+- **design tokens** из `/packages/ui` (не inline values);
+- **reusable components** (не one-off styling);
+- **mocked data** first;
+- **accessibility labels** (`accessibilityLabel`, `accessibilityRole`, etc.);
+- **safe area** wrappers где relevant.
 
-After coding, summarize variants and usage examples.
-```
+### 18.5 Sprint 1 baseline reminder
 
----
-
-## 17. React Native Implementation Constraints
-
-Claude Code генерирует **React Native / Expo / TypeScript** код.
-
-**Allowed primitives:** `View` · `Text` · `Pressable` · `ScrollView` · `FlatList` · `Image` · `TextInput` · `Modal`.
-
-**Do not generate:** HTML `div/span/button` · web CSS-файлы · Tailwind (если явно не принят) · web-only компоненты · browser-only APIs.
-
-**Use:** TypeScript · design tokens · переиспользуемые компоненты · безопасные mocked data на первом UI-проходе · accessibility labels где уместно.
-
-> Admin dashboard — отдельный таргет (Next.js, web-only). Mobile-экраны не тянут admin-данные/логику ([`05_ARCHITECTURE.md`] §19, [`12_IMPLEMENTATION_READINESS_REVIEW.md`](12_IMPLEMENTATION_READINESS_REVIEW.md) §5 инвариант 15).
+- Mobile app — Expo SDK 52, React 18 ([FIX-INFRA-001 alignment](21_SPRINT_1_INFRASTRUCTURE_REVIEW.md)).
+- Admin app — Next.js 15, React 18.
+- Tokens placeholder в [`/packages/ui`](../packages/ui/) — пока без React components; circle-specific токены добавятся к v2.
+- **Никаких новых deps без явного разрешения** (per [CLAUDE.md §6](../CLAUDE.md) freeze list).
 
 ---
 
-## 18. Figma MCP Notes
+## 19. Figma MCP Notes
 
-- Figma MCP может давать Claude Code доступ к контексту конкретного frame (структура, токены, скриншот).
-- Использовать **точные ссылки на frame** (`?node-id=...`), а не только ссылку на файл.
-- Если MCP недоступен — Claude Code может работать по screenshot/specs, но качество fidelity ниже.
-- Claude Code **не выводит продуктовое поведение** из визуала: схема, права, scope — только из docs.
+### 19.1 Status
 
-Плейсхолдеры статуса:
+- Figma MCP **может** предоставить frame context (если configured).
+- Использовать **exact frame links**, не whole-file links.
+- Если MCP unavailable — screenshots / specs в frame Dev Notes достаточны.
+- **Claude Code не должен infer product logic из visual design в одиночку.**
+- **Product Core v2 overrides Figma** — всегда.
 
-| Поле | Статус |
-|------|--------|
-| MCP configured | partial — Figma MCP подключён (OAuth), но на Figma **Starter** действует лимит вызовов MCP (квота периодически блокирует запись). TODO: апгрейд плана для стабильной работы |
-| MCP not configured | n/a |
-| Figma file access granted | yes (файл создан под текущим аккаунтом) |
-| Frame link workflow tested | TODO (нужны собранные P0-frames с node-id) |
+### 19.2 MCP status placeholders
 
----
+| Поле | Значение |
+|---|---|
+| MCP configured | **TODO** |
+| File access granted | **TODO** |
+| Frame link workflow tested | **TODO** |
 
-## 19. What Claude Code Must Not Infer from Figma
+### 19.3 Workflow при использовании Figma MCP
 
-Claude Code **не выводит из Figma**:
-
-- backend schema;
-- RLS policies;
-- exact location access rules;
-- trust scoring formula;
-- moderation enforcement rules;
-- analytics sensitive properties;
-- admin permissions;
-- product scope changes;
-- P1/P2 features;
-- dating mechanics;
-- payment flows.
-
-Эти решения берутся из docs: [`00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md), [`06_DATABASE_SCHEMA.md`](06_DATABASE_SCHEMA.md), [`07_SECURITY_RLS.md`](07_SECURITY_RLS.md), [`08_TRUST_SYSTEM.md`](08_TRUST_SYSTEM.md), [`09_MODERATION.md`](09_MODERATION.md), [`10_ANALYTICS.md`](10_ANALYTICS.md), [`11_SPRINT_BACKLOG.md`](11_SPRINT_BACKLOG.md).
+1. Designer / founder копирует exact frame link.
+2. Task передаёт frame link + Screen ID.
+3. Claude Code (если MCP configured) reads frame через MCP.
+4. Claude Code **всё равно** проверяет docs (Core v2, Flows v2, Figma Plan v2, Handoff v2) **перед coding** — MCP не заменяет docs.
 
 ---
 
-## 20. Design QA Checklist
+## 20. What Claude Code Must Not Infer from Figma
 
-Перед началом UI-реализации:
+Visual design **не источник правды** для следующих аспектов:
 
-- [ ] P0 frames named correctly (Screen ID).
-- [ ] P0 prototype clickable.
-- [ ] Core loop works.
-- [ ] Host flow works.
-- [ ] Safety flow works.
-- [ ] Admin low-fi flow exists.
-- [ ] Event Detail states complete.
-- [ ] Location privacy visible.
-- [ ] Report/block visible.
-- [ ] No dating language.
-- [ ] No raw trust score.
-- [ ] No public ratings.
-- [ ] Dev Notes exist for P0 screens.
-- [ ] Figma frame links can be copied.
-- [ ] Figma MCP access tested or fallback process defined.
-- [ ] Design tokens documented.
-- [ ] Component names documented.
+- **backend schema** (источник: [`/docs/06_DATABASE_SCHEMA.md`](06_DATABASE_SCHEMA.md) v2 после migration);
+- **RLS policies** (источник: [`/docs/07_SECURITY_RLS.md`](07_SECURITY_RLS.md) v2);
+- **exact meeting location access rules** (источник: Core v2 §17, Flows v2 §9);
+- **trust scoring formula** (источник: [`/docs/08_TRUST_SYSTEM.md`](08_TRUST_SYSTEM.md) v2; raw score never visible — Инв. 3);
+- **moderation enforcement** (источник: [`/docs/09_MODERATION.md`](09_MODERATION.md) v2);
+- **analytics sensitive properties** (источник: PRD v2 §22, Flows v2 §12);
+- **admin permissions** (источник: Core v2 §10, Flows v2 §6/FLOW-022);
+- **onboarding fields beyond docs** (источник: PRD v2 §7.2, Stories v2 §5.3);
+- **membership lifecycle beyond docs** (источник: Core v2 §11);
+- **product scope changes** (источник: Core v2 §25, §26);
+- **P1 / P2 features** (источник: Stories v2 §6, §7);
+- **dating mechanics** (запрещено — Hard rule 6);
+- **direct messaging** (запрещено в MVP — Инв. 2);
+- **payments / promoted circles** (запрещено в MVP — Core rule 7).
 
----
-
-## 21. Implementation Order from Figma
-
-1. Design tokens.
-2. Base components: `Button` · `TextInput` · `Badge` · `Card` · `StatusBanner` · `EmptyState`.
-3. `EventCard`.
-4. `ProfileCard`.
-5. Welcome/Auth shell.
-6. Onboarding screens.
-7. Home / Discover.
-8. Event Detail states.
-9. Apply Modal.
-10. Host Application Review.
-11. Event Chat.
-12. Report / Block.
-13. Admin Moderation.
-
-> **Не реализовывать Event Detail location reveal**, пока не пройден human review правил location privacy / security ([`07_SECURITY_RLS.md`](07_SECURITY_RLS.md), [`12_IMPLEMENTATION_READINESS_REVIEW.md`](12_IMPLEMENTATION_READINESS_REVIEW.md) §6/§18). Это явный gate.
+> **Принцип:** Figma — для **as-is UI**; docs — для **product logic**. Если Figma показывает что-то, что не подтверждено в docs — Claude Code **спрашивает**, не **догадывается**.
 
 ---
 
-## 22. Open Design Handoff Questions
+## 21. Design QA Checklist v2
 
-| # | Вопрос |
-|---|--------|
-| 1 | Is Figma MCP configured in Claude Code? (частично — есть лимит Starter) |
-| 2 | Is Figma MCP configured in VS Code? |
-| 3 | What is the final Figma file link? (имя файла выровнять: «MVP Prototype» vs «Prototype v1») |
-| 4 | What is the P0 prototype link? |
-| 5 | Are P0 frames named with Screen IDs? |
-| 6 | Are Dev Notes added to all P0 screens? |
-| 7 | Are design tokens finalized enough for coding? |
-| 8 | Which screen should be implemented first? |
-| 9 | Is there a preferred React Native styling approach? |
-| 10 | Should Claude Code implement UI with StyleSheet or token-based style helpers? |
-| 11 | Which components should be implemented before screens? |
-| 12 | Has the Figma prototype been tested with 5–7 users? (FIG-002) |
-| 13 | Did users perceive the product as dating app? |
-| 14 | Did users understand location privacy? |
-| 15 | Did users find report/block? |
-| 16 | Figma Starter constraint: остаёмся на 3 страницы + Sections или апгрейд до Professional (см. §4)? |
+Перед тем как Figma v2 уходит в product implementation:
 
-> Связанные нерешённые product-развилки (не дизайнерские) — единый реестр в [`12_IMPLEMENTATION_READINESS_REVIEW.md`](12_IMPLEMENTATION_READINESS_REVIEW.md) §15 (OD-1/3/4/6/9/12/13, Q-RJ и др.). Их закрывает product owner, не дизайн.
-
----
-
-## 23. Summary
-
-- Design Handoff соединяет **Figma и реализацию в Claude Code**.
-- **Figma подчинена Product Core**; продуктовые/security/trust/scope-правила берутся из docs, а не из визуала.
-- Каждый экран требует **Screen ID**, **Dev Notes** и прохождения **safety-проверок**.
-- Claude Code реализует **один экран/компонент за раз**, UI-first, mocked data, без backend на первом проходе.
-- Product logic, security и trust — из документов, не из «угадывания» по картинке.
-- **Следующий рекомендуемый шаг:** продолжить сборку **P0 Figma-прототипа** и добавить **Dev Notes** к ключевым frames, затем прогнать **Figma review** (§15) до начала UI-реализации.
+- [ ] **P0 frames** все имеют правильные Screen IDs.
+- [ ] **P0 prototype** clickable end-to-end.
+- [ ] **Circle-first loop работает** (Welcome → My Circles).
+- [ ] **Host circle flow** работает (Create → Review → Manage).
+- [ ] **Safety flow** работает (Report → Submit → Block).
+- [ ] **Admin flow** существует (Queue → Detail → Action → Audit).
+- [ ] **My Circles / Belonging Mode** существует и feels different from Discover.
+- [ ] **Circle Detail states complete** (10 states — §10.1).
+- [ ] **Meeting Location Reveal complete** (scoped vs full member).
+- [ ] **Location privacy visible** в UI explainer'ах.
+- [ ] **Composition visibility staged** (before request / after request / after approval).
+- [ ] **Report / block visible** в relevant контекстах.
+- [ ] **Нет** people marketplace.
+- [ ] **Нет** dating language.
+- [ ] **Нет** raw trust score.
+- [ ] **Нет** public ratings.
+- [ ] **Нет** public shame.
+- [ ] **Нет** betrayal mechanics.
+- [ ] **Dev Notes существуют** на каждом P0 frame.
+- [ ] **Frame links копируются** без выпадения.
+- [ ] **Design tokens документированы** (§11).
+- [ ] **Component names** соответствуют §12.
 
 ---
 
-> Напоминание: [`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md) — first source of truth. Этот документ — мост design → code и ему подчинён. Код приложения, `package.json`, SQL, migrations, SDK **не создавались**; другие документы **не изменялись**.
+## 22. Implementation Order from Figma v2
+
+Рекомендованный порядок implementation после того как Figma v2 готова:
+
+1. **Design tokens** (`/packages/ui` — расширить за пределы Sprint 1 placeholder baseline).
+2. **Base components:**
+   - `Button` (variants)
+   - `TextInput`
+   - `Badge`
+   - `Card`
+   - `StatusBanner`
+   - `EmptyState`
+3. **CircleCard** — главный компонент discovery.
+4. **VibeTag / RhythmBadge / ComfortCompositionBadge** — chip-family.
+5. **LocationPrivacyNotice** — explainer component.
+6. **RequestPlaceModal** — main entry flow.
+7. **Circle Detail states** (MOB-033..040 — sequence states one at a time).
+8. **Circle Discovery** (MOB-030 — feed).
+9. **Intro Meeting Approved / Location Reveal** (MOB-036, MOB-061).
+10. **Circle Chat** (MOB-100 + variants).
+11. **My Circles / Circle Home** (MOB-070, MOB-071).
+12. **Host Membership Review** (MOB-087..091).
+13. **Report / Block** (MOB-112..118).
+14. **Admin Moderation** (ADM-002..010).
+
+### 22.1 Hard rule
+
+> **Не реализовывать** старые **Event Detail** или **Apply Modal** как current product UI. Если task требует «event detail» — отклонить как event-first carryover и попросить **Circle Detail** spec.
+
+---
+
+## 23. Open Design Handoff Questions
+
+1. **Is Figma v2 created?** — TODO (§4 placeholder).
+2. **Figma v2 file link?** — TODO.
+3. **P0 circle prototype link?** — TODO.
+4. **Are P0 v2 frames named with Screen IDs?** — gating §13 checklist.
+5. **Are Dev Notes added** к каждому P0 frame?
+6. **How to visually explain circle vs meeting** (контейнер vs scheduled instance) в одном взгляде?
+7. **How to show vibe** без elitist tone (Figma Plan v2 §28 #2)?
+8. **How to show comfort composition** (иконки / цвета / копи)?
+9. **How to show intro meeting vs full membership** — visual hierarchy?
+10. **Does intro-approved user get full circle chat?** — gated на open question Flows v2 §14 #4.
+11. **How to show member list safely** — timing reveal (PRD v2 §27 #8)?
+12. **How to show My Circles as belonging mode** — home priority logic (PRD v2 §27 #16, Flows v2 §14 #19)?
+13. **How to show pause / leave softly** — copy + visual без shame?
+14. **How to test «no public shame»** — что именно user не должен видеть в prototype'е?
+15. **Which screen first** after Figma v2 готов?
+16. **Should existing v1 prototype be archived or duplicated в v2 file** — process question.
+17. **Are deferred screens** (P2 — DMs, swipe, payments) представлены как **placeholders** или **отсутствуют** полностью?
+
+---
+
+## 24. Summary
+
+**Design Handoff v2** связывает Figma v2 с **circle-first implementation**.
+
+- **Product Core v2** overrides Figma (always).
+- **Claude Code реализует один component / screen за раз**, не «весь app по Figma».
+- **Старые event-first Figma screens — superseded** и должны быть mapped на circle-first до implementation.
+- **Dev Notes обязательны** на каждом P0 frame.
+- **Safety checklist (§13) обязателен** перед уходом в implementation.
+- **16 safety invariants Core v2 §35** — binding на UI уровне.
+
+**Implementation freeze** в силе до завершения migration (PRD v2 ✅, Stories v2 ✅, Flows v2 ✅, Figma Plan v2 ✅, Handoff v2 ✅; **остаются**: Schema v2, RLS v2, Trust v2, Moderation v2, Analytics v2, Backlog v2, Phase Gate doc 22 — см. [`/docs/27_PRODUCT_CORE_V2_DOCS_UPDATE_PLAN.md`](27_PRODUCT_CORE_V2_DOCS_UPDATE_PLAN.md) §24).
+
+**Next recommended task** (по migration plan):
+
+> Update [`/docs/15_FIGMA_TEST_PLAN_AND_RESULTS.md`](15_FIGMA_TEST_PLAN_AND_RESULTS.md) to **Circle Prototype Test Plan v2** ([doc 27 §24 Phase B step 7](27_PRODUCT_CORE_V2_DOCS_UPDATE_PLAN.md)).
+
+Alternative по приоритету (P0): можно сразу к **Phase C technical docs** — [`/docs/06_DATABASE_SCHEMA.md`](06_DATABASE_SCHEMA.md) → Schema v2 (doc 27 §24 step 7), которая блокирует Sprint 2 product implementation; Figma Test Plan v2 — P2, non-blocking.
+
+---
+
+> Reminder: [`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md) (Product Core v2) — **first source of truth**. Этот документ ему, PRD v2, Stories v2, Flows v2 и Figma Plan v2 подчинён. Любой Figma artifact / implementation task должен ссылаться на Screen IDs (MOB-NNN / ADM-NNN), FLOW IDs и Story IDs из этих документов.
