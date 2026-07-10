@@ -1,6 +1,33 @@
-import { Stack } from 'expo-router';
+// (onboarding) layout (AUTH-007 / BETA-001) — requires a session AND beta
+// access; redirects already-onboarded (placeholder) users forward to the app
+// placeholder.
+//
+// Route gates here are UX-level protection only. Real data-access enforcement
+// must use RLS (Sprint 4+ via RLSV2).
+import { Redirect, Stack } from 'expo-router';
 
-// (onboarding) — future onboarding flow. Placeholder navigator only.
+import {
+  SessionLoadingScreen,
+  decideRouteAccess,
+  useAuthSession,
+  useOnboardingPlaceholder,
+} from '../../src/features/auth';
+import { useBetaAccess } from '../../src/features/beta';
+
 export default function OnboardingLayout() {
+  const { isLoading: isAuthLoading, isAuthenticated } = useAuthSession();
+  const { isLoading: isBetaLoading, hasBetaAccess } = useBetaAccess();
+  const { isOnboardedPlaceholder } = useOnboardingPlaceholder();
+
+  const decision = decideRouteAccess('onboarding', {
+    isLoading: isAuthLoading || isBetaLoading,
+    isAuthenticated,
+    hasBetaAccess,
+    isOnboardedPlaceholder,
+  });
+
+  if (decision.kind === 'loading') return <SessionLoadingScreen />;
+  if (decision.kind === 'redirect') return <Redirect href={decision.to} />;
+
   return <Stack screenOptions={{ headerShown: false }} />;
 }

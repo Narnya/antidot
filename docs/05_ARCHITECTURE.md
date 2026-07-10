@@ -9,7 +9,7 @@
 > **Supersedes:** Architecture v1 (event-first, 2026-05-18).
 > **Sequenced by:** [`/docs/27_PRODUCT_CORE_V2_DOCS_UPDATE_PLAN.md`](27_PRODUCT_CORE_V2_DOCS_UPDATE_PLAN.md) §24 Phase C step 8.
 
-> ⚠️ Этот документ — **деdeliberate update**, не патч. Domain model переписана с event-first на circle-first. **Infrastructure / стек / Modular Monolith ADR — без изменений.** Primitive change — продуктовое решение, не архитектурное.
+> ⚠️ Этот документ — **deliberate update**, не патч. Domain model переписана с event-first на circle-first. **Infrastructure / стек / Modular Monolith ADR — без изменений.** Primitive change — продуктовое решение, не архитектурное.
 
 ---
 

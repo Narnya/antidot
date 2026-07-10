@@ -1,11 +1,30 @@
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-// Root layout (infrastructure placeholder). No auth gating / protected routes yet.
+import { AuthProvider, OnboardingPlaceholderProvider } from '../src/features/auth';
+import { BetaAccessProvider } from '../src/features/beta';
+
+// Root layout.
+//   - AuthProvider (AUTH-005) loads the current Supabase session and subscribes
+//     to auth state changes for all child routes.
+//   - BetaAccessProvider (BETA-001) reads a DEV-ONLY placeholder `hasBetaAccess`
+//     flag from AsyncStorage. It is NOT a real beta gate — see the provider
+//     file for the binding boundaries.
+//   - OnboardingPlaceholderProvider (AUTH-007) holds a DEV-ONLY in-memory flag
+//     used by route gates to simulate onboarding completion. Also NOT a real
+//     source of truth.
+// Real beta and onboarding sources of truth will layer on top once Schema v2 /
+// RLS v2 land in Sprint 4 (DBV2-004 / DBV2-006, RLSV2-001…003).
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <Stack screenOptions={{ headerShown: false }} />
+      <AuthProvider>
+        <BetaAccessProvider>
+          <OnboardingPlaceholderProvider>
+            <Stack screenOptions={{ headerShown: false }} />
+          </OnboardingPlaceholderProvider>
+        </BetaAccessProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

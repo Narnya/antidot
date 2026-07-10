@@ -398,7 +398,7 @@ Welcome → Invite Code → Onboarding → Circle Discovery → Circle Detail
 
 ### 15.3 Критический результат
 
-> **Участник должен понять belonging mode** — «нашёл круг, перестал искать» = success state (Инв. 14).
+> **Участник должен понять режим принадлежности (belonging mode)** — «нашёл круг, перестал искать» = success state (Инв. 14).
 >
 > Если ≥2/7 чувствуют **давление искать ещё круги** на этом экране — это критический сбой UX (§22 — no infinite discovery pressure).
 

@@ -108,46 +108,65 @@ These map directly to the Product Core v2 safety invariants. None of them may be
 
 ## 6. Current phase
 
-**Product Core v2 Documentation Migration Phase.**
+**Sprint 2 — Circle Auth, Beta Access & Onboarding Preparation.**
 
-Sprint 1 Infrastructure is **complete and PASS** ([`/docs/21_SPRINT_1_INFRASTRUCTURE_REVIEW.md`](docs/21_SPRINT_1_INFRASTRUCTURE_REVIEW.md), updated 2026-05-28 after FIX-INFRA-001). Product implementation is **paused** until the v2 downstream docs are migrated per [`/docs/27_PRODUCT_CORE_V2_DOCS_UPDATE_PLAN.md`](docs/27_PRODUCT_CORE_V2_DOCS_UPDATE_PLAN.md).
+Authorized by [`/docs/28_PHASE_GATE_TO_SPRINT_2_CIRCLE_AUTH_ONBOARDING.md`](docs/28_PHASE_GATE_TO_SPRINT_2_CIRCLE_AUTH_ONBOARDING.md) (2026-05-31). Sprint 1 Infrastructure is **complete and PASS** ([`/docs/21_SPRINT_1_INFRASTRUCTURE_REVIEW.md`](docs/21_SPRINT_1_INFRASTRUCTURE_REVIEW.md), updated 2026-05-28 after FIX-INFRA-001). Product Core v2 documentation migration is **complete** (docs 00–11 + 13 + CLAUDE.md are v2).
 
-### Allowed now (documentation migration + infra maintenance)
+> **Implementation remains gated ticket-by-ticket.** Each ticket requires a separate explicit prompt with a CLAUDE.md §1 pre-task checklist. This phase opens Sprint 2 — it does not authorize mass implementation.
 
-- update [`/docs/01_PRD.md`](docs/01_PRD.md) to **PRD v2**;
-- update [`/docs/02_USER_STORIES.md`](docs/02_USER_STORIES.md) to **User Stories v2**;
-- update [`/docs/03_USER_FLOWS.md`](docs/03_USER_FLOWS.md) to **User Flows v2**;
-- update [`/docs/04_FIGMA_PROTOTYPE_PLAN.md`](docs/04_FIGMA_PROTOTYPE_PLAN.md) to **Figma Plan v2**;
-- update [`/docs/06_DATABASE_SCHEMA.md`](docs/06_DATABASE_SCHEMA.md) to **Schema v2** (blueprint only, no SQL);
-- update [`/docs/07_SECURITY_RLS.md`](docs/07_SECURITY_RLS.md) to **RLS v2** (policy design only);
-- update [`/docs/08_TRUST_SYSTEM.md`](docs/08_TRUST_SYSTEM.md), [`/docs/09_MODERATION.md`](docs/09_MODERATION.md), [`/docs/10_ANALYTICS.md`](docs/10_ANALYTICS.md) to v2;
-- update [`/docs/11_SPRINT_BACKLOG.md`](docs/11_SPRINT_BACKLOG.md) to **Sprint Backlog v2**;
-- author [`/docs/22_PHASE_GATE_TO_AUTH_BETA_ONBOARDING.md`](docs/22_PHASE_GATE_TO_AUTH_BETA_ONBOARDING.md) as the future Sprint 2 phase gate **after** docs 00, 01, 02, 06, 07, 11 land;
+### Immediate next required task
+
+1. **RU-DOCS-001 — RU Documentation Consistency Pass.** Russian-first product / explanatory wording across v2 docs, English technical identifiers preserved, no event-first wording leaks into Russian copy. Scope/out-of-scope: [`/docs/28_PHASE_GATE_TO_SPRINT_2_CIRCLE_AUTH_ONBOARDING.md`](docs/28_PHASE_GATE_TO_SPRINT_2_CIRCLE_AUTH_ONBOARDING.md) §9.
+
+### Then
+
+2. **AUTH-000 — Supabase Auth Implementation Plan.** Markdown plan only (dependencies, env vars, public/private boundary, auth state model, protected routes, invite gate, onboarding gate). No SDK install, no `package.json` edit. Scope: [`/docs/28_PHASE_GATE_TO_SPRINT_2_CIRCLE_AUTH_ONBOARDING.md`](docs/28_PHASE_GATE_TO_SPRINT_2_CIRCLE_AUTH_ONBOARDING.md) §10.
+
+### Allowed now (Sprint 2 prep + readiness; per ticket only)
+
+- **RU docs consistency** (RU-DOCS-001);
+- **auth planning** (AUTH-000);
+- **invite / waitlist planning** (BETA-001 … BETA-003 design);
+- **protected route planning** (AUTH-007 / AUTH-008 design);
+- **auth implementation only after AUTH-000** approval (AUTH-001 … AUTH-008);
+- **onboarding implementation only after docs / Figma readiness** (ONB-001 … ONB-014);
+- **basic profile foundation** (PROF-001 … PROF-003);
 - infrastructure maintenance (lockfile, lint, format, type-check, CI);
 - tooling fixes;
-- competitive research (e.g., authoring [`/docs/23_COMPETITIVE_ANALYSIS_INPARTY.md`](docs/23_COMPETITIVE_ANALYSIS_INPARTY.md));
-- Figma exploration **clearly marked as concept**, not canonical implementation source;
-- **generic auth planning** (sessions, protected routes, banned gate, invite gate, waitlist) — primitive-agnostic, allowed only if it does not depend on onboarding / product fields.
+- competitive research;
+- Figma exploration **clearly marked as concept**, not canonical implementation source.
 
-### Blocked until v2 docs are updated
+### Still blocked (binding until later Sprint tickets)
 
-- **onboarding implementation** (the new fields — vibe primary, rhythm, comfort composition, group size, host willingness — cannot be retrofitted after activation);
-- **profile field implementation**;
 - **circle discovery implementation**;
+- **circle detail implementation**;
+- **request place implementation**;
+- **membership requests implementation**;
+- **circle creation implementation**;
+- **meetings implementation**;
+- **meeting location reveal** (Sprint 5 territory; Инв. 1);
+- **circle chat implementation**;
+- **My Circles / Belonging implementation**;
 - **circle product UI** (Circle Discovery, Circle Detail, Request a Place, Membership Pending, Intro Invitation, Circle Chat, Create Circle, Membership Requests, My Circles, etc.);
-- **database migrations** (`.sql` files in [`/supabase/migrations/`](supabase/migrations/));
+- **database migrations** (`.sql` files in [`/supabase/migrations/`](supabase/migrations/)) — only after explicit DBV2 schema task;
 - **SQL** of any kind;
-- **RLS policies**;
+- **RLS policies** — only after explicit RLSV2 task;
 - **circle / meeting business logic**;
 - **circle chat logic**;
 - **membership request logic**;
 - **analytics SDK implementation** (PostHog connection);
+- **crash monitoring SDK** (Sentry connection);
 - **trust scoring** implementation;
 - **moderation enforcement** implementation;
 - **AI moderation SDK** connections;
-- **production credentials**, real secrets.
+- **service role exposed to mobile / client** (Инв. 12);
+- **production credentials**, real secrets;
+- **open DMs** (Инв. 2);
+- **people marketplace** (Инв. 13);
+- **dating mechanics** (Hard rule 6);
+- **microservices** ([`/docs/17_ADR_MODULAR_MONOLITH.md`](docs/17_ADR_MODULAR_MONOLITH.md) binding).
 
-> Architecture remains **Modular Monolith** ([`/docs/17_ADR_MODULAR_MONOLITH.md`](docs/17_ADR_MODULAR_MONOLITH.md)) — primitive change is product, not architecture. **All 23 hard rules in §2 stay binding** through the migration. Anything in the "Blocked" list, or any item on the Core v2 §26 non-goals list (open DMs, payments/tickets, dating mechanics, public ratings, exact public map pins, live location, people marketplace, swipe, follower economy), requires a separate task and, where applicable, a Product Core update — do not implement silently (§3).
+> Architecture remains **Modular Monolith** ([`/docs/17_ADR_MODULAR_MONOLITH.md`](docs/17_ADR_MODULAR_MONOLITH.md)) — primitive change is product, not architecture. **All 23 hard rules in §2 stay binding** through Sprint 2. Anything in the "Blocked" list, or any item on the Core v2 §26 non-goals list (open DMs, payments/tickets, dating mechanics, public ratings, exact public map pins, live location, people marketplace, swipe, follower economy), requires a separate task and, where applicable, a Product Core update — do not implement silently (§3).
 
 ---
 

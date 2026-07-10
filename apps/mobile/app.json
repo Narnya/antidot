@@ -13,7 +13,8 @@
     },
     "android": {},
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single"
     }
   }
 }

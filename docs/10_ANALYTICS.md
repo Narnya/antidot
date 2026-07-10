@@ -1,615 +1,2207 @@
-# Analytics v1 — Social Events App
+# Analytics v2 — Antidot
 
-> **Status:** v1 (analytics blueprint for closed beta)
+> **Status:** v2 (analytics blueprint для closed beta, **circle-first**).
 > **Owner:** Product / Founder / Backend
-> **Last updated:** 2026-05-18
+> **Last updated:** 2026-05-31
+> **First source of truth:** [`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md) (Product Core v2).
+> **PRD source:** [`/docs/01_PRD.md`](01_PRD.md) §22 (Analytics Requirements).
+> **Flows source:** [`/docs/03_USER_FLOWS.md`](03_USER_FLOWS.md) §12 (Analytics Event Map v2).
+> **Security source:** [`/docs/07_SECURITY_RLS.md`](07_SECURITY_RLS.md) §24 (Analytics Security).
+> **Trust source:** [`/docs/08_TRUST_SYSTEM.md`](08_TRUST_SYSTEM.md) §33 (Trust Analytics Boundary).
+> **Moderation source:** [`/docs/09_MODERATION.md`](09_MODERATION.md) §40 (Moderation Analytics Boundary).
+> **Supersedes:** Analytics v1 (event-first, 2026-05-18).
+> **Sequenced by:** [`/docs/27_PRODUCT_CORE_V2_DOCS_UPDATE_PLAN.md`](27_PRODUCT_CORE_V2_DOCS_UPDATE_PLAN.md) §24 Phase C step 11.
+
+> ⚠️ **Это documentation task only.** SDK не подключаются. PostHog / Sentry не инициализируются. Никаких production tracking событий не отправляется. Никакого кода. Этот документ — taxonomy + dashboards + privacy boundary до Sprint 2.
 
 ---
 
 ## 1. Source of Truth
 
-- Документ основан на [`00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md), [`01_PRD.md`](01_PRD.md), [`02_USER_STORIES.md`](02_USER_STORIES.md), [`03_USER_FLOWS.md`](03_USER_FLOWS.md), [`04_FIGMA_PROTOTYPE_PLAN.md`](04_FIGMA_PROTOTYPE_PLAN.md), [`05_ARCHITECTURE.md`](05_ARCHITECTURE.md), [`06_DATABASE_SCHEMA.md`](06_DATABASE_SCHEMA.md), [`07_SECURITY_RLS.md`](07_SECURITY_RLS.md), [`08_TRUST_SYSTEM.md`](08_TRUST_SYSTEM.md), [`09_MODERATION.md`](09_MODERATION.md).
-- **[`00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md) — first source of truth.** При конфликте приоритет у Product Core.
-- Analytics **не нарушает** safety-инварианты и **не собирает sensitive data** (Инвариант 3/9; [`07_SECURITY_RLS.md`](07_SECURITY_RLS.md) §22, [`08_TRUST_SYSTEM.md`](08_TRUST_SYSTEM.md) §33).
-- Документ — основа PostHog instrumentation, dashboards, beta metrics, product review. SDK/код не подключаются.
-- Нерешённые развилки — в [§42 Open Analytics Questions](#42-open-analytics-questions) (CLAUDE.md §3).
+- **Product Core v2** ([`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md)) — first source of truth.
+- Analytics v2 следует **HYBRID ACCEPT** ([`/docs/26_PRODUCT_CORE_V2_DECISION.md`](26_PRODUCT_CORE_V2_DECISION.md)).
+- **User-facing primitive** — Circle / Круг.
+- **Operational primitive** — Meeting / Встреча круга.
+- **Старая event-first analytics модель — superseded.**
+- Analytics должен измерять **trusted recurring social belonging**, не vanity engagement.
+- Analytics **не должен нарушать privacy / safety invariants** (Инв. 1, 3, 9, 12).
+- Документ — основа будущей PostHog instrumentation, dashboards, beta metrics и product review.
+- Открытые вопросы — в [§42 Open Analytics Questions](#42-open-analytics-questions).
+
+### 0. Vocabulary update (v1 → v2)
+
+| Старое (v1, superseded) | Новое (v2, binding) |
+|---|---|
+| `event_viewed` | **`circle_viewed`** |
+| `application_started` / `application_created` | **`circle_join_started`** / **`circle_join_requested`** |
+| `application_approved` | **`circle_request_approved_for_intro`** / **`circle_membership_confirmed`** |
+| `application_rejected` | **`circle_request_rejected`** |
+| `application_waitlisted` | **`circle_request_waitlisted`** |
+| `event_attended` | **`circle_meeting_attended`** |
+| `repeat_attendance` | **`repeat_meeting_attendance`** |
+| `event_chat_opened` | **`circle_chat_opened`** |
+| `chat_message_sent` | **`circle_chat_message_sent`** |
+| `event_removed_for_safety` | **`circle_removed_for_safety`** + **`meeting_removed_for_safety`** |
+| `post_event_reconnect` | **belonging / trusted graph growth** (My Circles, repeat attendance) |
+| `event_create_*` | **`circle_create_*`** + **`first_meeting_scheduled`** |
+
+> Любые остаточные `event_*` идентификаторы — **superseded / internal only** во время transitional periods; новые поверхности используют v2 vocabulary.
 
 ---
 
-## 2. Analytics Goals
+## 2. Analytics Goals v2
 
-1. Проверить, работает ли главный product loop.
-2. Измерить activation и onboarding completion.
-3. Измерить discovery и application behavior.
-4. Измерить host supply и host quality.
-5. Измерить approval, attendance, no-show.
-6. Измерить post-event reconnect.
-7. Измерить safety и moderation health.
-8. Измерить beta invite funnel.
-9. Измерить retention.
-10. Помогать founder'у в product decisions.
-11. Находить friction в UX.
-12. Не нарушать privacy и trust.
+1. **Проверить, работает ли circle-first loop.**
+2. **Измерить activation** в trusted circles.
+3. **Измерить onboarding completion** и profile readiness.
+4. **Измерить Circle Discovery** и Circle Detail engagement.
+5. **Измерить request-place conversion.**
+6. **Измерить host approval / intro meeting conversion.**
+7. **Измерить meeting RSVP и attendance.**
+8. **Измерить repeat meeting attendance** (главный сигнал доверия).
+9. **Измерить My Circles / Belonging Mode usage.**
+10. **Измерить Circle Chat health.**
+11. **Измерить host supply и host quality.**
+12. **Измерить safety и moderation health.**
+13. **Измерить trust health** без exposing trust scores (Инв. 3).
+14. **Измерить beta invite funnel.**
+15. **Помогать founder'у** принимать product decisions.
+16. **Избегать sensitive data leakage** (Инв. 1, 3, 9, 12).
 
 ---
 
 ## 3. Analytics Non-Goals
 
-Не делаем: tracking ради vanity metrics · сбор exact location · raw message content · report descriptions · private moderation notes · показ raw trust score · public rankings · dating compatibility score · analytics как enforcement · замена user interviews · оптимизация addictive engagement · popularity ranking людей · сбор лишних personal data.
+Analytics v2 **НЕ должен**:
+
+- оптимизировать addictive screen time;
+- оптимизировать infinite discovery pressure (Инв. 14);
+- оптимизировать people browsing (Инв. 13);
+- строить popularity rankings (Инв. 10);
+- строить public leaderboards;
+- строить dating compatibility scores (Hard rule 6);
+- трекать exact location (Инв. 1);
+- трекать raw messages;
+- трекать report descriptions;
+- трекать moderation notes;
+- трекать raw trust score (Инв. 3);
+- exposить private profile data;
+- заменять user interviews (качественная обратная связь — §37);
+- заменять moderation judgment;
+- становиться enforcement system.
 
 ---
 
-## 4. Analytics Philosophy
+## 4. Analytics Philosophy v2
 
-- Измерять trust loop, не vanity engagement.
-- Измерять реальные офлайн-исходы.
-- Safety-метрики = product-метрики.
-- Privacy — часть качества аналитики.
-- Retention важен только если взаимодействия безопасны и осмысленны.
-- Beta-аналитика actionable, не шумная.
-- Аналитика поддерживает human product judgment.
-- Качественная обратная связь важна наравне с количественной.
+Принципы (binding):
 
-> **The goal is not to maximize screen time. The goal is to increase safe, trusted offline interactions.**
+- **Измеряем принадлежность, а не просмотры** (belonging, not browsing).
+- **Измеряем повторяющееся офлайн-доверие, а не одноразовое посещение** (recurring offline trust, not one-off attendance).
+- **Safety metrics — это product metrics**, не side-channel.
+- **Retention meaningful только если circles remain safe.**
+- **Если user перестал искать новые круги, потому что нашёл свой — это success** (Инв. 14), не churn.
+- **Analytics уважает privacy и social dignity** (Инв. 1, 3, 12).
+- **Small beta samples требуют qualitative context** (§37).
+- **Analytics поддерживает founder judgment**, не заменяет его.
 
----
-
-## 5. North Star Metric
-
-> **Trusted offline interactions**
-
-MVP-формула: `completed events × confirmed attendees × safety quality multiplier`
-
-- **completed events** — события со статусом `completed`.
-- **confirmed attendees** — пользователи с `attendance_status = attended`.
-- **safety quality multiplier** — мягкий коэффициент: low report rate · low block rate · low serious incident rate · low event removal rate · manageable no-show rate.
-
-> Safety multiplier **не публичный user score** — это агрегированная продуктовая метрика; точная формула эволюционирует в бете (Open Q).
-
-**Supporting metrics:** events completed/week · confirmed attendees per completed event · repeat attendance rate · report rate per event · no-show rate · host repeat rate.
+> **Цель — не максимизировать discovery. Цель — помочь людям находить и поддерживать доверённые повторяющиеся социальные круги.**
 
 ---
 
-## 6. Metric Hierarchy
+## 5. North Star Metric v2
 
-| Level | Metrics |
-|-------|---------|
-| **L1 — North Star** | trusted offline interactions |
-| **L2 — Core Loop** | discovery · applications · approvals · attendance · reconnect |
-| **L3 — Supply** | active hosts · events created · published · completed · host repeat rate |
-| **L4 — Demand** | active users · event views · applications · approval acceptance · attendance |
-| **L5 — Safety** | reports · blocks · moderation response time · removed events · restricted/banned · no-show rate |
-| **L6 — Quality** | user feedback · host feedback · post-event reconnect · qualitative safety perception |
+### Primary candidate
+
+> **Trusted recurring offline interactions.**
+
+### Practical MVP formula
+
+```
+completed circle meetings
+× confirmed attendees
+× repeat attendance multiplier
+× safety quality multiplier
+```
+
+#### completed circle meetings
+
+Meetings со статусом `completed` (Schema v2 §10.1).
+
+#### confirmed attendees
+
+Users с `attendance_status = attended` (Schema v2 §10.4).
+
+#### repeat attendance multiplier
+
+Награждает repeated участие в **том же круге** через время (1-я встреча → 2-я → N-я). Прямое отражение Core v2 §5 step 5 (Become part of the rhythm) и step 6 (Belong).
+
+#### safety quality multiplier
+
+Product-level aggregate multiplier на основе:
+
+- low report rate;
+- low block rate;
+- low serious incident rate;
+- low circle / meeting removal rate;
+- manageable no-show rate;
+- moderation response time (within SLA — Moderation v2 §36).
+
+### Important
+
+- **safety multiplier — product-level**, не user-level score;
+- **не public**;
+- **точная формула эволюционирует во время беты** (open §42 #1).
+
+### Alternative North Star candidates
+
+- **B:** active trusted circles with confirmed recurring attendance (PRD v2 §22.4);
+- **C:** weekly active circles с 2+ confirmed meetings;
+- **D:** retained circle members с repeat attendance.
+
+### Recommendation
+
+> Использовать **"trusted recurring offline interactions"** как main North Star во время closed beta. Кандидаты B / C / D отслеживать как supporting metrics. Finalize после first cohort data.
+
+---
+
+## 6. Metric Hierarchy v2
+
+### Level 1 — North Star
+
+- `trusted_recurring_offline_interactions` (composite, см. §5).
+
+### Level 2 — Core Circle Loop
+
+- `circle_viewed`;
+- `circle_join_requested`;
+- `circle_request_approved_for_intro`;
+- `circle_meeting_attended` (intro);
+- `circle_membership_confirmed` (member);
+- `repeat_meeting_attendance`.
+
+### Level 3 — Belonging Metrics
+
+- active circle members (count of `circle_memberships.status = 'member'`);
+- `my_circles_opened`;
+- `circle_home_opened`;
+- `repeat_meeting_attendance`;
+- member retention (longitudinal);
+- circles с recurring attendance (≥2 completed meetings + repeat attendees).
+
+### Level 4 — Supply / Host Metrics
+
+- active hosts;
+- circles created (`circle_published`);
+- circles published (live status);
+- meetings scheduled;
+- meetings completed;
+- host repeat rate (hosts со 2+ circles или recurring meetings);
+- host safety rate (low report / removal pattern).
+
+### Level 5 — Demand / Member Metrics
+
+- onboarded users;
+- circle views;
+- request-place conversion (`circle_join_requested` / `circle_viewed`);
+- intro approval rate;
+- attendance rate;
+- repeat participation rate.
+
+### Level 6 — Safety Metrics
+
+- reports (by category / priority);
+- blocks;
+- moderation response time;
+- removed circles (for safety);
+- removed meetings (for safety);
+- restricted / banned users;
+- no-show rate;
+- host abuse signals (`suspicious_activity_events`).
+
+### Level 7 — Quality Metrics
+
+- qualitative safety perception (interviews);
+- circle concept understanding;
+- approval anxiety (Core v2 §19 — fit protection vs human ranking);
+- non-dating perception;
+- host / member feedback.
 
 ---
 
 ## 7. Analytics Tooling Assumption
 
-- **Product analytics:** PostHog.
-- **Crash/error:** Sentry.
-- **Backend/DB logs:** Supabase logs.
-- **Manual beta review:** founder/admin dashboard; spreadsheet/manual notes допустимы в ранней бете.
+### Primary product analytics
 
-> На этом шаге **SDK не подключается** — только requirements; implementation — в coding phase ([`05_ARCHITECTURE.md`](05_ARCHITECTURE.md) §20).
+- **PostHog** — later (CLAUDE.md §6: blocked until Sprint 2 + analytics SDK подключение в backlog).
 
----
+### Crash / error monitoring
 
-## 8. Event Naming Conventions
+- **Sentry** — later.
 
-**Rules:** `snake_case`; глаголы в past tense где возможно; без ambiguous names; consistent domain-префиксы; **без sensitive data в именах**; properties privacy-safe.
+### Backend / database logs
 
-| Good | Bad |
-|------|-----|
-| `signup_completed`, `onboarding_step_completed`, `event_viewed`, `application_created`, `application_approved`, `event_chat_opened`, `report_created`, `moderation_action_taken` | `clicked_button_123`, `user_saw_john_event`, `exact_location_opened_at_berlin_address`, `message_body_sent`, `user_reported_for_harassment_with_text` |
+- **Supabase logs** — later (server-side ingestion).
 
----
+### Manual beta review
 
-## 9. Common Event Properties
+- founder / admin review;
+- spreadsheets / manual notes allowed early (closed beta cadence — §39).
 
-**Allowed:** `user_id`/`analytics_distinct_id` · `session_id` · `app_version` · `platform` · `environment` · `city_id` · `beta_cohort` · `feature_flag_keys` · `screen_name` · `flow_id` · `source` · `previous_screen` · `timestamp`.
-**Use carefully:** `event_id` · `category_id` · `application_status` · `event_status` · `report_category` · `report_priority` · `moderation_action_type` · `notification_type`.
-**Never:** exact_location_text/address/lat/lng · phone_number · email (если не hashed/allowed) · date_of_birth · raw message body · report description · moderation note · raw trust score · private profile fields.
+### Important
+
+- **Do not connect SDKs в этом документе.**
+- Implementation happens later (Sprint Backlog v2 + Sprint 2).
+- Analytics taxonomy должен быть **privacy-safe ДО implementation** (это — gate этого документа).
 
 ---
 
-## 10. User Properties
+## 8. Event Naming Conventions v2
 
-**Allowed:** `user_role` · `onboarding_completed` (bool) · `profile_completed` (bool) · `city_id` · `beta_cohort` · `verification_level` (enum) · `profile_completeness_bucket` · `has_created_event` · `has_applied_to_event` · `has_attended_event` · `is_host` · `account_status` (broad enum if safe).
-**Use caution:** `trust_tier` (internal analytics only) · `no_show_count` (aggregate/internal, не как ordinary user prop) · `report_count` (не как ordinary analytics user prop).
-**Forbidden:** raw `trust_score_internal` · phone · email (если не allowed/hashed) · DOB · legal_name · exact location · report/block counts как PII user property · private moderation notes.
+### Rules
 
----
+- `snake_case`;
+- past tense где возможно (`circle_viewed`, `meeting_attended`);
+- domain-specific prefixes когда helpful (`circle_`, `meeting_`, `membership_`, `report_`);
+- **no sensitive data в event names** (не «report_for_harassment_with_text»);
+- **no dating language** (нет `match_`, `like_`, `chemistry_`);
+- **no people-marketplace terminology** (нет `user_browsed`, `member_shopped`);
+- consistent circle / meeting vocabulary (§0 vocabulary map).
 
-## 11. Core Product Loop Analytics
+### Good examples
 
-| Stage | Key events | Conversion | Drop-off risk | Privacy notes |
-|-------|------------|------------|---------------|---------------|
-| **Discover** | `home_opened`, `event_discovery_viewed`, `event_filter_applied`, `event_viewed` | event_viewed / discovery_viewed | пустая лента, нерелевантно | без exact location |
-| **Apply** | `application_started`, `application_created`, `application_cancelled`, `application_requirement_blocked` | application_created / event_viewed | verification/completeness гейт, approval-страх | без intro_note |
-| **Approve** | `application_reviewed`, `application_approved`, `application_rejected`, `application_waitlisted` | approved / created | host inactivity, недостаток контекста | без host_note |
-| **Attend** | `event_reminder_sent`, `event_started`, `event_completed`, `attendance_confirmed`, `no_show_recorded` | attendance_confirmed / approved | no-show, забыл, низкое доверие | без exact location |
-| **Reconnect** | `post_event_reconnect_viewed`, `post_event_chat_opened`, `repeat_application_created` | repeat_attendance / first_attendance | окно chat истекло, нет ценности | без feedback text |
+- `circle_viewed`;
+- `circle_join_requested`;
+- `circle_request_approved_for_intro`;
+- `circle_meeting_attended`;
+- `my_circles_opened`;
+- `circle_chat_opened`;
+- `report_created`;
+- `moderation_action_taken`.
 
----
+### Bad examples (struck-through — никогда не использовать)
 
-## 12. Activation Funnel
-
-| # | Event | Trigger | Success metric | Likely drop-off | Product question |
-|---|-------|---------|----------------|-----------------|------------------|
-| 1 | `app_opened` | запуск | reach | — | трафик |
-| 2 | `signup_started` | открыт signup | start rate | invite-барьер | top of funnel |
-| 3 | `signup_completed` | аккаунт создан | signup CR | OAuth/email friction | auth работает? |
-| 4 | `invite_code_used`/`beta_access_granted` | invite valid | invite CR | нет инвайта | контроль беты |
-| 5 | `onboarding_started` | вход в onboarding | start rate | — | onboarding ясен? |
-| 6 | `onboarding_completed` | onboarding завершён | onboarding CR | слишком много шагов | friction |
-| 7 | `profile_completed` | completeness достигнута | profile CR | photo/verification | gating |
-| 8 | `first_event_viewed` | первый Event Detail | discovery activation | пустой город | supply есть? |
-| 9 | `first_application_created` | первая заявка | **soft activation** | approval-страх | спрос есть? |
-| 10 | `first_application_approved` | первый approve | approval CR | host inactivity | supply quality |
-| 11 | `first_event_attended` | первое attended | **hard activation** | no-show | loop работает? |
-
-**Activation definition:** активирован, если **подал первую заявку** (soft) или **посетил первое событие** (hard).
-- **Soft activation:** `first_application_created`.
-- **Hard activation:** `first_event_attended`. (Какую считать главной — Open Q.)
+- ~~`user_saw_maria_circle`~~ (personal data в имени);
+- ~~`exact_location_opened_at_address`~~ (Инв. 1 нарушение);
+- ~~`message_body_sent`~~ (намёк на raw body);
+- ~~`report_text_submitted`~~ (намёк на description);
+- ~~`hot_user_clicked`~~ (dating mechanic — Hard rule 6);
+- ~~`match_created`~~ (dating mechanic);
+- ~~`trust_score_updated_public`~~ (Инв. 3 нарушение).
 
 ---
 
-## 13. Onboarding Analytics
+## 9. Common Event Properties v2
 
-**Events:** `onboarding_started`, `onboarding_step_viewed`, `onboarding_step_completed`, `onboarding_step_skipped`, `safety_principles_accepted`, `city_selected`, `interests_selected`, `vibe_tags_selected`, `intent_selected`, `profile_photo_uploaded`, `profile_photo_moderation_pending`, `phone_verification_started`, `phone_verification_completed`, `onboarding_completed`, `onboarding_resumed`, `onboarding_abandoned`.
-**Properties:** `step_name`, `step_index`, `required`, `completion_time_bucket`, `city_id`, `selected_count` (где safe), `verification_required` (bool).
-**Metrics:** onboarding completion rate · step-level drop-off · time to complete · photo upload success · phone verification CR · profile completion rate.
-**Privacy:** без bio text, без photo content, без phone number.
+### Allowed common properties
 
----
+- `user_id` или `analytics_distinct_id`;
+- `session_id`;
+- `app_version`;
+- `platform` (`ios` / `android` / `web_admin`);
+- `environment` (`local` / `staging` / `production`);
+- `city_id`;
+- `beta_cohort`;
+- `feature_flag_keys` (array);
+- `screen_name`;
+- `flow_id` (FLOW-001 … FLOW-025);
+- `source` (previous action / entry surface);
+- `previous_screen`;
+- `timestamp`.
 
-## 14. Profile Analytics
+### Allowed domain properties
 
-**Events:** `profile_viewed`, `own_profile_viewed`, `public_profile_viewed`, `profile_edit_started`, `profile_updated`, `profile_photo_uploaded`, `profile_photo_removed`, `profile_privacy_updated`, `profile_report_started`, `user_block_started`.
-**Properties:** `profile_context` (own/public/applicant/host/attendee) · `viewed_user_role` (если safe) · `has_public_badges` (bool) · `verification_level` (enum) · `source`.
-**Metrics:** profile completion · edit rate · public profile views из application review · report/block from profile rate.
-**Privacy:** без bio text, без private fields, без raw trust score.
+- `circle_id`;
+- `meeting_id`;
+- `category_id` (circle category);
+- `membership_request_status` (enum — Schema v2 §5);
+- `membership_status` (enum);
+- `circle_status` (enum);
+- `meeting_status` (enum);
+- `rsvp_status` (enum);
+- `report_category` (enum);
+- `report_priority` (enum);
+- `moderation_action_type` (enum);
+- `rhythm` (enum — `weekly` / `biweekly` / `monthly` / `flexible`);
+- `comfort_composition` (enum — `open_mixed` / `female_friendly` / `women_only` / `host_defined`);
+- `capacity_bucket` (1–4 / 5–8 / 9–12);
+- `member_count_bucket`;
+- `request_count_bucket`;
+- `time_to_approval_bucket`.
 
----
+### Never include (binding — RLS v2 §24, Moderation v2 §40, Trust v2 §33)
 
-## 15. Event Discovery Analytics
-
-**Events:** `home_opened`, `event_discovery_viewed`, `event_card_seen`, `event_card_tapped`, `event_filter_opened`, `event_filter_applied`, `event_search_used` (если есть), `event_empty_state_viewed`, `event_viewed`.
-**Properties:** `city_id` · `category_id` · `date_filter` · `event_status` · `approval_required` · `waitlist_enabled` · `approximate_distance_bucket` (если есть) · `source` · `result_count_bucket`.
-**Metrics:** discovery views · card CTR · filter usage · empty state frequency · views per active user · views per category · discovery→application conversion.
-**Privacy:** approximate distance bucket OK; **exact location forbidden** (Инвариант 1/9). `event_card_seen` — высокий шум (Open Q: трекать или только tap).
-
----
-
-## 16. Event Detail Analytics
-
-**Events:** `event_viewed`, `event_detail_state_viewed`, `location_privacy_notice_viewed`, `apply_cta_viewed`, `apply_cta_tapped`, `report_event_started`, `event_share_started` (если есть).
-**States:** not_applied · pending · waitlisted · approved · rejected · full · cancelled · removed_for_safety · host_view.
-**Properties:** `event_id` · `category_id` · `city_id` · `event_status` · `application_status` · `approval_required` · `capacity_bucket` · `attendee_count_bucket` · `source`.
-**Metrics:** apply CTA conversion · state distribution · detail drop-off · location privacy notice visibility.
-**Privacy:** без exact location/instructions.
-
----
-
-## 17. Event Creation / Host Analytics
-
-**Events:** `event_create_started`, `event_create_step_completed`, `event_draft_saved`, `event_preview_viewed`, `event_published`, `event_pending_review`, `event_updated`, `event_cancelled`, `event_capacity_updated`, `event_location_updated`, `event_removed_for_safety`.
-**Properties:** host distinct_id · `category_id` · `city_id` · `capacity_bucket` · `approval_required` · `waitlist_enabled` · `visibility` · `event_status` · `moderation_status` · `has_exact_location` (bool, не значение) · `time_to_publish_bucket`.
-**Metrics:** hosts started creation · creation completion rate · draft→publish CR · events per host · first-time host success · cancellation rate · events pending review · hosted completed · host repeat rate.
-**Privacy:** без exact location/instructions, без описания события (text).
-
----
-
-## 18. Application / Approval Analytics
-
-**Events:** `application_started`, `application_requirement_blocked`, `application_note_started`, `application_created`, `application_cancelled`, `application_reviewed`, `application_approved`, `application_rejected`, `application_waitlisted`, `attendee_added`, `attendee_removed`.
-**Properties:** `event_id` · `category_id` · `city_id` · `application_status` · `source` · `requirement_block_reason` · host distinct_id (если allowed) · `approval_required` · `capacity_bucket` · `profile_completeness_bucket` · `verification_level`.
-**Metrics:** application rate · completion rate · apply blocked by requirements · approval/rejection/waitlist rate · time to approval · applications per event/user · host review time.
-**Privacy:** без `intro_note`, без `host_note`, без applicant private details.
-
----
-
-## 19. Attendance Analytics
-
-**Events:** `event_reminder_sent`, `event_reminder_opened`, `event_started`, `event_completed`, `attendance_prompt_viewed`, `attendance_confirmed`, `attendance_marked_by_host`, `no_show_recorded`, `excused_absence_recorded`, `attendance_disputed` (если есть).
-**Properties:** `event_id` · `category_id` · `city_id` · `event_size_bucket` · `attendee_role` · `confirmation_source` (user/host/system/admin) · `attendance_status` · `reminder_timing_bucket`.
-**Metrics:** attendance rate · no-show rate · confirmation rate · reminder effectiveness · no-show by category/city/cohort · completed events with confirmed attendance.
-**Privacy:** нет публичного no-show labeling; aggregate/product-focused (Инвариант 10).
+- ~~`exact_location_text`~~ (Инв. 1);
+- ~~`exact_address`~~;
+- ~~`exact_lat`~~;
+- ~~`exact_lng`~~;
+- ~~`arrival_instructions`~~;
+- ~~raw message body~~;
+- ~~`intro_note`~~;
+- ~~`host_note`~~;
+- ~~report description (`reports.description`)~~;
+- ~~moderation note (`reports.admin_resolution_note`, `moderation_actions.reason`)~~;
+- ~~`trust_score_internal`~~ (Инв. 3);
+- ~~phone number~~;
+- ~~email~~ unless hashed / explicitly allowed;
+- ~~date of birth~~;
+- ~~legal name~~;
+- ~~private profile fields (`profile_private_details.*`)~~.
 
 ---
 
-## 20. Post-event / Reconnect Analytics
+## 10. User Properties v2
 
-**Events:** `post_event_screen_viewed`, `post_event_chat_opened`, `post_event_reconnect_viewed`, `post_event_prompt_viewed`, `post_event_feedback_started`, `post_event_feedback_submitted`, `repeat_application_created`, `repeat_attendance_confirmed`.
-**Properties:** `event_id` · `category_id` · `city_id` · `attendee_count_bucket` · `reconnect_prompt_type` · `feedback_type` (broad enum) · `days_since_event_bucket`.
-**Metrics:** post-event engagement · repeat application rate · repeat attendance rate · feedback completion · social loop continuation.
-**Privacy:** без raw feedback text; избегать dating-style «match» терминологии.
+### Allowed
 
----
+- `user_role` (broad enum: `user` / `circle_member` / `circle_host` / `admin`);
+- `onboarding_completed` (boolean);
+- `profile_completed` (boolean);
+- `city_id`;
+- `beta_cohort`;
+- `verification_level` (enum: `none` / `email_verified` / `phone_verified`);
+- `profile_completeness_bucket`;
+- `has_requested_circle` (boolean);
+- `has_attended_meeting` (boolean);
+- `is_circle_host` (boolean);
+- `has_active_circle` (boolean);
+- `account_status` (broad enum if safe — `active` / `restricted` / `suspended` / `banned`).
 
-## 21. Chat Analytics
+### Use caution
 
-**Events:** `event_chat_opened`, `chat_message_sent`, `chat_system_message_sent`, `message_actions_opened`, `message_report_started`, `message_reported`, `chat_frozen`, `chat_unfrozen`, `post_event_chat_expiring_viewed`, `chat_access_denied`.
-**Properties:** `event_id` · `user_role_in_event` · `chat_state` · `message_type` (user/system) · `moderation_status` · `access_denied_reason` · `post_event` (bool).
-**Metrics:** chat open rate после approval · messages per event · active chat events · reported messages rate · chat freeze rate · chat abuse indicators.
-**Privacy:** **никогда** raw message body / content / sensitive moderation text.
+- `trust_tier` (internal analytics only if needed; never public);
+- `no_show_count` aggregate / internal only (Инв. 3);
+- `report_count` — **не** ordinary user property (Инв. 12);
+- `block_count` — **не** ordinary user property (Инв. 12);
+- `circle_count` — bucketed / private only (никогда public-like — Инв. 14).
 
----
+### Forbidden
 
-## 22. Safety Analytics
-
-**Events:** `report_started`, `report_created`, `report_cancelled`, `block_started`, `block_created`, `unblock_created` (если есть), `safety_principles_viewed`, `safety_principles_accepted`, `suspicious_activity_flagged`, `velocity_limit_triggered`.
-**Properties:** `report_category` · `report_priority` · `target_type` (user/event/message) · `source_screen` · `event_id` (если релевантно) · `city_id` · `velocity_limit_type` · `block_context`.
-**Metrics:** reports per 100 users · reports per event · blocks per 100 users · block rate после события · report categories distribution · high/critical reports count · suspicious activity count · velocity triggers.
-**Privacy:** без report description, без reported message body, без раскрытия reporter identity сверх обычного actor-трекинга.
-
----
-
-## 23. Moderation Analytics
-
-**Events:** `moderation_queue_viewed`, `moderation_report_opened`, `moderation_action_started`, `moderation_action_taken`, `moderation_action_cancelled`, `report_status_updated`, `event_removed_for_safety`, `user_warned`, `user_restricted`, `user_unrestricted`, `user_banned`, `user_unbanned`, `message_hidden`, `chat_frozen`, `report_escalated`, `report_dismissed`.
-**Properties:** `report_category` · `report_priority` · `action_type` · `target_type` · `time_to_first_review_bucket` · `time_to_resolution_bucket` · `ai_flagged` (bool) · `escalation_required` (bool) · `event_starts_within_24h` (bool).
-**Metrics:** moderation response time · time to resolution · open reports by priority · action rate · dismissal rate · escalation rate · AI confirmed flag rate · AI false positive rate · events removed · users restricted/banned.
-**Privacy:** без report descriptions, admin notes, raw AI summaries (если sensitive), exact location.
-
----
-
-## 24. Trust Analytics
-
-**Events:** `profile_completed`, `phone_verified`, `trust_event_created_internal`, `trust_tier_updated_internal`, `reliable_badge_earned`, `hosted_before_badge_earned`, `verification_badge_earned`, `suspicious_velocity_flagged`, `no_show_recorded`, `event_attended_trust_recorded`.
-**Properties:** `trust_event_type` · `badge_type` · `previous_tier`/`new_tier` (internal only) · `source` · `aggregate_count_bucket` (если safe).
-**Metrics:** verified user rate · profile completion rate · reliable attendee badge rate · host badge rate · no-show rate · trust event volume · restrictions от trust/safety pattern.
-**Privacy:** raw `trust_score_internal` **forbidden**; нет публичных негативных trust-ярлыков; избегать user-level sensitive trust analytics кроме strictly internal ([`08_TRUST_SYSTEM.md`](08_TRUST_SYSTEM.md) §33).
+- ~~raw `trust_score_internal`~~ (Инв. 3);
+- ~~phone~~;
+- ~~email~~ unless allowed / hashed;
+- ~~DOB~~;
+- ~~legal name~~;
+- ~~exact location~~;
+- ~~report / block counts как user-level profile property~~ (Инв. 12);
+- ~~private moderation notes~~;
+- ~~removal / rejection history~~ (Инв. 12).
 
 ---
 
-## 25. Beta / Invite Analytics
+## 11. Core Circle Loop Analytics
 
-**Events:** `invite_code_required`, `invite_code_entered`, `invite_code_validated`, `invite_code_used`, `invite_code_failed`, `waitlist_joined`, `waitlist_confirmed`, `beta_access_granted`, `beta_access_denied`, `invite_code_created_admin`, `invite_code_revoked_admin`.
-**Properties:** `invite_status` · `invite_source` · `city_id` · `beta_cohort` · `failure_reason` · `assigned_invite` (bool если safe).
-**Metrics:** invite conversion rate · waitlist signup rate · invite usage rate · failed invite attempts · beta cohort activation · waitlist→signup conversion.
-**Privacy:** без raw email (если не allowed/hashed); не раскрывать assigned email широко.
+Loop (Core v2 §5):
+
+> **Find the right vibe → Request a place → Enter safely → Attend first meeting → Become part of the rhythm → Belong → Grow trusted graph.**
+
+### Find the right vibe
+
+**Events:**
+
+- `circle_discovery_viewed`;
+- `circle_filter_applied`;
+- `circle_card_seen` (P1 — high noise, open §42 #10);
+- `circle_card_tapped`;
+- `circle_viewed`.
+
+**Conversion:** `circle_viewed / circle_discovery_viewed`.
+**Drop-off risk:** пустая лента, нерелевантные circles, vibe непонятен.
+**Properties:** `city_id`, `category_id`, `rhythm`, `comfort_composition`, `result_count_bucket`.
+**Privacy:** без exact location; approximate area only.
+
+### Request a place
+
+**Events:**
+
+- `circle_join_started`;
+- `circle_join_blocked_by_requirement`;
+- `circle_join_requested`;
+- `circle_join_cancelled`.
+
+**Conversion:** `circle_join_requested / circle_viewed`.
+**Drop-off risk:** approval-страх, verification gate, location uncertainty.
+**Properties:** `circle_id`, `requirement_block_reason`, `profile_completeness_bucket`, `verification_level`.
+**Privacy:** **без `intro_note`** содержимого.
+
+### Enter safely
+
+**Events:**
+
+- `membership_request_reviewed`;
+- `circle_request_approved_for_intro`;
+- `circle_request_rejected`;
+- `circle_request_waitlisted`.
+
+**Conversion:** `circle_request_approved_for_intro / circle_join_requested`.
+**Drop-off risk:** host inactivity, request volume.
+**Properties:** `circle_id`, `time_to_decision_bucket`, `rhythm`, `comfort_composition`.
+**Privacy:** **без `host_note`** содержимого; rejection reason — broad enum only (Инв. 12).
+
+### Attend first meeting
+
+**Events:**
+
+- `intro_meeting_viewed`;
+- `meeting_location_revealed` (boolean event — value не передаётся);
+- `meeting_rsvp_yes`;
+- `meeting_reminder_sent`;
+- `circle_meeting_attended` (с `first_meeting = true`).
+
+**Conversion:** `circle_meeting_attended (intro) / circle_request_approved_for_intro`.
+**Drop-off risk:** no-show, location uncertainty, last-minute conflict.
+**Properties:** `meeting_id`, `circle_id`, `first_meeting = true`, `reminder_timing_bucket`.
+**Privacy:** **`meeting_location_revealed` событие — без exact location value** (Инв. 1).
+
+### Become part of the rhythm
+
+**Events:**
+
+- `circle_membership_confirmed`;
+- `circle_home_opened`;
+- `meeting_rsvp_yes` (post-intro);
+- `repeat_meeting_attendance`.
+
+**Conversion:** `circle_membership_confirmed / circle_meeting_attended (intro)`.
+**Drop-off risk:** circle fit, intro квалитет, social temperature.
+**Properties:** `circle_id`, `repeat_meeting_number_bucket`.
+
+### Belong
+
+**Events:**
+
+- `my_circles_opened`;
+- `circle_home_opened`;
+- `circle_chat_opened`;
+- `next_meeting_viewed`;
+- `circle_membership_paused`;
+- `circle_membership_left`.
+
+**Conversion:** `repeat_meeting_attendance / circle_meeting_attended (intro)`.
+**Drop-off risk:** life circumstances, format mismatch (low-drama exits — Инв. 11).
+**Properties:** `active_circle_count_bucket`, `circle_id`.
+**Privacy:** **pause / leave — neutral events** (Инв. 11, Trust v2 §7.6-7.7); никаких public shame signals.
+
+### Grow trusted graph
+
+**Events:**
+
+- `repeat_meeting_attendance` (cumulative);
+- `reliable_badge_earned`;
+- `circle_retention_milestone` (e.g., 2+ / 4+ meetings в одном круге);
+- `trusted_graph_edge_created_internal` (P1 — open §42).
+
+**Privacy:** trusted graph — **internal** (Инв. 13: no people marketplace); никаких public follower-style metrics.
 
 ---
 
-## 26. Notification Analytics
+## 12. Activation Funnel v2
 
-**Events:** `notification_created`, `notification_sent`, `push_notification_sent`, `push_notification_opened`, `notification_viewed`, `notification_marked_read`, `notification_failed`.
-**Types:** application_approved · application_rejected · application_waitlisted · event_reminder · event_update · event_cancelled · new_application_for_host · report_update · invite_available · system_notice.
-**Properties:** `notification_type` · `delivery_channel` · `related_entity_type` · `opened_from_push` (bool) · `event_status` (если релевантно) · `application_status` (если релевантно).
-**Metrics:** push open rate · approval notification open rate · reminder open rate · cancellation delivery · notification failure rate.
-**Privacy:** нет exact location в analytics; нет sensitive notification body.
+### Steps
 
----
+1. `app_opened`;
+2. `signup_started`;
+3. `signup_completed`;
+4. `invite_code_used` или `beta_access_granted`;
+5. `onboarding_started`;
+6. `onboarding_completed`;
+7. `profile_completed`;
+8. `first_circle_viewed`;
+9. `first_circle_join_requested`;
+10. `first_circle_request_approved_for_intro`;
+11. `first_meeting_location_revealed`;
+12. `first_meeting_attended`;
+13. `first_circle_membership_confirmed`;
+14. `second_meeting_attended` (binding marker для Belonging Activation).
 
-## 27. Feature Flag / Experiment Analytics
+### Activation definitions
 
-**Events:** `feature_flag_exposed`, `experiment_variant_assigned`, `experiment_goal_completed`.
-**Properties:** `flag_key` · `variant` · `experiment_key` · `exposure_context` · `user_cohort`.
-**Rules:** флаги для beta rollout; эксперименты не компрометируют safety; **не A/B-тестировать critical safety так, чтобы вредить пользователям**; safety-critical фичи дефолтят в conservative behavior.
-**Potential beta flags:** `phone_verification_required_before_apply` · `manual_event_review_enabled` · `post_event_chat_enabled` · `attendee_list_visible_to_approved` · `event_creation_for_verified_only`.
+#### Soft activation
 
----
+- `first_circle_join_requested` (user понял механику + захотел место).
 
-## 28. Retention Analytics
+#### Strong activation
 
-**User retention:** D1 · D7 · D14 · D30.
-**Product-specific:** applied to second event · attended second event · hosted second event · returned after first attendance · returned after rejection · returned after waitlist.
-**Host retention:** created second event · reviewed applications again · hosted completed event again.
-**Safety-aware:** retained без safety incidents · retention после report/block · retention после no-show/rejection.
+- `first_meeting_attended` (user реально пришёл оффлайн — главный trust signal).
 
-> **Do not optimize retention at the cost of safety.**
+#### Belonging activation
 
----
+- `second_meeting_attended` **или** `first_circle_membership_confirmed` (user вошёл в ритм).
 
-## 29. Dashboard Plan
+### Recommendation
 
-| Dashboard | Metrics |
-|-----------|---------|
-| **1 — Founder Overview** | active users · onboarded · events created · completed · applications · approvals · confirmed attendance · trusted offline interactions · reports · blocks · no-show rate |
-| **2 — Activation Funnel** | signup · invite · onboarding · profile complete · first event view · first application · first approval · first attendance |
-| **3 — Supply / Host** | active hosts · events created · published · completed · applications per event · approval rate · host repeat rate · cancellation rate |
-| **4 — Demand / Attendee** | event views · applications · approvals · attendance · repeat attendance · category interest |
-| **5 — Safety / Moderation** | reports by category/priority · open reports · time to review · actions taken · restricted/banned · removed events · message reports · chat freezes |
-| **6 — Beta / Invite** | invite codes created/used · waitlist joined · beta access granted · cohort activation · city-level funnel |
-| **7 — Trust Health** | verification rate · profile completion · reliable attendee badge · no-show rate · suspicious velocity · trust events |
+Использовать **multiple activation milestones**:
 
----
+- **Request Activation** (`first_circle_join_requested`);
+- **Meeting Activation** (`first_meeting_attended`);
+- **Belonging Activation** (`second_meeting_attended` / `first_circle_membership_confirmed`).
 
-## 30. Instrumentation Map by Flow
+### Per-step expectations
 
-| Flow ID | Flow | Key Screens | Events to Track | Primary Metric | Privacy Notes |
-|---------|------|-------------|-----------------|----------------|---------------|
-| FLOW-001 | Guest Signup/Login | Welcome, Login, Signup | signup_started/completed, login_completed | signup CR | без PII |
-| FLOW-002 | Invite Beta Access | Invite Code, Waitlist | invite_code_used, waitlist_joined, beta_access_* | invite CR | без raw email |
-| FLOW-003 | Onboarding | Onboarding stack | onboarding_*; safety_principles_accepted | onboarding CR | без bio/phone |
-| FLOW-004 | Profile View/Edit | My/Edit/Public Profile | profile_viewed/updated | completion/edit rate | без bio/raw trust |
-| FLOW-006 | Discovery | Home, Filters | event_discovery_viewed, event_viewed | discovery→apply CR | без exact loc |
-| FLOW-007 | Event Detail | Event Detail states | event_viewed, location_privacy_notice_viewed, apply_cta_tapped | apply CR | без exact loc |
-| FLOW-008 | Event Creation | Create flow | event_create_*, event_published | draft→publish CR | без loc/desc text |
-| FLOW-009 | Application | Apply Modal | application_started/created/requirement_blocked | application CR | без intro_note |
-| FLOW-010 | Host Review | Applications List/Detail | application_reviewed/approved/rejected/waitlisted | approval rate | без host_note |
-| FLOW-011 | Approval / Location Reveal | Approved Detail | application_approved, location_privacy_notice_viewed | reveal correctness | **без exact loc** |
-| FLOW-012 | Event Chat | Event Chat | event_chat_opened, chat_message_sent, message_reported | chat open rate | **без body** |
-| FLOW-013 | Notifications | Notifications | push_notification_sent/opened | open rate | без exact loc |
-| FLOW-015 | Attendance/Post-event | Completed, Reconnect | event_completed, attendance_confirmed, no_show_recorded | attendance rate | aggregate |
-| FLOW-016 | Report User | Report User | report_started/created | report rate | без description |
-| FLOW-017 | Report Event | Report Event | report_created (event) | report rate | без description |
-| FLOW-018 | Report Message | Report Message | message_reported | report rate | без body |
-| FLOW-019 | Block User | Block Confirm | block_started/created | block rate | без reason text |
-| FLOW-020 | Admin Moderation | Admin queue/detail | moderation_*, action_taken | response time | без notes |
-| FLOW-023 | Trust Signal Update | (system) | trust_event_created_internal, badge_earned | badge rate | internal only |
+| # | Event | Trigger | Success metric | Likely drop-off reason | Product question |
+|---|---|---|---|---|---|
+| 1 | `app_opened` | app launch | reach | — | трафик |
+| 2 | `signup_started` | signup opened | start rate | invite barrier | top of funnel |
+| 3 | `signup_completed` | account created | signup CR | OAuth / email friction | auth работает? |
+| 4 | `invite_code_used` | invite valid | invite CR | нет invite | контроль беты |
+| 5 | `onboarding_started` | enters onboarding | start rate | — | onboarding clear? |
+| 6 | `onboarding_completed` | finished | onboarding CR | too many steps; comfort composition friction; vibe unclear | friction |
+| 7 | `profile_completed` | completeness reached | profile CR | photo / phone verification | gating |
+| 8 | `first_circle_viewed` | первый Circle Detail | discovery activation | empty city | supply есть? |
+| 9 | `first_circle_join_requested` | first request | **soft activation** | approval anxiety; location uncertainty | спрос есть? |
+| 10 | `first_circle_request_approved_for_intro` | first approval | approval CR | host inactivity; supply mismatch | supply quality |
+| 11 | `first_meeting_location_revealed` | exact location shown | reveal correctness | timing window | reveal works? |
+| 12 | `first_meeting_attended` | first meeting attended | **strong activation** | no-show; commitment too high | loop works? |
+| 13 | `first_circle_membership_confirmed` | intro → member | belonging gate | not confirmed; format mismatch | conversion |
+| 14 | `second_meeting_attended` | repeat attendance | **belonging activation** | circle fit; rhythm fit | rhythm работает? |
 
 ---
 
-## 31. Instrumentation Map by Screen (P0)
+## 13. Onboarding Analytics v2
 
-| Screen ID | Screen | View Event | Action Events | Properties | Notes |
-|-----------|--------|-----------|---------------|------------|-------|
-| MOB-001 | Welcome | `welcome_viewed` | signup/login tap | source | без PII |
-| MOB-004 | Invite Code | `invite_code_screen_viewed` | invite_code_entered/used/failed | invite_status, failure_reason | без raw email |
-| MOB-010 | Onboarding Welcome | `onboarding_started` | step_completed | step_name | anti-dating копи |
-| MOB-011 | Safety Principles | `safety_principles_viewed` | safety_principles_accepted | — | acceptance фикс. |
-| MOB-030 | Home/Discover | `event_discovery_viewed` | filter_applied, event_card_tapped | city_id, category_id, result_count_bucket | без exact loc |
-| MOB-033 | Event Detail Not Applied | `event_viewed` | apply_cta_tapped, report_event_started | event_id, category_id, event_status | без exact loc |
-| MOB-034 | Event Detail Pending | `event_detail_state_viewed` | application_cancelled | application_status=pending | без exact loc |
-| MOB-036 | Event Detail Approved | `event_detail_state_viewed` | event_chat_opened | application_status=approved | **без exact loc в аналитике** |
-| MOB-050 | Apply Modal | `apply_cta_viewed` | application_started/created | event_id | без intro_note |
-| MOB-060 | Create Event Start | `event_create_started` | step_completed | category_id | без desc text |
-| MOB-068 | Event Preview | `event_preview_viewed` | event_published | has_exact_location(bool) | без loc value |
-| MOB-071 | Applications List | `applications_list_viewed` | applicant_opened | event_id, count_bucket | host scope |
-| MOB-072 | Applicant Detail | `applicant_detail_viewed` | application_approved/rejected/waitlisted | application_status | без applicant PII |
-| MOB-080 | Event Chat | `event_chat_opened` | chat_message_sent, message_reported | chat_state | **без body** |
-| MOB-095 | Public Safe Profile | `public_profile_viewed` | report/block started | profile_context | без raw trust |
-| MOB-110 | Report User | `report_started` | report_created | report_category, target_type | без description |
-| MOB-111 | Report Event | `report_started` | report_created | report_category | без description |
-| MOB-114 | Block User Confirm | `block_started` | block_created | block_context | без reason text |
-| ADM-002 | Moderation Queue | `moderation_queue_viewed` | report_opened | priority, category | admin project |
-| ADM-003 | Report Detail | `moderation_report_opened` | action_started | report_priority | без description |
-| ADM-009 | Admin Action Modal | `moderation_action_started` | moderation_action_taken | action_type | reason не в analytics |
+### Events
+
+- `onboarding_started`;
+- `onboarding_step_viewed`;
+- `onboarding_step_completed`;
+- `onboarding_step_skipped`;
+- `safety_principles_accepted`;
+- `city_selected`;
+- `interests_selected`;
+- `vibe_tags_selected`;
+- `rhythm_selected`;
+- `comfort_composition_selected`;
+- `group_size_selected`;
+- `host_willingness_selected`;
+- `profile_photo_uploaded`;
+- `phone_verification_started`;
+- `phone_verification_completed`;
+- `onboarding_completed`;
+- `onboarding_resumed`;
+- `onboarding_abandoned`.
+
+### Properties
+
+- `step_name`;
+- `step_index`;
+- `required` (boolean);
+- `completion_time_bucket`;
+- `city_id`;
+- `selected_count` (where safe — broad count, не values list);
+- `rhythm` (enum);
+- `comfort_composition` (enum);
+- `verification_required` (boolean).
+
+### Metrics
+
+- onboarding completion rate;
+- step-level drop-off;
+- time to complete;
+- photo upload success rate;
+- phone verification completion rate;
+- profile completion rate.
+
+### Privacy
+
+- **не отправлять bio text**;
+- **не отправлять photo content**;
+- **не отправлять phone number**;
+- **comfort composition handle aккуратно** — enum value tracked, но не для public ranking (Core v2 §21, Moderation v2 §25).
 
 ---
 
-## 32. Event Taxonomy Table
+## 14. Profile Analytics v2
 
-> Columns: Event · Category · Trigger · Actor · Key Properties · Forbidden Properties · P0/P1. (Forbidden — общий baseline §33: exact location, raw body/description, raw trust score, PII; не повторяется построчно где не специфично.)
+### Events
+
+- `profile_viewed`;
+- `own_profile_viewed`;
+- `public_profile_viewed`;
+- `profile_edit_started`;
+- `profile_updated`;
+- `profile_photo_uploaded`;
+- `profile_photo_removed`;
+- `profile_privacy_updated`;
+- `user_report_started`;
+- `user_block_started`.
+
+### Properties
+
+- `profile_context` (`own` / `public` / `requester` / `member` / `host`);
+- `source_screen`;
+- `has_public_badges` (boolean);
+- `verification_level` (enum);
+- `profile_completeness_bucket`.
+
+### Metrics
+
+- profile completion rate;
+- profile edit rate;
+- photo upload rate;
+- profile report / block rate;
+- profile completeness before first request (proxy for activation friction).
+
+### Privacy
+
+- **без bio text**;
+- **без private profile fields** (`profile_private_details.*`);
+- **без raw trust score** (Инв. 3);
+- **без other circles** (Инв. 13: no people marketplace).
+
+---
+
+## 15. Circle Discovery Analytics v2
+
+### Events
+
+- `circle_discovery_viewed`;
+- `circle_card_seen` (P1 — high noise, открыт §42 #10);
+- `circle_card_tapped`;
+- `circle_filter_opened`;
+- `circle_filter_applied`;
+- `circle_search_used` (если search exists);
+- `circle_empty_state_viewed`;
+- `circle_viewed`.
+
+### Properties
+
+- `city_id`;
+- `category_id`;
+- `vibe_tag_ids` (count / bucket only — open §42 #10);
+- `rhythm` (enum);
+- `comfort_composition` (enum);
+- `circle_status` (enum);
+- `approval_required` (boolean);
+- `approximate_distance_bucket` (если используется);
+- `source`;
+- `result_count_bucket`;
+- `member_count_bucket`.
+
+### Metrics
+
+- discovery views;
+- circle card CTR;
+- filter usage distribution;
+- empty state frequency;
+- circle views per active user;
+- discovery → request conversion;
+- vibe / rhythm interest distribution.
+
+### Privacy
+
+- **approximate area only** (Инв. 9);
+- **без exact location** (Инв. 1);
+- **без full member list** (Инв. 16: composition staged);
+- **без people-marketplace tracking** (Инв. 13).
+
+---
+
+## 16. Circle Detail Analytics v2
+
+### Events
+
+- `circle_viewed`;
+- `circle_detail_state_viewed`;
+- `location_privacy_notice_viewed`;
+- `fit_protection_notice_viewed` (explanation, что approval — fit protection, не human ranking — Core v2 §19);
+- `request_place_cta_viewed`;
+- `request_place_cta_tapped`;
+- `report_circle_started`.
+
+### States (Core v2 §11 + §12)
+
+- `not_requested`;
+- `requested`;
+- `waitlisted`;
+- `rejected`;
+- `approved_for_intro_meeting`;
+- `member`;
+- `paused`;
+- `full`;
+- `circle_paused` (circle-level);
+- `removed_for_safety`;
+- `host_view`.
+
+### Properties
+
+- `circle_id`;
+- `category_id`;
+- `city_id`;
+- `rhythm`;
+- `comfort_composition`;
+- `membership_status` (current viewer's status);
+- `circle_status`;
+- `approval_required`;
+- `capacity_bucket`;
+- `member_count_bucket`;
+- `source`.
+
+### Metrics
+
+- request CTA conversion;
+- detail state distribution;
+- location privacy notice visibility;
+- fit protection notice visibility (UX check — approval anxiety mitigation);
+- circle detail drop-off.
+
+### Privacy
+
+- **без exact location** (Инв. 1);
+- **без member list** (composition staged — Core v2 §16);
+- **без private host / user data**.
+
+---
+
+## 17. Circle Creation / Host Analytics v2
+
+### Events
+
+- `circle_create_started`;
+- `circle_create_step_completed`;
+- `circle_draft_saved`;
+- `circle_preview_viewed`;
+- `circle_published`;
+- `circle_pending_review`;
+- `circle_updated`;
+- `circle_paused`;
+- `circle_archived`;
+- `circle_removed_for_safety` (admin-driven — Moderation v2 §22);
+- `first_meeting_scheduled`;
+- `meeting_updated`;
+- `meeting_cancelled`.
+
+### Properties
+
+- `host_user_id` или `distinct_id`;
+- `category_id`;
+- `city_id`;
+- `rhythm`;
+- `comfort_composition`;
+- `capacity_bucket`;
+- `circle_status`;
+- `moderation_status`;
+- `has_meeting_location` (boolean, **не value**);
+- `time_to_publish_bucket`.
+
+### Metrics
+
+- hosts started creation;
+- circle creation completion rate;
+- draft → publish conversion;
+- circles per host;
+- first-time host success;
+- circle pause / archive rate;
+- meetings scheduled per circle;
+- host repeat rate;
+- circles pending review (queue depth).
+
+### Privacy
+
+- **без exact location** (Инв. 1);
+- **без description text** (полнотекстовое описание не tracked);
+- **без arrival instructions**.
+
+---
+
+## 18. Membership Request Analytics v2
+
+### Events
+
+- `circle_join_started`;
+- `circle_join_blocked_by_requirement`;
+- `circle_join_requested`;
+- `circle_join_cancelled`;
+- `membership_request_reviewed`;
+- `circle_request_approved_for_intro`;
+- `circle_request_rejected`;
+- `circle_request_waitlisted`;
+- `circle_membership_confirmed`;
+- `membership_not_confirmed_after_intro`.
+
+### Properties
+
+- `circle_id`;
+- `category_id`;
+- `city_id`;
+- `rhythm`;
+- `comfort_composition`;
+- `request_status` (enum);
+- `membership_status` (enum);
+- `source`;
+- `requirement_block_reason` (broad enum: `not_verified` / `profile_incomplete` / `blocked` / `restricted` / `circle_full`);
+- `approval_required`;
+- `capacity_bucket`;
+- `profile_completeness_bucket`;
+- `verification_level`;
+- `time_to_decision_bucket`.
+
+### Metrics
+
+- request rate;
+- request completion rate;
+- blocked by requirements (gate friction);
+- approval-for-intro rate;
+- rejection rate;
+- waitlist rate;
+- time to review;
+- requests per circle (demand signal);
+- requests per user (engagement);
+- host review time;
+- intro → member conversion (`circle_membership_confirmed / first_meeting_attended`).
+
+### Privacy
+
+- **без `intro_note`** content (Инв. 12 — rejection reasons private);
+- **без `host_note`** content;
+- **без private profile data**.
+
+---
+
+## 19. Meeting / RSVP / Attendance Analytics v2
+
+### Events
+
+- `meeting_viewed`;
+- `meeting_location_revealed` (boolean event — value не передаётся; Инв. 1);
+- `meeting_rsvp_yes`;
+- `meeting_rsvp_no`;
+- `meeting_reminder_sent`;
+- `meeting_reminder_opened`;
+- `meeting_started`;
+- `meeting_completed`;
+- `attendance_prompt_viewed`;
+- `meeting_attendance_confirmed`;
+- `meeting_attendance_marked_by_host`;
+- `no_show_recorded` (internal — Инв. 3, 12);
+- `excused_absence_recorded`;
+- `attendance_disputed` (если exists — P1, open §42 #13).
+
+### Properties
+
+- `meeting_id`;
+- `circle_id`;
+- `category_id`;
+- `city_id`;
+- `rhythm`;
+- `meeting_status`;
+- `member_role` (`host` / `member` / `intro_guest`);
+- `confirmation_source` (`user` / `host` / `system` / `admin`);
+- `attendance_status` (enum);
+- `reminder_timing_bucket`;
+- `attendee_count_bucket`;
+- `first_meeting` (boolean);
+- `repeat_meeting_number_bucket` (1 / 2 / 3-5 / 6+).
+
+### Metrics
+
+- RSVP rate;
+- attendance rate;
+- no-show rate (aggregate);
+- reminder effectiveness;
+- first meeting attendance rate;
+- repeat meeting attendance rate;
+- meetings completed per circle;
+- meeting attendance by rhythm / category / city.
+
+### Privacy
+
+- **без exact location** (Инв. 1);
+- **`no_show_recorded` — internal only**, никогда не public label (Инв. 12; Trust v2 §16);
+- aggregate / product-focused.
+
+---
+
+## 20. My Circles / Belonging Analytics v2
+
+### Events
+
+- `my_circles_opened`;
+- `circle_home_opened`;
+- `next_meeting_viewed`;
+- `circle_chat_preview_viewed`;
+- `member_status_viewed`;
+- `circle_membership_paused`;
+- `circle_membership_left`;
+- `return_to_circle_requested` (если exists — re-engagement);
+- `not_looking_for_new_circles_selected` (P1 — explicit belonging signal);
+- `guest_seat_viewed` (P1 — Core v2 §9 controlled unpredictability).
+
+### Properties
+
+- `active_circle_count_bucket`;
+- `circle_id`;
+- `membership_status`;
+- `next_meeting_status`;
+- `has_rsvp` (boolean);
+- `unread_message_count_bucket`;
+- `source`.
+
+### Metrics
+
+- My Circles usage rate (DAU / WAU openers);
+- active circle members;
+- member retention (longitudinal — §28);
+- repeat meeting attendance;
+- circle home opens per member;
+- pause / leave rate (neutral);
+- circles с stable members (≥2 returning attendees);
+- **discovery reduction после membership** (positive signal — Инв. 14, не churn).
+
+### Important (binding — Инв. 14)
+
+> **Belonging is success, not churn.** Не интерпретировать lower discovery как negative, если My Circles / attendance остаются healthy. User, который attendит свой круг каждые две недели и не открывает Discovery, — **target outcome**, не retention failure.
+
+---
+
+## 21. Circle Chat Analytics v2
+
+### Events
+
+- `circle_chat_opened`;
+- `circle_chat_message_sent`;
+- `circle_system_message_sent`;
+- `message_actions_opened`;
+- `message_report_started`;
+- `message_reported`;
+- `circle_chat_frozen`;
+- `circle_chat_unfrozen`;
+- `circle_chat_access_denied`.
+
+### Properties
+
+- `circle_id`;
+- `meeting_id` (если relevant — meeting-scoped update);
+- `user_role_in_circle`;
+- `membership_status`;
+- `chat_state` (`open` / `frozen`);
+- `message_type` (`user` / `system`);
+- `moderation_status`;
+- `access_denied_reason` (broad enum: `not_member` / `paused` / `restricted` / `banned` / `chat_frozen`).
+
+### Metrics
+
+- chat open rate by member;
+- messages per circle (volume);
+- active chat circles;
+- reported message rate;
+- chat freeze rate;
+- chat abuse indicators (composite).
+
+### Privacy
+
+- **никогда не отправлять message body** (Инв. 12 / RLS v2 §24);
+- **без message content**;
+- **без sensitive moderation text**;
+- **no 1:1 в MVP** (Инв. 2 — circle chat — единственная messaging surface).
+
+---
+
+## 22. Safety Analytics v2
+
+### Events
+
+- `report_started`;
+- `report_created`;
+- `report_cancelled`;
+- `block_started`;
+- `block_created`;
+- `unblock_created` (если exists — P1);
+- `safety_principles_viewed`;
+- `safety_principles_accepted`;
+- `suspicious_activity_flagged`;
+- `velocity_limit_triggered`;
+- `location_privacy_incident_flagged` (Moderation v2 §24);
+- `comfort_composition_reported` (Moderation v2 §25);
+- `host_abuse_flagged` (Moderation v2 §29).
+
+### Properties
+
+- `report_category` (enum);
+- `report_priority` (enum);
+- `target_type` (`user` / `circle` / `meeting` / `message`);
+- `source_screen`;
+- `circle_id` (если relevant — open §42 #16);
+- `meeting_id` (если relevant — open §42 #16);
+- `city_id`;
+- `velocity_limit_type`;
+- `block_context`.
+
+### Metrics
+
+- reports per 100 users;
+- reports per circle;
+- reports per meeting;
+- blocks per 100 users;
+- block rate после первой meeting (signal);
+- report categories distribution;
+- high / critical reports count;
+- suspicious activity count;
+- host abuse signals;
+- comfort composition reports (monitored отдельно);
+- velocity triggers.
+
+### Privacy
+
+- **без report description**;
+- **без message body**;
+- **без reporter identity** сверх обычного actor tracking;
+- **без exact location**.
+
+---
+
+## 23. Moderation Analytics v2
+
+### Events
+
+- `moderation_queue_viewed`;
+- `moderation_report_opened`;
+- `moderation_action_started`;
+- `moderation_action_taken`;
+- `moderation_action_cancelled`;
+- `report_status_updated`;
+- `circle_removed_for_safety`;
+- `meeting_removed_for_safety`;
+- `user_warned`;
+- `user_restricted`;
+- `user_unrestricted`;
+- `user_banned`;
+- `user_unbanned`;
+- `message_hidden`;
+- `circle_chat_frozen`;
+- `report_escalated`;
+- `report_dismissed`;
+- `host_abuse_reviewed`;
+- `comfort_composition_issue_reviewed`.
+
+### Properties
+
+- `report_category`;
+- `report_priority`;
+- `action_type` (`moderation_action_type` enum);
+- `target_type`;
+- `time_to_first_review_bucket`;
+- `time_to_resolution_bucket`;
+- `ai_flagged` (boolean);
+- `escalation_required` (boolean);
+- `meeting_starts_within_24h` (boolean — для urgency tracking);
+- `exact_location_revealed` (boolean — для location-incident severity).
+
+### Metrics
+
+- moderation response time;
+- time to resolution;
+- open reports by priority;
+- action rate;
+- dismissal rate;
+- escalation rate;
+- AI confirmed flag rate;
+- AI false positive rate (admin overrides / total AI flags);
+- circles removed;
+- meetings removed;
+- users restricted / banned;
+- host abuse reviews.
+
+### Privacy
+
+- **без report descriptions**;
+- **без admin notes**;
+- **без raw AI summaries** if sensitive (RLS v2 §24);
+- **без exact location** (Инв. 1).
+
+---
+
+## 24. Trust Analytics v2
+
+### Events
+
+- `profile_completed`;
+- `phone_verified`;
+- `trust_event_created_internal`;
+- `trust_tier_updated_internal`;
+- `verification_badge_earned`;
+- `reliable_badge_earned`;
+- `hosted_before_badge_earned`;
+- `circle_member_confirmed`;
+- `meeting_attendance_confirmed`;
+- `no_show_recorded`;
+- `circle_paused` (neutral — Trust v2 §7.7, weight=0);
+- `circle_left` (neutral — Trust v2 §7.6, weight=0);
+- `suspicious_velocity_flagged`;
+- `circle_hosted_successfully`.
+
+### Properties
+
+- `trust_event_type`;
+- `badge_type`;
+- `previous_tier` (internal only);
+- `new_tier` (internal only);
+- `source` (`system_lifecycle` / `host_action` / `admin_action` / `ai_assist`);
+- `aggregate_count_bucket` if safe.
+
+### Metrics
+
+- verified user rate (cohort %);
+- profile completion rate;
+- reliable participant badge rate;
+- hosted before badge rate;
+- meeting attendance rate;
+- no-show rate (aggregate — Инв. 3);
+- trust event volume (internal observability);
+- restrictions caused by safety / trust patterns;
+- pause / leave neutrality tracking (no impact on trust score — verify weight=0);
+- host reliability.
+
+### Privacy (binding — Trust v2 §33)
+
+- **raw `trust_score_internal` forbidden** (Инв. 3);
+- **no public negative trust labels** (Инв. 10, 12);
+- **no removal / rejection history** (Инв. 12);
+- **no user-level sensitive trust analytics** unless strictly internal admin observability.
+
+---
+
+## 25. Beta / Invite Analytics v2
+
+### Events
+
+- `invite_code_required`;
+- `invite_code_entered`;
+- `invite_code_validated`;
+- `invite_code_used`;
+- `invite_code_failed`;
+- `waitlist_joined`;
+- `waitlist_confirmed`;
+- `beta_access_granted`;
+- `beta_access_denied`;
+- `invite_code_created_admin`;
+- `invite_code_revoked_admin`.
+
+### Properties
+
+- `invite_status`;
+- `invite_source`;
+- `city_id`;
+- `beta_cohort`;
+- `failure_reason`;
+- `assigned_invite` (boolean if safe).
+
+### Metrics
+
+- invite conversion rate;
+- waitlist signup rate;
+- invite usage rate;
+- failed invite attempts (anti-enumeration signal);
+- beta cohort activation;
+- waitlist → signup conversion.
+
+### Privacy
+
+- **без raw email** unless allowed / hashed;
+- **без broad assigned email exposure** (admin-only).
+
+---
+
+## 26. Notification Analytics v2
+
+### Events
+
+- `notification_created`;
+- `notification_sent`;
+- `push_notification_sent`;
+- `push_notification_opened`;
+- `notification_viewed`;
+- `notification_marked_read`;
+- `notification_failed`.
+
+### Notification types (Schema v2 `notification_type` enum)
+
+- `membership_request_approved_for_intro`;
+- `membership_request_rejected`;
+- `membership_request_waitlisted`;
+- `membership_request_received_for_host`;
+- `meeting_reminder`;
+- `meeting_update`;
+- `meeting_cancelled`;
+- `circle_update`;
+- `circle_chat_update`;
+- `report_update`;
+- `invite_available`;
+- `system_notice`.
+
+### Properties
+
+- `notification_type`;
+- `delivery_channel` (`push` / `in_app` / `email`);
+- `related_entity_type`;
+- `opened_from_push` (boolean);
+- `circle_status` (если relevant);
+- `meeting_status` (если relevant);
+- `membership_status` (если relevant).
+
+### Metrics
+
+- push open rate;
+- approval notification open rate;
+- meeting reminder open rate;
+- cancellation notification delivery;
+- notification failure rate.
+
+### Privacy
+
+- **без exact location** (Инв. 1; RLS v2 §23.3 — dispatcher gate);
+- **без sensitive body**;
+- **без report details**.
+
+---
+
+## 27. Feature Flag / Experiment Analytics v2
+
+### Events
+
+- `feature_flag_exposed`;
+- `experiment_variant_assigned`;
+- `experiment_goal_completed`.
+
+### Properties
+
+- `flag_key`;
+- `variant`;
+- `experiment_key`;
+- `exposure_context`;
+- `user_cohort`.
+
+### Rules
+
+- feature flags могут control beta rollout;
+- **do not A/B test critical safety in harmful way** (Инв. 5 / Инв. 7);
+- safety features default conservative (Schema v2 §17 `feature_flag_status` safe default `inactive`).
+
+### Potential beta flags
+
+- `phone_verification_required_before_request`;
+- `manual_circle_review_enabled`;
+- `first_time_host_review_enabled`;
+- `intro_meeting_required_before_membership`;
+- `member_list_visible_after_approval`;
+- `circle_chat_for_intro_approved_enabled`;
+- `comfort_composition_enabled`;
+- `women_only_circles_enabled` (Core v2 §21 — gated на validation).
+
+---
+
+## 28. Retention Analytics v2
+
+### Traditional retention
+
+- D1;
+- D7;
+- D14;
+- D30.
+
+### Better product-specific retention
+
+- requested second circle;
+- attended first meeting;
+- attended second meeting;
+- returned to My Circles;
+- RSVP к next meeting;
+- repeat meeting attendance;
+- remained member after intro;
+- active в circle chat;
+- returned after rejection / waitlist;
+- returned after pause (Trust v2 §7.7 — pause neutral).
+
+### Host retention
+
+- created second circle;
+- scheduled second meeting;
+- reviewed requests again;
+- hosted recurring meeting again.
+
+### Safety-aware retention
+
+- retained users **without safety incidents**;
+- retention after report / block experience (reporter side);
+- retention after no-show / rejection;
+- retention after membership pause (Инв. 11 — should be possible).
+
+### Important (binding — Инв. 14)
+
+> **Do not optimize retention at cost of safety or pressure.** Belonging может reduce discovery while increasing healthy retention — это **success**, не отчётный риск. Метрика "circles per user" **запрещена как retention KPI** (PRD v2 §22.6).
+
+---
+
+## 29. Dashboard Plan v2
+
+### Dashboard 1 — Founder Overview
+
+**Metrics:**
+
+- active users;
+- onboarded users;
+- circles created;
+- live circles;
+- active circle members;
+- membership requests;
+- intro approvals;
+- meetings scheduled;
+- meetings completed;
+- confirmed attendance;
+- repeat meeting attendance;
+- **trusted recurring offline interactions** (North Star);
+- reports;
+- blocks;
+- no-show rate.
+
+### Dashboard 2 — Activation Funnel
+
+**Steps:**
+
+- signup;
+- invite;
+- onboarding;
+- profile complete;
+- first circle view;
+- first request;
+- intro approval;
+- first meeting attended;
+- member confirmed;
+- second meeting attended.
+
+### Dashboard 3 — Circle Supply / Host
+
+**Metrics:**
+
+- active hosts;
+- circles created;
+- circles published;
+- meetings scheduled;
+- meetings completed;
+- requests per circle;
+- intro approval rate;
+- host repeat rate;
+- circle pause / archive rate;
+- host abuse reports.
+
+### Dashboard 4 — Demand / Member
+
+**Metrics:**
+
+- circle views;
+- requests;
+- approvals;
+- first meeting attendance;
+- member confirmation;
+- My Circles opens;
+- repeat meeting attendance;
+- circle retention.
+
+### Dashboard 5 — Safety / Moderation
+
+**Metrics:**
+
+- reports by category / priority;
+- open reports;
+- response time;
+- actions taken;
+- users restricted / banned;
+- circles removed;
+- meetings removed;
+- message reports;
+- chat freezes;
+- host abuse reviews;
+- comfort composition reports.
+
+### Dashboard 6 — Beta / Invite
+
+**Metrics:**
+
+- invite codes created / used;
+- waitlist joined;
+- beta access granted;
+- cohort activation;
+- city-level funnel.
+
+### Dashboard 7 — Trust Health
+
+**Metrics:**
+
+- verification rate;
+- profile completion;
+- reliable participant badge rate;
+- hosted before badge rate;
+- no-show rate (aggregate);
+- suspicious velocity;
+- trust events (internal);
+- host reliability.
+
+### Dashboard 8 — Belonging Health (binding — Инв. 14)
+
+**Metrics:**
+
+- active trusted circles (≥1 member, ≥1 meeting completed);
+- circles с 2+ completed meetings;
+- repeat attendance (rate);
+- member retention;
+- My Circles usage;
+- circles full / closed / paused;
+- pause / leave rate (neutral observability);
+- stable circle count (≥2 returning attendees over ≥2 meetings).
+
+---
+
+## 30. Instrumentation Map by Flow v2
+
+| Flow ID | Flow Name | Key Screens | Events to Track | Primary Metric | Privacy Notes |
+|---|---|---|---|---|---|
+| FLOW-001 | Guest Signup / Login | Welcome, Login, Signup | `signup_started`, `signup_completed`, `login_completed` | signup CR | без PII |
+| FLOW-002 | Invite-only Beta Access | Invite Code, Waitlist | `invite_code_used`, `waitlist_joined`, `beta_access_*` | invite CR | без raw email |
+| FLOW-003 | Onboarding for Circle Fit | Onboarding stack | `onboarding_*`, `safety_principles_accepted`, `city_selected`, `vibe_tags_selected`, `rhythm_selected`, `comfort_composition_selected`, `phone_verification_completed` | onboarding CR | без bio / phone / photo content |
+| FLOW-004 | Profile View / Edit | My / Edit Profile | `profile_viewed`, `profile_updated` | completion / edit rate | без bio / raw trust |
+| FLOW-005 | Safe Public Profile | Public Safe Profile | `public_profile_viewed`, `user_report_started`, `user_block_started` | profile report rate | без bio / raw trust |
+| FLOW-006 | Circle Discovery | Discovery, Filters | `circle_discovery_viewed`, `circle_filter_applied`, `circle_card_tapped`, `circle_viewed` | discovery → request CR | без exact location |
+| FLOW-007 | Circle Detail | Circle Detail variants | `circle_viewed`, `circle_detail_state_viewed`, `location_privacy_notice_viewed`, `fit_protection_notice_viewed`, `request_place_cta_tapped` | request CR | без exact location |
+| FLOW-008 | Request a Place | Request Modal, Pending | `circle_join_started`, `circle_join_blocked_by_requirement`, `circle_join_requested`, `circle_join_cancelled` | request CR | без `intro_note` |
+| FLOW-009 | Host Membership Review | Requests List, Detail | `membership_request_reviewed`, `circle_request_approved_for_intro`, `circle_request_rejected`, `circle_request_waitlisted` | approval rate | без `host_note` |
+| FLOW-010 | Intro Meeting Approval / Location Reveal | Intro Approved Detail | `intro_meeting_viewed`, `meeting_location_revealed`, `meeting_rsvp_yes` | reveal correctness | **без exact location value** |
+| FLOW-011 | Circle Meeting / RSVP | Meeting Detail | `meeting_viewed`, `meeting_rsvp_yes`, `meeting_reminder_sent`, `meeting_completed`, `meeting_attendance_confirmed`, `no_show_recorded` | attendance rate | aggregate; no-show internal |
+| FLOW-012 | Become Member / Belonging | Intro Attended, Member confirmation | `circle_membership_confirmed`, `membership_not_confirmed_after_intro` | intro → member CR | без notes |
+| FLOW-013 | My Circles / Belonging Mode | My Circles, Circle Home | `my_circles_opened`, `circle_home_opened`, `next_meeting_viewed`, `repeat_meeting_attendance` | belonging rate (Dashboard 8) | aggregate |
+| FLOW-014 | Circle Chat | Circle Chat | `circle_chat_opened`, `circle_chat_message_sent`, `message_reported`, `circle_chat_frozen` | chat open rate | **без body** |
+| FLOW-015 | Pause Participation | Pause Modal | `circle_membership_paused` | pause rate (neutral) | без public shame; Инв. 11 |
+| FLOW-016 | Leave Circle | Leave Modal | `circle_membership_left` | leave rate (neutral) | без public shame; Инв. 11 |
+| FLOW-017 | Host Ends Participation | Host Member Action | `circle_membership_removed_by_host` | host removal rate | reason — broad enum; no description |
+| FLOW-018 | Block User | Block Confirm | `block_started`, `block_created` | block rate | без reason text |
+| FLOW-019 | Report User | Report User | `report_started`, `report_created` (target_type=user) | report rate | без description |
+| FLOW-020 | Report Circle / Meeting | Report Circle / Meeting | `report_created` (target_type=circle/meeting) | report rate | без description |
+| FLOW-021 | Report Message | Report Message | `message_reported` | report rate | без body |
+| FLOW-022 | Admin Moderation Queue | Admin Queue, Detail, Action Modal | `moderation_queue_viewed`, `moderation_report_opened`, `moderation_action_taken`, `circle_removed_for_safety`, `meeting_removed_for_safety` | response time | без notes |
+| FLOW-023 | Suspicious Behavior / Velocity | (system) | `suspicious_activity_flagged`, `velocity_limit_triggered` | suspicious count | internal |
+| FLOW-024 | Trust Signal Update | (system) | `trust_event_created_internal`, `*_badge_earned` | badge rate | internal only |
+| FLOW-025 | Privacy / Delete Account | Settings / Delete | `account_delete_started`, `account_delete_completed` | delete rate | без PII в payload |
+
+---
+
+## 31. Instrumentation Map by Screen v2
+
+| Screen ID | Screen Name | View Event | Action Events | Properties | Notes |
+|---|---|---|---|---|---|
+| MOB-001 | Welcome | `welcome_viewed` | signup / login tap | `source` | без PII |
+| MOB-004 | Invite Code | `invite_code_screen_viewed` | `invite_code_entered`, `invite_code_used`, `invite_code_failed` | `invite_status`, `failure_reason` | без raw email |
+| MOB-011 | Safety Principles | `safety_principles_viewed` | `safety_principles_accepted` | — | acceptance фиксируется |
+| MOB-030 | Circle Discovery | `circle_discovery_viewed` | `circle_filter_applied`, `circle_card_tapped` | `city_id`, `category_id`, `result_count_bucket` | без exact location |
+| MOB-033 | Circle Detail — Not Requested | `circle_viewed` | `request_place_cta_tapped`, `report_circle_started` | `circle_id`, `category_id`, `circle_status` | без exact location |
+| MOB-050 | Request Place Modal | `request_place_cta_viewed` | `circle_join_started`, `circle_join_requested` | `circle_id` | без `intro_note` |
+| MOB-052 | Membership Pending | `circle_detail_state_viewed` | `circle_join_cancelled` | `membership_request_status=requested` | без exact location |
+| MOB-036 | Circle Detail — Intro Approved | `circle_detail_state_viewed` | `circle_chat_opened` | `membership_status=approved_for_intro_meeting` | **без exact location в analytics** |
+| MOB-061 | Meeting Location Reveal | `meeting_viewed` | `meeting_location_revealed` (boolean event), `meeting_rsvp_yes` | `meeting_id` | **без exact location value** |
+| MOB-100 | Circle Chat | `circle_chat_opened` | `circle_chat_message_sent`, `message_reported` | `circle_id`, `chat_state` | **без body** |
+| MOB-070 | My Circles | `my_circles_opened` | `circle_home_opened` (на tap) | `active_circle_count_bucket` | belonging surface |
+| MOB-071 | Circle Home | `circle_home_opened` | `next_meeting_viewed`, `circle_chat_preview_viewed` | `circle_id`, `membership_status` | belonging surface |
+| MOB-080 | Create Circle Start | `circle_create_started` | `circle_create_step_completed` | `category_id` | без description text |
+| MOB-087 | Host Circle Dashboard | `host_dashboard_viewed` | request review actions | `circle_id` | host scope |
+| MOB-088 | Membership Requests | `membership_requests_list_viewed` | `membership_request_reviewed` | `circle_id`, `count_bucket` | host scope |
+| MOB-089 | Request Detail | `membership_request_detail_viewed` | `circle_request_approved_for_intro`, `circle_request_rejected`, `circle_request_waitlisted` | `request_status` | без requester private data |
+| MOB-112 | Public Safe Profile | `public_profile_viewed` | `user_report_started`, `user_block_started` | `profile_context` | без raw trust |
+| MOB-113 | Report User | `report_started` | `report_created` | `report_category`, `target_type=user` | без description |
+| MOB-114 | Report Circle | `report_started` | `report_created` | `report_category`, `target_type=circle` | без description |
+| MOB-117 | Block User Confirmation | `block_started` | `block_created` | `block_context` | без reason text |
+| ADM-002 | Moderation Queue | `moderation_queue_viewed` | `moderation_report_opened` | `priority`, `category` | admin project |
+| ADM-003 | Report Detail | `moderation_report_opened` | `moderation_action_started` | `report_priority` | без description |
+| ADM-010 | Admin Action Modal | `moderation_action_started` | `moderation_action_taken` | `action_type` | reason **не** в analytics |
+
+---
+
+## 32. Event Taxonomy Table v2
+
+> Columns: Event Name · Category · Trigger · Actor · Key Properties · Forbidden Properties · P0/P1.
+> Forbidden baseline для **всех** событий — §33 (exact location, raw body / description / notes, raw trust score, PII).
+
+### App / Auth
 
 | Event | Category | Trigger | Actor | Key Properties | P0/P1 |
-|-------|----------|---------|-------|----------------|-------|
-| app_opened | App/Auth | запуск app | client | platform, app_version | P0 |
-| signup_started | App/Auth | открыт signup | client | source | P0 |
-| signup_completed | App/Auth | аккаунт создан | client/server | method | P0 |
-| login_completed | App/Auth | успешный вход | client | method | P0 |
-| logout_completed | App/Auth | logout | client | — | P0 |
-| auth_error | App/Auth | ошибка auth | client | error_type | P0 |
-| protected_route_redirected | App/Auth | redirect без сессии | client | target_flow | P1 |
-| invite_code_required | Beta | требуется invite | client | — | P0 |
-| invite_code_entered | Beta | введён код | client | — | P0 |
-| invite_code_used | Beta | код применён | server | invite_status | P0 |
-| invite_code_failed | Beta | код невалиден | server | failure_reason | P0 |
-| waitlist_joined | Beta | запись waitlist | client/server | city_id | P0 |
-| beta_access_granted | Beta | доступ выдан | server | beta_cohort | P0 |
-| beta_access_denied | Beta | доступ отклонён | server | reason | P0 |
-| onboarding_started | Onboarding | вход в onboarding | client | — | P0 |
-| onboarding_step_viewed | Onboarding | шаг показан | client | step_name, step_index | P0 |
-| onboarding_step_completed | Onboarding | шаг завершён | client | step_name | P0 |
-| safety_principles_accepted | Onboarding | принятие правил | client | — | P0 |
-| city_selected | Onboarding | выбран город | client | city_id | P0 |
-| interests_selected | Onboarding | выбраны интересы | client | selected_count | P0 |
-| vibe_tags_selected | Onboarding | выбраны vibe | client | selected_count | P0 |
-| intent_selected | Onboarding | выбран intent | client | intent_enum | P0 |
-| profile_photo_uploaded | Onboarding | фото загружено | client | — | P0 |
-| phone_verification_started | Onboarding | старт verify | client | — | P0 |
-| phone_verification_completed | Onboarding | verify завершён | server | — | P0 |
-| onboarding_completed | Onboarding | onboarding done | client/server | — | P0 |
-| profile_viewed | Profile | открыт профиль | client | profile_context | P0 |
-| profile_edit_started | Profile | edit начат | client | — | P1 |
-| profile_updated | Profile | профиль сохранён | client/server | fields_changed_keys | P0 |
-| public_profile_viewed | Profile | safe-профиль открыт | client | profile_context | P0 |
-| profile_photo_removed | Profile | фото удалено | client | — | P1 |
-| privacy_settings_updated | Profile | privacy изменён | client | — | P1 |
-| home_opened | Discovery | открыт Home | client | — | P0 |
-| event_discovery_viewed | Discovery | лента показана | client | city_id, result_count_bucket | P0 |
-| event_card_seen | Discovery | карточка в viewport | client | category_id | P1 (шум — Open Q) |
-| event_card_tapped | Discovery | тап по карточке | client | category_id | P0 |
-| event_filter_applied | Discovery | фильтр применён | client | category_id, date_filter | P0 |
-| event_empty_state_viewed | Discovery | пустой стейт | client | filter_context | P0 |
-| event_viewed | Discovery/Events | открыт Event Detail | client | event_id, event_status | P0 |
-| location_privacy_notice_viewed | Events | показан notice | client | event_id | P0 |
-| event_create_started | Event Creation | старт создания | client | — | P0 |
-| event_create_step_completed | Event Creation | шаг создания | client | step_name | P0 |
-| event_draft_saved | Event Creation | draft сохранён | client/server | — | P0 |
-| event_preview_viewed | Event Creation | превью | client | has_exact_location(bool) | P0 |
-| event_published | Event Creation | опубликовано | server | category_id, event_status | P0 |
-| event_pending_review | Event Creation | на ревью | server | — | P0 |
-| event_updated | Event Creation | событие изменено | server | fields_changed_keys | P1 |
-| event_cancelled | Event Creation | отменено host | server | — | P0 |
-| application_started | Applications | нажат Apply | client | event_id | P0 |
-| application_requirement_blocked | Applications | гейт сработал | client | requirement_block_reason | P0 |
-| application_created | Applications | заявка создана | server | event_id | P0 |
-| application_cancelled | Applications | заявка отозвана | client/server | — | P0 |
-| application_reviewed | Applications | host открыл заявку | client | event_id | P0 |
-| application_approved | Applications | approve | server | event_id | P0 |
-| application_rejected | Applications | reject | server | event_id | P0 |
-| application_waitlisted | Applications | waitlist | server | event_id | P0 |
-| event_chat_opened | Chat | открыт чат | client | event_id | P0 |
-| chat_message_sent | Chat | сообщение отправлено | client/server | event_id, message_type | P0 |
-| message_actions_opened | Chat | меню сообщения | client | — | P1 |
-| message_reported | Chat | report сообщения | server | report_category | P0 |
-| chat_frozen | Chat | чат заморожен | server | — | P0 |
-| chat_access_denied | Chat | нет доступа к чату | client | access_denied_reason | P0 |
-| event_completed | Attendance | событие completed | server | category_id | P0 |
-| attendance_prompt_viewed | Attendance | промпт показан | client | — | P0 |
-| attendance_confirmed | Attendance | посещение подтв. | client/server | confirmation_source | P0 |
-| no_show_recorded | Attendance | no-show | server | confirmation_source | P0 |
-| post_event_reconnect_viewed | Post-event | reconnect показан | client | days_since_event_bucket | P0 |
-| repeat_application_created | Post-event | повторная заявка | server | — | P0 |
-| report_started | Safety | начат report | client | target_type | P0 |
-| report_created | Safety | report создан | server | report_category, report_priority, target_type | P0 |
-| block_started | Safety | начат block | client | block_context | P0 |
-| block_created | Safety | block создан | server | block_context | P0 |
-| suspicious_activity_flagged | Safety | system flag | server | activity_type | P0 |
-| velocity_limit_triggered | Safety | velocity limit | server | velocity_limit_type | P0 |
-| moderation_queue_viewed | Moderation | очередь открыта | admin | — | P0 |
-| moderation_report_opened | Moderation | report открыт | admin | report_priority | P0 |
-| moderation_action_taken | Moderation | действие выполнено | admin | action_type, target_type | P0 |
-| report_status_updated | Moderation | статус report | admin | report_status | P0 |
-| event_removed_for_safety | Moderation | событие удалено | admin | — | P0 |
-| user_restricted | Moderation | restrict | admin | — | P0 |
-| user_banned | Moderation | ban | admin | — | P0 |
-| message_hidden | Moderation | сообщение скрыто | admin | — | P0 |
-| report_escalated | Moderation | эскалация | admin | report_priority | P0 |
-| report_dismissed | Moderation | dismiss | admin | — | P0 |
-| trust_event_created_internal | Trust | trust signal | server | trust_event_type | P0 |
-| reliable_badge_earned | Trust | badge выдан | server | badge_type | P1 |
-| hosted_before_badge_earned | Trust | badge выдан | server | badge_type | P1 |
-| verification_badge_earned | Trust | badge выдан | server | badge_type | P0 |
-| notification_created | Notifications | уведомление создано | server | notification_type | P0 |
-| push_notification_sent | Notifications | push отправлен | server | notification_type | P0 |
-| push_notification_opened | Notifications | push открыт | client | notification_type | P0 |
-| notification_viewed | Notifications | просмотрено в app | client | notification_type | P0 |
+|---|---|---|---|---|---|
+| `app_opened` | App/Auth | app launch | client | `platform`, `app_version` | P0 |
+| `signup_started` | App/Auth | signup opened | client | `source`, `provider` | P0 |
+| `signup_completed` | App/Auth | account created | client/server | `provider` | P0 |
+| `login_completed` | App/Auth | session established | client | `provider` | P0 |
+| `logout_completed` | App/Auth | logout | client | — | P0 |
+| `auth_error` | App/Auth | auth error | client | `error_type` | P0 |
+| `protected_route_redirected` | App/Auth | redirect without session | client | `target_flow` | P1 |
 
-(>80 events; forbidden properties для всех — §33 baseline.)
+### Beta
+
+| Event | Category | Trigger | Actor | Key Properties | P0/P1 |
+|---|---|---|---|---|---|
+| `invite_code_required` | Beta | invite gate hit | client | — | P0 |
+| `invite_code_entered` | Beta | code entered | client | — | P0 |
+| `invite_code_used` | Beta | valid code consumed | server | `invite_status` | P0 |
+| `invite_code_failed` | Beta | invalid code | server | `failure_reason` | P0 |
+| `waitlist_joined` | Beta | waitlist email submitted | client/server | `city_id` | P0 |
+| `beta_access_granted` | Beta | access granted | server | `beta_cohort` | P0 |
+| `beta_access_denied` | Beta | access denied | server | `reason` | P0 |
+
+### Onboarding
+
+| Event | Category | Trigger | Actor | Key Properties | P0/P1 |
+|---|---|---|---|---|---|
+| `onboarding_started` | Onboarding | enters onboarding | client | — | P0 |
+| `onboarding_step_viewed` | Onboarding | step shown | client | `step_name`, `step_index` | P0 |
+| `onboarding_step_completed` | Onboarding | step finished | client | `step_name` | P0 |
+| `safety_principles_accepted` | Onboarding | accept | client | — | P0 |
+| `city_selected` | Onboarding | city selected | client | `city_id` | P0 |
+| `interests_selected` | Onboarding | interests selected | client | `selected_count` | P0 |
+| `vibe_tags_selected` | Onboarding | vibe selected | client | `selected_count` | P0 |
+| `rhythm_selected` | Onboarding | rhythm selected | client | `rhythm` | P0 |
+| `comfort_composition_selected` | Onboarding | composition selected | client | `comfort_composition` | P0 |
+| `group_size_selected` | Onboarding | group size selected | client | `bucket` | P0 |
+| `host_willingness_selected` | Onboarding | host opt-in | client | `host_willingness` | P1 |
+| `profile_photo_uploaded` | Onboarding | photo uploaded | client | — | P0 |
+| `phone_verification_started` | Onboarding | verify start | client | — | P0 |
+| `phone_verification_completed` | Onboarding | verify done | server | — | P0 |
+| `onboarding_completed` | Onboarding | onboarding done | client/server | — | P0 |
+
+### Profile
+
+| Event | Category | Trigger | Actor | Key Properties | P0/P1 |
+|---|---|---|---|---|---|
+| `profile_viewed` | Profile | profile opened | client | `profile_context` | P0 |
+| `profile_edit_started` | Profile | edit started | client | — | P1 |
+| `profile_updated` | Profile | profile saved | client/server | `fields_changed_keys` | P0 |
+| `public_profile_viewed` | Profile | safe profile opened | client | `profile_context` | P0 |
+| `profile_photo_removed` | Profile | photo removed | client | — | P1 |
+| `privacy_settings_updated` | Profile | privacy updated | client | — | P1 |
+
+### Circle Discovery
+
+| Event | Category | Trigger | Actor | Key Properties | P0/P1 |
+|---|---|---|---|---|---|
+| `circle_discovery_viewed` | Discovery | Discovery opened | client | — | P0 |
+| `circle_card_seen` | Discovery | card in viewport | client | `category_id` | P1 (noise — open §42 #10) |
+| `circle_card_tapped` | Discovery | card tap | client | `category_id` | P0 |
+| `circle_filter_applied` | Discovery | filter applied | client | `category_id`, `rhythm`, `comfort_composition` | P0 |
+| `circle_empty_state_viewed` | Discovery | empty state | client | `filter_context` | P0 |
+| `circle_viewed` | Discovery / Circles | Circle Detail opened | client | `circle_id`, `circle_status` | P0 |
+| `location_privacy_notice_viewed` | Circles | notice shown | client | `circle_id` | P0 |
+| `fit_protection_notice_viewed` | Circles | approval explainer shown | client | `circle_id` | P0 |
+
+### Circle Creation / Host
+
+| Event | Category | Trigger | Actor | Key Properties | P0/P1 |
+|---|---|---|---|---|---|
+| `circle_create_started` | Circle Creation | creation start | client | — | P0 |
+| `circle_create_step_completed` | Circle Creation | step done | client | `step_name` | P0 |
+| `circle_draft_saved` | Circle Creation | draft saved | client/server | — | P0 |
+| `circle_preview_viewed` | Circle Creation | preview shown | client | `has_meeting_location` (boolean) | P0 |
+| `circle_published` | Circle Creation | published | server | `category_id`, `circle_status` | P0 |
+| `circle_pending_review` | Circle Creation | in review | server | — | P0 |
+| `circle_updated` | Circle Creation | circle updated | server | `fields_changed_keys` | P1 |
+| `circle_paused` | Circle Creation | paused (circle-level) | server | — | P0 |
+| `circle_archived` | Circle Creation | archived | server | — | P0 |
+| `circle_removed_for_safety` | Moderation | admin removes circle | admin | `circle_id` (admin scope) | P0 |
+| `first_meeting_scheduled` | Circle Creation | first meeting | server | `circle_id` | P0 |
+| `meeting_updated` | Meetings | meeting updated | server | `fields_changed_keys` | P1 |
+| `meeting_cancelled` | Meetings | cancelled (host) | server | — | P0 |
+
+### Membership Requests
+
+| Event | Category | Trigger | Actor | Key Properties | P0/P1 |
+|---|---|---|---|---|---|
+| `circle_join_started` | Membership | Request modal opened | client | `circle_id` | P0 |
+| `circle_join_blocked_by_requirement` | Membership | gate triggered | client | `requirement_block_reason` | P0 |
+| `circle_join_requested` | Membership | submitted | server | `circle_id` | P0 |
+| `circle_join_cancelled` | Membership | request cancelled | client/server | — | P0 |
+| `membership_request_reviewed` | Membership | host opens request | client | `circle_id` | P0 |
+| `circle_request_approved_for_intro` | Membership | approve intro | server | `circle_id` | P0 |
+| `circle_request_rejected` | Membership | soft reject | server | `circle_id`, `reason_category` | P0 |
+| `circle_request_waitlisted` | Membership | waitlist | server | `circle_id` | P0 |
+| `circle_membership_confirmed` | Membership | intro → member | server | `circle_id` | P0 |
+| `membership_not_confirmed_after_intro` | Membership | intro_attended → not confirmed | server | `circle_id` | P0 |
+
+### Meetings / RSVP
+
+| Event | Category | Trigger | Actor | Key Properties | P0/P1 |
+|---|---|---|---|---|---|
+| `meeting_viewed` | Meetings | meeting detail opened | client | `meeting_id` | P0 |
+| `meeting_location_revealed` | Meetings | exact location shown | client | `meeting_id` (no location value) | P0 |
+| `meeting_rsvp_yes` | Meetings | RSVP going | client/server | `meeting_id` | P0 |
+| `meeting_rsvp_no` | Meetings | RSVP not_going | client/server | `meeting_id` | P0 |
+| `meeting_reminder_sent` | Meetings | reminder sent | server | `reminder_timing_bucket` | P0 |
+| `meeting_reminder_opened` | Meetings | reminder opened | client | — | P0 |
+| `meeting_started` | Meetings | meeting starts | server | — | P0 |
+| `meeting_completed` | Meetings | meeting completed | server | `category_id` | P0 |
+| `attendance_prompt_viewed` | Meetings | host prompt | client | — | P0 |
+| `meeting_attendance_confirmed` | Meetings | attendance confirmed | client/server | `confirmation_source` | P0 |
+| `no_show_recorded` | Meetings | no-show | server | `meeting_id` (internal — Инв. 3) | P0 |
+| `excused_absence_recorded` | Meetings | excused absence | server | `meeting_id` | P1 |
+
+### Belonging
+
+| Event | Category | Trigger | Actor | Key Properties | P0/P1 |
+|---|---|---|---|---|---|
+| `my_circles_opened` | Belonging | home opens | client | `active_circle_count_bucket` | P0 |
+| `circle_home_opened` | Belonging | circle home opened | client | `circle_id` | P0 |
+| `next_meeting_viewed` | Belonging | next meeting card opened | client | `circle_id` | P0 |
+| `circle_membership_paused` | Belonging | member pauses | server | `circle_id` (neutral — Инв. 11) | P0 |
+| `circle_membership_left` | Belonging | member leaves | server | `circle_id` (neutral — Инв. 11) | P0 |
+| `return_to_circle_requested` | Belonging | re-engage after pause | client/server | `circle_id` | P1 |
+| `not_looking_for_new_circles_selected` | Belonging | explicit belonging signal | client | — | P1 |
+
+### Circle Chat
+
+| Event | Category | Trigger | Actor | Key Properties | P0/P1 |
+|---|---|---|---|---|---|
+| `circle_chat_opened` | Chat | chat opens | client | `circle_id` | P0 |
+| `circle_chat_message_sent` | Chat | message sent | client/server | `circle_id`, `message_type` | P0 |
+| `circle_system_message_sent` | Chat | system message | server | `circle_id`, `system_event_type` | P0 |
+| `message_actions_opened` | Chat | message menu | client | — | P1 |
+| `message_reported` | Chat | message report | server | `report_category` | P0 |
+| `circle_chat_frozen` | Chat | chat frozen | admin | `circle_id` | P0 |
+| `circle_chat_access_denied` | Chat | access denied | client | `access_denied_reason` | P0 |
+
+### Safety
+
+| Event | Category | Trigger | Actor | Key Properties | P0/P1 |
+|---|---|---|---|---|---|
+| `report_started` | Safety | report started | client | `target_type` | P0 |
+| `report_created` | Safety | report submitted | server | `report_category`, `report_priority`, `target_type` | P0 |
+| `block_started` | Safety | block started | client | `block_context` | P0 |
+| `block_created` | Safety | block created | server | `block_context` | P0 |
+| `suspicious_activity_flagged` | Safety | system flag | server | `activity_type` | P0 |
+| `velocity_limit_triggered` | Safety | velocity limit | server | `velocity_limit_type` | P0 |
+| `location_privacy_incident_flagged` | Safety | location leak | server | `incident_type` | P0 |
+| `comfort_composition_reported` | Safety | composition issue | server | `circle_id` | P0 |
+| `host_abuse_flagged` | Safety | host abuse signal | server | `flag_type` | P0 |
+
+### Moderation
+
+| Event | Category | Trigger | Actor | Key Properties | P0/P1 |
+|---|---|---|---|---|---|
+| `moderation_queue_viewed` | Moderation | queue opened | admin | — | P0 |
+| `moderation_report_opened` | Moderation | report opened | admin | `report_priority` | P0 |
+| `moderation_action_taken` | Moderation | action executed | admin | `action_type`, `target_type` | P0 |
+| `report_status_updated` | Moderation | status changed | admin | `report_status` | P0 |
+| `circle_removed_for_safety` | Moderation | circle removed | admin | `circle_id` | P0 |
+| `meeting_removed_for_safety` | Moderation | meeting removed | admin | `meeting_id` | P0 |
+| `user_restricted` | Moderation | restrict | admin | — | P0 |
+| `user_banned` | Moderation | ban | admin | — | P0 |
+| `message_hidden` | Moderation | message hidden | admin | — | P0 |
+| `report_escalated` | Moderation | escalation | admin | `report_priority` | P0 |
+| `report_dismissed` | Moderation | dismiss | admin | — | P0 |
+
+### Trust
+
+| Event | Category | Trigger | Actor | Key Properties | P0/P1 |
+|---|---|---|---|---|---|
+| `trust_event_created_internal` | Trust | trust signal | server | `trust_event_type` | P0 (internal) |
+| `verification_badge_earned` | Trust | badge earned | server | `badge_type` | P0 |
+| `reliable_badge_earned` | Trust | reliable badge | server | `badge_type` | P1 |
+| `hosted_before_badge_earned` | Trust | hosted badge | server | `badge_type` | P1 |
+| `circle_member_confirmed` | Trust | member confirmed | server | `circle_id` | P0 |
+| `circle_hosted_successfully` | Trust | hosting threshold | server | `circle_id` | P1 |
+
+### Notifications
+
+| Event | Category | Trigger | Actor | Key Properties | P0/P1 |
+|---|---|---|---|---|---|
+| `notification_created` | Notifications | notification created | server | `notification_type` | P0 |
+| `push_notification_sent` | Notifications | push sent | server | `notification_type` | P0 |
+| `push_notification_opened` | Notifications | push opened | client | `notification_type` | P0 |
+| `notification_viewed` | Notifications | viewed in-app | client | `notification_type` | P0 |
+
+> Forbidden properties для **каждой** строки — §33 baseline (exact location, raw body / description / notes, raw trust score, PII).
 
 ---
 
-## 33. Privacy Boundary *(critical)*
+## 33. Privacy Boundary v2
 
-### Never Track
-exact_location_text · exact_address · exact_lat · exact_lng · arrival_instructions · phone_number · legal_name · date_of_birth · raw message body · application intro_note · host_note · report description · moderation notes · AI detailed summary (если sensitive) · raw `trust_score_internal` · private profile details.
+**Critical section** — binding на RLS v2 §24, Trust v2 §33, Moderation v2 §40.
 
-### Safe to Track
-IDs · enum values · status values · category IDs · city IDs · boolean flags · buckets · counts · funnel steps · broad reason codes.
+### 33.1 Never Track
 
-### Use Buckets Instead of Raw Values
-`capacity_bucket` · `attendee_count_bucket` · `time_to_approval_bucket` · `profile_completeness_bucket` · `reminder_timing_bucket`.
+- `exact_location_text`;
+- `exact_address`;
+- `exact_lat`;
+- `exact_lng`;
+- `arrival_instructions`;
+- `phone_number`;
+- `legal_name`;
+- `date_of_birth`;
+- raw message body;
+- `intro_note`;
+- `host_note`;
+- report description;
+- moderation notes (`reports.admin_resolution_note`, `moderation_actions.reason`);
+- AI detailed summary if sensitive (`reports.ai_summary`);
+- raw `trust_score_internal` (Инв. 3);
+- private profile details (`profile_private_details.*`);
+- **removal / rejection history** (Инв. 12);
+- **other circles** as social comparison (Инв. 13).
 
-### Location Rule
-**Analytics must never receive exact location.** Approximate city/area/`city_id` допустим. (Инвариант 1/9; consistent с [`07_SECURITY_RLS.md`](07_SECURITY_RLS.md) §22, [`09_MODERATION.md`](09_MODERATION.md) §36.)
+### 33.2 Safe to Track
 
----
+- IDs (UUIDs);
+- enum values;
+- status values;
+- category IDs;
+- city IDs;
+- `rhythm` enum;
+- `comfort_composition` enum;
+- boolean flags;
+- buckets;
+- counts;
+- funnel steps;
+- broad reason codes.
 
-## 34. Data Quality & QA
+### 33.3 Use Buckets Instead of Raw Values
 
-**Checklist:** каждый P0 flow имеет события · имена консистентны · нет дублей с разными именами · properties документированы · sensitive исключены · test env отделён · staging события `environment=staging` · production `environment=production` · идентичность пользователя консистентна · anon→authenticated identity merge обработан · dashboards используют правильные события · success metrics проверены вручную.
+Examples:
 
-**QA test cases:** signup шлёт `signup_started/completed` · onboarding step-события 1 раз/шаг · `event_viewed` содержит event_id/category_id без location · `application_created` без intro note · `chat_message_sent` без body · `report_created` без description · `moderation_action_taken` без admin note · approved location reveal **не** шлёт exact location в analytics.
+- `capacity_bucket` (1–4 / 5–8 / 9–12);
+- `member_count_bucket`;
+- `request_count_bucket`;
+- `time_to_approval_bucket`;
+- `profile_completeness_bucket`;
+- `reminder_timing_bucket`;
+- `attendee_count_bucket`;
+- `repeat_meeting_number_bucket`;
+- `active_circle_count_bucket`.
 
----
+### 33.4 Location Rule
 
-## 35. Analytics Implementation Notes *(guidance, без кода)*
+> **Analytics must never receive exact meeting location.** Approximate city / area / `city_id` acceptable. (Инв. 1, Инв. 9; consistent с RLS v2 §24, Moderation v2 §40.)
 
-- **Mobile:** PostHog client после старта app · identify после auth · reset identity на logout · track screen views/actions · избегать sensitive props.
-- **Backend/Edge Functions:** server-side события для критичных операций — `application_approved`, `event_published`, `report_created`, `moderation_action_taken`, `attendance_confirmed`, `no_show_recorded`.
-- **Admin:** admin-события трекаются отдельно (проект — Open Q); без sensitive report деталей; action types + timings.
-- **Environments:** local / staging / production; нет production-аналитики из local (если явно не сконфигурировано); staging отделён; test users/cohorts помечены.
-
----
-
-## 36. Closed Beta Success Metrics
-
-| Категория | Цель |
-|-----------|------|
-| **Activation** | 60%+ signup завершают onboarding · 40%+ onboarded смотрят ≥1 событие · 40%+ onboarded подают ≥1 заявку |
-| **Attendance** | 25%+ onboarded посещают ≥1 событие за 14 дней · 20%+ attendees посещают второе · no-show rate управляем и понят |
-| **Host** | 20–50 курируемых hosts в начальной бете · повторные события · события получают заявки · hosts понимают approval |
-| **Safety** | report/block rate мониторится · high/critical reviewed быстро · нет нерешённых critical инцидентов · unsafe events removable · users чувствуют себя безопасно |
-| **Product Understanding** | users понимают «не dating app» · понимают approval · понимают location privacy · знают где report/block |
-
----
-
-## 37. Qualitative Research Metrics
-
-Собирать в бете: user interview notes · host feedback · post-event survey · safety perception · почему applied/не applied · почему host approved/rejected · точки путаницы · ощущается ли как dating · ясна ли location privacy · справедлив ли approval.
-
-**Survey questions:** 1) Поняли ли вы, когда раскроется точная локация? 2) Чувствовали ли безопасность? 3) Был ли понятен approval flow? 4) Похоже ли на dating app? 5) Пойдёте ли на другое событие? 6) Что заставило колебаться? 7) Какой trust-сигнал был важнее всего? 8) Легко ли найти report/block?
-
----
-
-## 38. Alerts / Monitoring
-
-**Возможные alerts:** critical report created · high-priority report для события в ≤24ч · `event_removed_for_safety` · спайк reports · suspicious velocity spike · много failed invite attempts · `chat_frozen` · `user_banned` · много no-shows на одном событии · спайк notification failures.
-**Rules:** alerting может стартовать manual/simple в бете; founder/admin ревьюит safety-alerts; не каждое событие требует alert.
-
----
-
-## 39. Analytics Review Cadence
-
-- **Daily (ранняя бета):** signups · onboarding completion · events created · applications · reports/blocks · high/critical safety.
-- **Weekly:** activation funnel · host funnel · attendance/no-show · repeat usage · category performance · moderation response time · qualitative feedback.
-- **После каждого event batch:** event completion · attendance · no-shows · reports · host feedback · user feedback · reconnect behavior.
+`meeting_location_revealed` — это **boolean event** (что reveal случился); **значение exact location в payload не передаётся**. Schema-level validation должна refuse forbidden columns; observability alerts на sensitive field в payload.
 
 ---
 
-## 40. Decision Framework
+## 34. Data Quality & QA v2
 
-| Сигнал | Investigate |
-|--------|-------------|
-| Низкое onboarding completion | Много шагов · phone verification friction · photo upload issue · неясная safety копи |
-| Много views, мало applications | Неинтересные события · approval пугает · неопределённость location · нет доверия host |
-| Много applications, мало approvals | Host review friction · недостаточные профили · host anxiety · supply/demand mismatch |
-| Много approvals, мало attendance | Reminders · no-show friction · качество событий · trust/commitment |
-| Высокие reports/blocks | Safety issues · риск категории события · chat abuse · слабые onboarding-ожидания |
-| Users думают, что это dating | Копи · визуальный язык · категории · дизайн профиля · «match» терминология |
+### Checklist
+
+- каждый P0 flow имеет события;
+- event names consistent (snake_case, past tense);
+- нет дублей с разными именами (особенно при v1→v2 transition);
+- properties documented;
+- sensitive data excluded;
+- test environment separated (`environment` property);
+- staging events marked;
+- production events marked;
+- anonymous / authenticated identity merge handled (open §42 #14);
+- dashboards используют correct events (v2 vocabulary);
+- internal / test users excluded;
+- **старая event-first taxonomy не используется** как current — только migration history.
+
+### QA test cases
+
+- [ ] `circle_viewed` содержит `circle_id` но **без** location values;
+- [ ] `circle_join_requested` **не** содержит `intro_note`;
+- [ ] `meeting_location_revealed` **не** содержит exact location value (только `meeting_id`);
+- [ ] `circle_chat_message_sent` **не** содержит body;
+- [ ] `report_created` **не** содержит description;
+- [ ] `moderation_action_taken` **не** содержит admin note (`reason`);
+- [ ] `no_show_recorded` **не** public label (internal только — Инв. 12);
+- [ ] `circle_membership_left` / `circle_membership_paused` **не** negative public events (Инв. 11 — neutral в Trust v2 §7.6-7.7);
+- [ ] `circle_card_seen` properly gated (P1, noise concern — open §42 #10);
+- [ ] dashboard queries **не** ссылаются на removed v1 event names (`event_viewed`, `application_*`).
 
 ---
 
-## 41. Analytics Risks
+## 35. Analytics Implementation Notes v2
+
+> Future implementation guidance only. Implementation — после Sprint Backlog v2 + Sprint 2.
+
+### Mobile
+
+- PostHog initialized later (после Sprint 2 backlog approval);
+- identify после auth;
+- reset on logout;
+- track screen views;
+- track action events;
+- avoid sensitive props (§33);
+- **`meeting_location_revealed` — boolean event, без location value в payload**.
+
+### Backend / Edge Functions
+
+Track server-side для critical operations (источник истины — server-side для тех, кто не передоверяется клиенту):
+
+- `circle_join_requested`;
+- `circle_request_approved_for_intro`;
+- `circle_membership_confirmed`;
+- `meeting_rsvp_yes`;
+- `meeting_attendance_confirmed`;
+- `no_show_recorded`;
+- `report_created`;
+- `moderation_action_taken`;
+- `circle_removed_for_safety`;
+- `meeting_removed_for_safety`.
+
+### Admin
+
+- track admin dashboard usage **отдельно** (project / namespace — open §42 #8);
+- **без sensitive report details**;
+- track action types / timings только.
+
+### Environments
+
+- `local`;
+- `staging`;
+- `production`.
+
+### Rules
+
+- **no production analytics from local** (если явно не configured);
+- staging separated;
+- test users marked (`beta_cohort = 'internal_test'` или similar).
+
+---
+
+## 36. Closed Beta Success Metrics v2
+
+### Activation
+
+- **60%+** signup users complete onboarding;
+- **40%+** onboarded users view at least one circle;
+- **30–40%+** onboarded users request a place.
+
+### Circle Entry
+
+- meaningful request → intro approval rate (cohort-dependent);
+- users understand "request place" (qualitative — §37);
+- approval не feels like human ranking (qualitative — §37; Core v2 §19).
+
+### Attendance
+
+- **25%+** approved users attend first meeting в течение 14 days;
+- **20%+** attendees attend second meeting;
+- no-show rate manageable (target — open §42 #15).
+
+### Belonging
+
+- some circles reach **2+ completed meetings**;
+- some members return to My Circles;
+- users describe **belonging**, не just attendance (qualitative — §37);
+- stable active circles emerge.
+
+### Host
+
+- curated hosts create circles;
+- hosts review requests (response time monitored);
+- hosts understand **fit protection** (Core v2 §19);
+- hosts schedule recurring meetings.
+
+### Safety
+
+- report / block rate monitored (Dashboard 5);
+- high / critical reports reviewed quickly (Moderation v2 §36 SLA);
+- no unresolved critical safety incidents;
+- unsafe circles / meetings can be removed;
+- users report feeling safe (qualitative — §37).
+
+### Product Understanding
+
+- users understand **circles** (не события / не dating app);
+- users understand **location privacy** (когда раскрывается);
+- users understand **no open DMs** (Инв. 2);
+- users **do not perceive product as dating app**;
+- users **do not perceive product as people marketplace** (Инв. 13).
+
+---
+
+## 37. Qualitative Research Metrics v2
+
+### Collect during beta
+
+- user interview notes;
+- host feedback;
+- post-meeting survey;
+- safety perception;
+- circle concept understanding;
+- why users requested / did not request;
+- why hosts approved / rejected;
+- approval anxiety (Core v2 §19);
+- comfort composition clarity (Core v2 §21);
+- whether product feels too bureaucratic;
+- whether product feels **alive enough** (Core v2 §9 — controlled unpredictability);
+- whether My Circles feels valuable.
+
+### Suggested survey questions
+
+1. Что такое круг в этом продукте?
+2. Чем круг отличается от события?
+3. Было ли понятно, зачем нужно подтверждение?
+4. Когда открывается точное место встречи?
+5. Чувствовали ли вы себя безопасно?
+6. Это ощущалось как dating app?
+7. Это ощущалось как выбор людей?
+8. Хотели бы вы прийти на вторую встречу?
+9. Что вызвало недоверие?
+10. Что дало ощущение принадлежности?
+
+---
+
+## 38. Alerts / Monitoring v2
+
+### Possible alerts
+
+- critical report created;
+- high priority report для meeting starting within 24h;
+- location privacy incident (`location_privacy_incident_flagged`);
+- `circle_removed_for_safety`;
+- `meeting_removed_for_safety`;
+- unusual report spike;
+- suspicious membership request velocity;
+- many failed invite attempts (enumeration signal);
+- `circle_chat_frozen`;
+- `user_banned`;
+- many no-shows на одной meeting;
+- repeated host removals (`frequent_host_removals` — Moderation v2 §29);
+- comfort composition report.
+
+### Rules
+
+- simple / manual alerting acceptable в бете;
+- founder / admin reviews safety alerts (cadence — §39);
+- **не каждое событие требует alert** — alert fatigue хуже отсутствия alert.
+
+---
+
+## 39. Analytics Review Cadence v2
+
+### Daily (early beta)
+
+**Review:**
+
+- signups;
+- onboarding completion;
+- circles created;
+- membership requests;
+- intro approvals;
+- reports / blocks;
+- high / critical safety issues.
+
+### Weekly
+
+**Review:**
+
+- activation funnel;
+- circle supply;
+- request conversion;
+- meeting attendance;
+- repeat attendance;
+- My Circles usage;
+- moderation response time;
+- qualitative feedback.
+
+### After each meeting batch
+
+**Review:**
+
+- meeting completion;
+- attendance;
+- no-shows;
+- reports;
+- host feedback;
+- member feedback;
+- repeat participation.
+
+---
+
+## 40. Decision Framework v2
+
+### Low onboarding completion
+
+**Investigate:**
+
+- too many steps;
+- vibe / rhythm unclear;
+- comfort composition friction;
+- phone verification friction;
+- unclear safety copy.
+
+### High circle views but low requests
+
+**Investigate:**
+
+- circles not appealing;
+- request-place feels intimidating (approval anxiety);
+- location uncertainty;
+- lack of trust in host;
+- vibe unclear.
+
+### High requests but low approvals
+
+**Investigate:**
+
+- host review friction;
+- profiles insufficient;
+- host anxiety;
+- supply / demand mismatch;
+- approval feels too exclusive.
+
+### High approvals but low attendance
+
+**Investigate:**
+
+- reminders;
+- no-show friction;
+- meeting quality;
+- location uncertainty;
+- commitment too high.
+
+### High first attendance but low second attendance
+
+**Investigate:**
+
+- circle fit;
+- host quality;
+- meeting quality;
+- social temperature too low / high (Core v2 §9);
+- membership confirmation UX.
+
+### High reports / blocks
+
+**Investigate:**
+
+- safety issues;
+- chat abuse;
+- host abuse;
+- comfort composition issues;
+- weak onboarding expectations.
+
+### Users think it is dating app
+
+**Investigate:**
+
+- copy;
+- visual language;
+- profile design;
+- "vibe" wording;
+- composition display;
+- no-DM clarity (Инв. 2).
+
+### Users think it is people marketplace (Инв. 13)
+
+**Investigate:**
+
+- member visibility;
+- profile emphasis;
+- discovery layout;
+- circle vs people hierarchy.
+
+---
+
+## 41. Analytics Risks v2
 
 | Risk | Impact | Mitigation |
-|------|--------|------------|
-| Sensitive data в analytics | Критич. | Privacy boundary §33; QA-тесты |
-| Exact location leak | Высокий | Location rule; bucket'и; QA |
-| Raw message body tracked | Высокий | Запрет в taxonomy; QA |
-| Report descriptions tracked | Высокий | Запрет; admin отдельно |
-| Raw trust score tracked | Высокий | Forbidden; internal-only |
-| Vanity metrics отвлекают от trust loop | Средний | Metric hierarchy; North Star фокус |
-| Over-optimizing engagement | Средний | Философия §4; safety-first |
-| Недостаточно safety-метрик | Высокий | L5/Dashboard 5 обязательны |
-| Дубли/несогласованные имена | Средний | Naming conventions §8; QA |
-| Dashboards вводят в заблуждение (малый sample) | Средний | Buckets; качественные данные; осторожные выводы |
-| Игнор качественной обратной связи | Средний | §37 cadence |
-| Пропущены события в критичных flows | Высокий | Instrumentation map §30/§31 |
-| Admin analytics утекают sensitive | Высокий | Отдельный проект (Open Q); без notes |
-| Identity merge ошибки | Средний | Anon→auth merge правило §35 |
-| Staging mixed с production | Средний | `environment` property; разделение |
+|---|---|---|
+| Sensitive data sent to analytics | критич. | Privacy boundary §33; schema validation; observability alerts |
+| Exact location leak | **критич.** (Инв. 1) | Location rule §33.4; `meeting_location_revealed` — boolean only; QA test cases |
+| Raw message body tracked | высокий | Запрет в taxonomy; QA |
+| Report descriptions tracked | высокий | Запрет; admin-only path |
+| Raw trust score tracked | критич. (Инв. 3) | Forbidden; internal-only |
+| Vanity metrics distract from belonging | средний | Metric hierarchy §6; North Star focus |
+| Over-optimizing discovery | средний | Belonging Health dashboard (§29 Dashboard 8) |
+| **Infinite discovery pressure** (Инв. 14) | высокий | "Circles per user" KPI запрещён (PRD v2 §22.6); belonging — success state |
+| Insufficient safety metrics | высокий | L6 / Dashboard 5 обязательны |
+| Duplicate event names (v1 / v2 collision) | средний | Vocabulary map §0; QA |
+| Dashboards misleading due to small beta | средний | Buckets; qualitative context (§37); careful inference |
+| Qualitative feedback ignored | средний | §39 cadence; founder review |
+| Critical flows missing instrumentation | высокий | Instrumentation map §30 / §31 |
+| Admin analytics leaking sensitive context | высокий | Separate project (open §42 #8); no notes |
+| Identity merge errors | средний | Anon→auth merge rule §35 |
+| Staging data mixed with production | средний | `environment` property; разделение |
+| **Old event-first taxonomy leaking into v2** | средний | Vocabulary map §0; QA test cases §34; dashboard audit |
+| **`circle_left` / `circle_paused` treated as negative** | критич. (Инв. 11) | Trust v2 weight=0 verified; dashboard copy review |
+| `comfort_composition` misused analytically | высокий | Enum tracked but не для public ranking; aggregate only |
 
 ---
 
-## 42. Open Analytics Questions
+## 42. Open Analytics Questions v2
 
 | # | Вопрос | Связь |
-|---|--------|-------|
-| Q-NSM-FORMULA | Точная формула safety quality multiplier? | §5 |
-| Q-ACTIVATION | Hard activation = first application или first attendance? | §12 |
-| OD-10 | Какой beta city/city_id первый? | §25/§36 |
-| Q-COMPLETE-BUCKET | Какие profile completeness buckets трекать? | §10/§33 |
-| Q-TIER-TRACK | Трекать ли `trust_tier` внутренне в analytics? | §24 |
-| Q-NS-LEVEL | No-show — user-level event или aggregate only? | §19/§24 |
-| AQ-ADMIN-PROJECT | Admin-события в том же PostHog-проекте или отдельном? | §35 |
-| Q-REQUIRED-PROPS | Какие properties обязательны для каждого события? | §9 |
-| Q-CARD-SEEN | Трекать `event_card_seen` или только tap (шум)? | §15/§32 |
-| Q-ALERT-THRESH | Пороги для alert-спайков? | §38 |
-| Q-SURVEY-TOOL | Какой инструмент/процесс для qualitative survey? | §37 |
-| Q-IDENTITY-MERGE | Как мёрджить anon pre-signup и authenticated analytics? | §34/§35 |
-| OD-9 | Retention policy для analytics-данных? | §35 |
-| Q-SAFE-EVENT-ID | Слать ли event_id для safety-событий или только category/city? | §22/§33 |
-| Q-EXCLUDE-INTERNAL | Как исключать internal/admin/test users из dashboards? | §34 |
+|---|---|---|
+| 1 (Q-NSM-FORMULA) | Точная формула safety quality multiplier? | §5 |
+| 2 (Q-NSM-CHOICE) | "Trusted recurring offline interactions" или "active trusted circles"? (A vs B) | §5 |
+| 3 (Q-ACTIVATION) | Hard activation = first request, first meeting, или second meeting? | §12 |
+| 4 (OD-10) | Какой beta city / community первый? | §25 / §36 |
+| 5 (Q-COMPLETE-BUCKET) | Какие profile completeness buckets трекать? | §10 / §33 |
+| 6 (Q-TIER-TRACK) | Трекать ли `trust_tier` внутренне в analytics? | §24 |
+| 7 (Q-NS-LEVEL) | `no_show_recorded` — user-level event или aggregate only? | §19 / §24 |
+| 8 (AQ-ADMIN-PROJECT) | Admin analytics — same PostHog project или отдельный? | §35 |
+| 9 (Q-REQUIRED-PROPS) | Какие properties обязательны для каждого event? | §9 |
+| 10 (Q-CARD-SEEN) | Трекать `circle_card_seen` или только tap (шум)? | §15 / §32 |
+| 11 (Q-ALERT-THRESH) | Пороги для alert spike? | §38 |
+| 12 (Q-SURVEY-TOOL) | Какой инструмент / процесс для qualitative survey? | §37 |
+| 13 (Q-ATTENDANCE-DISPUTE) | Attendance disputes в P0 или P1? | §19 |
+| 14 (Q-IDENTITY-MERGE) | Как мёрджить anon pre-signup и authenticated analytics? | §34 / §35 |
+| 15 (Q-NO-SHOW-TARGET) | Какой target no-show rate в бете? | §36 |
+| 16 (Q-SAFE-EVENT-ID) | Слать ли `circle_id` / `meeting_id` для safety events или только category / city? | §22 / §33 |
+| 17 (OD-9) | Retention policy для analytics data? | §35 |
+| 18 (Q-EXCLUDE-INTERNAL) | Как исключать internal / admin / test users из dashboards? | §34 |
+| 19 (Q-PAUSE-LEAVE-CHURN) | Как treat `circle_left` / `circle_paused` в churn calc? (binding answer: NOT churn — Инв. 11) | §20 / §28 |
+| 20 (Q-COMFORT-ANALYTICS) | Трекать ли `comfort_composition` как enum в analytics? (binding: yes as enum, но не для public ranking) | §15 / §33 |
+| 21 (Q-SOCIAL-TEMP) | Как измерять "social temperature" (Core v2 §9)? | §40 |
 
 ---
 
-## 43. Analytics Checklist Before Beta
+## 43. Analytics Checklist Before Beta v2
 
-☐ North Star определена ☐ activation funnel определён ☐ onboarding events ☐ discovery events ☐ application/approval events ☐ attendance events ☐ host funnel ☐ chat events ☐ safety events ☐ moderation events ☐ trust events boundary ☐ beta/invite events ☐ notification events ☐ privacy boundary review ☐ dashboards спланированы ☐ QA test cases ☐ staging vs production разделение ☐ internal/test user exclusion ☐ нет exact location ☐ нет raw message/report/moderation content ☐ нет raw trust score.
+Все обязательны:
+
+- [ ] North Star Metric defined;
+- [ ] activation funnel defined;
+- [ ] onboarding events defined;
+- [ ] circle discovery events defined;
+- [ ] circle request events defined;
+- [ ] membership events defined;
+- [ ] meeting / RSVP / attendance events defined;
+- [ ] My Circles / belonging events defined;
+- [ ] circle chat events defined;
+- [ ] safety events defined;
+- [ ] moderation events defined;
+- [ ] trust boundary defined;
+- [ ] beta / invite events defined;
+- [ ] notification events defined;
+- [ ] privacy boundary reviewed (§33);
+- [ ] dashboards planned (§29);
+- [ ] QA test cases defined (§34);
+- [ ] staging vs production separation planned;
+- [ ] internal / test user exclusion planned;
+- [ ] **no exact location tracked** (Инв. 1);
+- [ ] **no raw message / report / moderation content tracked** (Инв. 12);
+- [ ] **no raw trust score tracked** (Инв. 3);
+- [ ] **old event-first taxonomy removed / replaced** (§0 vocabulary map).
 
 ---
 
 ## 44. Summary
 
-- Analytics измеряет core **trusted offline social loop**, не vanity engagement.
-- **North Star — trusted offline interactions**; safety-метрики — first-class product metrics.
-- Privacy boundary строгий: нет exact location / raw message / report-moderation content / raw trust score.
-- Определены event taxonomy (>80 events), funnels, dashboards (7), instrumentation maps (flow+screen), QA, beta success metrics, decision framework.
-- Нерешённые развилки — §42; следующий документ: [`/docs/11_SPRINT_BACKLOG.md`](11_SPRINT_BACKLOG.md).
+**Analytics v2:**
 
-> Напоминание: [`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md) — first source of truth; все документы и эта analytics-модель ему подчинены. Код/SQL/migrations/SDK не создавались.
+- **измеряет core trusted recurring circle loop** (Find vibe → Request → Enter → Attend → Belong → Trusted graph).
+- **North Star — trusted recurring offline interactions** (composite formula §5).
+- **Belonging is a success state** (Инв. 14) — "circles per user" KPI запрещён.
+- **Safety metrics — first-class product metrics** (Dashboard 5 + L6 hierarchy).
+- **Analytics privacy boundary строгий** — no exact location, no raw message / report / moderation content, no raw trust score, no removal / rejection history.
+- **Closed beta dashboards defined** (8 dashboards: Founder Overview, Activation, Supply / Host, Demand / Member, Safety, Beta, Trust, Belonging).
+- **No analytics SDK is connected yet.** Implementation — после Sprint 2 backlog approval.
+
+**Next required document:**
+
+> Update [`/docs/11_SPRINT_BACKLOG.md`](11_SPRINT_BACKLOG.md) to **Sprint Backlog v2** ([doc 27 §24 Phase D step 12](27_PRODUCT_CORE_V2_DOCS_UPDATE_PLAN.md)).
+
+Sprint Backlog v2 specifies:
+
+- circle-first epic structure;
+- Sprint 2 scope (auth / onboarding / waitlist) на основе PRD v2;
+- task estimation aligned с circle / meeting primitives;
+- safety / trust / moderation tasks aligned с docs 07 / 08 / 09 v2;
+- analytics instrumentation tasks aligned с этой Analytics v2;
+- Phase gate criteria для Sprint 2 → Sprint 3 (circle discovery + creation).
+
+После Sprint Backlog v2 → **Sprint 2 phase gate** (doc 22) → Sprint 2 product implementation может начаться.
+
+---
+
+> Reminder: [`/docs/00_PRODUCT_CORE.md`](00_PRODUCT_CORE.md) (Product Core v2) — **first source of truth**. Этот документ ему, PRD v2 §22, RLS v2 §24, Trust v2 §33, Moderation v2 §40 подчинён. Любой analytics event, нарушающий §33 privacy boundary, или dashboard, измеряющий "circles per user" как retention KPI, — **отклоняется на review**. Никакой analytics implementation / SDK подключений / production tracking events в code до Sprint 2 backlog approved.

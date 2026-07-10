@@ -18,4 +18,16 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, 'node_modules'),
 ];
 
+// 3. Stub optional deps Metro can't resolve.
+// @supabase/supabase-js references an optional `@opentelemetry/api` import
+// (tracing) that we do not use. Metro cannot resolve optional deps, so map it to
+// an empty module for every platform — otherwise web/native bundling fails with
+// "Unable to resolve @opentelemetry/api".
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === '@opentelemetry/api') {
+    return { type: 'empty' };
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = config;
