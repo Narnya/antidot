@@ -12,7 +12,6 @@ import { colors, radius, spacing, typography } from '@social-events/ui';
 import { MOCK_USER_ID, mockActivitiesRepository } from '../data/mockRepository';
 import type { ActivityView } from '../data/repository';
 import { formatWhen, kindEmoji } from '../lib/format';
-import { spotsRemaining, spotsTaken } from '../lib/slots';
 
 const repo = mockActivitiesRepository;
 
@@ -25,7 +24,7 @@ export function ActivityDetailScreen({ activityId }: Props) {
   const [claiming, setClaiming] = useState(false);
 
   const load = useCallback(async () => {
-    const next = await repo.getActivity(activityId);
+    const next = await repo.getActivity(activityId, MOCK_USER_ID);
     setView(next);
     setLoading(false);
   }, [activityId]);
@@ -79,13 +78,11 @@ function DetailBody({
   claiming: boolean;
   onClaim: () => void;
 }) {
-  const { activity, group, claims } = view;
-  const remaining = spotsRemaining(activity, claims);
-  const taken = spotsTaken(claims);
+  const { activity, group } = view;
+  const remaining = view.spotsRemaining;
+  const taken = view.spotsTaken;
   const full = remaining === 0;
-  const alreadyGoing = claims.some(
-    (c) => c.userId === MOCK_USER_ID && (c.status === 'going' || c.status === 'attended'),
-  );
+  const alreadyGoing = view.mine !== null;
   const disabled = claiming || full || alreadyGoing;
   const label = claiming
     ? 'Записываем…'

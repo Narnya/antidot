@@ -10,7 +10,13 @@ import type { Activity, AreaLabel, Group, Id, SlotClaim } from '../lib/model';
 export interface ActivityView {
   activity: Activity;
   group: Group;
+  /** Authoritative spot counts (from the roster for members, from a counts RPC for non-members). */
+  spotsTaken: number;
+  spotsRemaining: number;
+  /** Roster — populated for group members; empty for non-members (privacy: no people list). */
   claims: SlotClaim[];
+  /** The current user's own claim on this activity, if any. */
+  mine: SlotClaim | null;
 }
 
 export interface CreateActivityInput {
@@ -32,7 +38,7 @@ export interface ActivitiesRepository {
   listMyActivities(userId: Id): Promise<ActivityView[]>;
   /** Open slots across the city the user can claim — the feed / объявления. */
   listOpenInCity(userId: Id): Promise<ActivityView[]>;
-  getActivity(activityId: Id): Promise<ActivityView | null>;
+  getActivity(activityId: Id, userId: Id): Promise<ActivityView | null>;
   createActivity(input: CreateActivityInput): Promise<Activity>;
   /**
    * Claim a spot. Whether it counts as a 'member' or 'overflow' claim (the pull

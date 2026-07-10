@@ -8,7 +8,6 @@ import { colors, radius, spacing, typography } from '@social-events/ui';
 
 import type { ActivityView } from '../data/repository';
 import { formatWhen, kindEmoji } from '../lib/format';
-import { spotsRemaining } from '../lib/slots';
 
 type Props = {
   view: ActivityView;
@@ -19,8 +18,8 @@ type Props = {
 };
 
 export function ActivityCard({ view, claimed, claiming, onClaim, onOpen }: Props) {
-  const { activity, group, claims } = view;
-  const remaining = spotsRemaining(activity, claims);
+  const { activity, group } = view;
+  const remaining = view.spotsRemaining;
   const full = remaining === 0;
   const disabled = claimed || full || claiming;
 

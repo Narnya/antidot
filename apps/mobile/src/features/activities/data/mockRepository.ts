@@ -2,7 +2,7 @@
 // the create / claim loop works without a live Supabase project. Replaced by a
 // Supabase-backed implementation later (ACT-00X). Not for production.
 import type { Activity, Group, GroupMembership, Id, SlotClaim } from '../lib/model';
-import { canClaim, isSeekingOverflow } from '../lib/slots';
+import { canClaim, isSeekingOverflow, spotsRemaining, spotsTaken } from '../lib/slots';
 import type { ActivitiesRepository, ActivityView, CreateActivityInput } from './repository';
 
 /** The signed-in user in mock mode (screens read this until real auth is wired). */
@@ -64,10 +64,21 @@ function claimsFor(activityId: Id): SlotClaim[] {
   return claims.filter((c) => c.activityId === activityId);
 }
 
-function toView(activity: Activity): ActivityView {
+function toView(activity: Activity, userId: Id): ActivityView {
   const group = groups.find((g) => g.id === activity.groupId);
   if (!group) throw new Error(`group_not_found:${activity.groupId}`);
-  return { activity, group, claims: claimsFor(activity.id) };
+  const claims = claimsFor(activity.id);
+  const mine =
+    claims.find((c) => c.userId === userId && (c.status === 'going' || c.status === 'attended')) ??
+    null;
+  return {
+    activity,
+    group,
+    claims,
+    spotsTaken: spotsTaken(claims),
+    spotsRemaining: spotsRemaining(activity, claims),
+    mine,
+  };
 }
 
 export class MockActivitiesRepository implements ActivitiesRepository {
@@ -79,22 +90,21 @@ export class MockActivitiesRepository implements ActivitiesRepository {
     return activities
       .filter((a) => a.status === 'scheduled' && isMemberOf(a.groupId, userId))
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-      .map(toView);
+      .map((a) => toView(a, userId));
   }
 
   async listOpenInCity(userId: Id): Promise<ActivityView[]> {
     // Feed / объявления: overflow-open activities from groups the user is NOT in,
     // still upcoming with spots remaining. City-wide (product decision 2026-07).
     return activities
-      .filter((a) => !isMemberOf(a.groupId, userId))
-      .map(toView)
-      .filter((v) => isSeekingOverflow(v.activity, v.claims))
-      .sort((a, b) => a.activity.startsAt.localeCompare(b.activity.startsAt));
+      .filter((a) => !isMemberOf(a.groupId, userId) && isSeekingOverflow(a, claimsFor(a.id)))
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+      .map((a) => toView(a, userId));
   }
 
-  async getActivity(activityId: Id): Promise<ActivityView | null> {
+  async getActivity(activityId: Id, userId: Id): Promise<ActivityView | null> {
     const activity = activities.find((a) => a.id === activityId);
-    return activity ? toView(activity) : null;
+    return activity ? toView(activity, userId) : null;
   }
 
   async createActivity(input: CreateActivityInput): Promise<Activity> {

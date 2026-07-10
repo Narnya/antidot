@@ -36,3 +36,8 @@ export {
   mockActivitiesRepository,
   MOCK_USER_ID,
 } from './data/mockRepository';
+export {
+  SupabaseActivitiesRepository,
+  supabaseActivitiesRepository,
+} from './data/supabaseRepository';
+export { getActivitiesRepository } from './data/getRepository';

@@ -12,7 +12,6 @@ import { MOCK_USER_ID, mockActivitiesRepository } from '../data/mockRepository';
 import type { ActivityView } from '../data/repository';
 import { formatWhen, kindEmoji } from '../lib/format';
 import type { Group } from '../lib/model';
-import { spotsRemaining, spotsTaken } from '../lib/slots';
 
 const repo = mockActivitiesRepository;
 
@@ -89,8 +88,8 @@ export function MyCirclesScreen() {
                   <Text style={styles.emptyRow}>Пока нет активностей</Text>
                 ) : (
                   acts.map((v) => {
-                    const remaining = spotsRemaining(v.activity, v.claims);
-                    const taken = spotsTaken(v.claims);
+                    const remaining = v.spotsRemaining;
+                    const taken = v.spotsTaken;
                     return (
                       <Pressable
                         key={v.activity.id}
