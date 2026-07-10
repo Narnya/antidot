@@ -8,10 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, radius, spacing, typography } from '@social-events/ui';
 
-import { MOCK_USER_ID, mockActivitiesRepository } from '../data/mockRepository';
 import type { ActivityKind, Group } from '../lib/model';
-
-const repo = mockActivitiesRepository;
+import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
 const KIND_OPTIONS: { kind: ActivityKind; label: string }[] = [
   { kind: 'football', label: '⚽ Футбол' },
@@ -38,6 +36,7 @@ function buildWhenPresets(): { label: string; iso: string }[] {
 
 export function CreateActivityScreen() {
   const router = useRouter();
+  const { repo, userId } = useActivitiesRepo();
   const [presets] = useState(buildWhenPresets);
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupId, setGroupId] = useState<string | null>(null);
@@ -52,7 +51,7 @@ export function CreateActivityScreen() {
 
   useEffect(() => {
     void (async () => {
-      const gs = await repo.listMyGroups(MOCK_USER_ID);
+      const gs = await repo.listMyGroups(userId);
       setGroups(gs);
       const first = gs[0];
       if (first) {
@@ -60,7 +59,7 @@ export function CreateActivityScreen() {
         setArea(first.area);
       }
     })();
-  }, []);
+  }, [repo, userId]);
 
   const selectGroup = (g: Group) => {
     setGroupId(g.id);
@@ -81,7 +80,7 @@ export function CreateActivityScreen() {
     try {
       const created = await repo.createActivity({
         groupId,
-        createdBy: MOCK_USER_ID,
+        createdBy: userId,
         title: title.trim(),
         kind,
         area: area.trim(),

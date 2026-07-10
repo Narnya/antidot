@@ -29,9 +29,6 @@ export default function Index() {
       <Link href="/placeholder" style={styles.link}>
         (modals) → /placeholder
       </Link>
-      <Link href="/circles" style={styles.protoLink} testID="index-open-proto">
-        ▶ Прототип: Мои круги (ACT)
-      </Link>
     </ScrollView>
   );
 }
@@ -39,5 +36,4 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 },
   link: { fontSize: 14, color: '#2F5BFF' },
-  protoLink: { fontSize: 16, fontWeight: '700', color: '#111111', marginTop: 8 },
 });

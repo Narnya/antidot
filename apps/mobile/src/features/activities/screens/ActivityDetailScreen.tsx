@@ -9,25 +9,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, radius, spacing, typography } from '@social-events/ui';
 
-import { MOCK_USER_ID, mockActivitiesRepository } from '../data/mockRepository';
 import type { ActivityView } from '../data/repository';
 import { formatWhen, kindEmoji } from '../lib/format';
-
-const repo = mockActivitiesRepository;
+import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
 type Props = { activityId: string };
 
 export function ActivityDetailScreen({ activityId }: Props) {
   const router = useRouter();
+  const { repo, userId } = useActivitiesRepo();
   const [view, setView] = useState<ActivityView | null>(null);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
 
   const load = useCallback(async () => {
-    const next = await repo.getActivity(activityId, MOCK_USER_ID);
+    const next = await repo.getActivity(activityId, userId);
     setView(next);
     setLoading(false);
-  }, [activityId]);
+  }, [activityId, repo, userId]);
 
   useEffect(() => {
     void load();
@@ -36,12 +35,12 @@ export function ActivityDetailScreen({ activityId }: Props) {
   const handleClaim = useCallback(async () => {
     setClaiming(true);
     try {
-      await repo.claimSlot(activityId, MOCK_USER_ID);
+      await repo.claimSlot(activityId, userId);
       await load();
     } finally {
       setClaiming(false);
     }
-  }, [activityId, load]);
+  }, [activityId, load, repo, userId]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>

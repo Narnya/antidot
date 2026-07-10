@@ -27,8 +27,8 @@ Exact-location reveal, circle chat, trust scoring, moderation queue, AI moderati
 |---|---|---|---|---|
 | **0 ✅** | **Supabase project** | Project `antidot-dev` created (region eu-central-1); `.env` set with URL + publishable key; **both migrations applied** by AI via the IPv4 **session pooler** (direct `db.<ref>` is IPv6-only → "no route to host"). | `isSupabaseConfigured` true; **5 tables present, RLS enabled** ✓ | User (project) + AI (apply) |
 | **1 ✅** | **Backend foundation** | Schema + RLS + counts RPC (`feed_open_activities`, `activity_spots_taken`) applied to live DB. | **RLS verified live, positive + negative** ✓: outsider sees an overflow activity + aggregate count but **not who is going**, not `group_only`, not memberships; member sees all. | AI |
-| **2** | **Data layer** | `SupabaseActivitiesRepository` implementing the existing `ActivitiesRepository`; feed uses the counts RPC (evolve `ActivityView` to carry spot counts, not raw claims, for non-members); `getActivitiesRepository()` selector (mock ↔ supabase by `isSupabaseConfigured`). | `pnpm typecheck`; live queries return expected rows | AI |
-| **3** | **Auth wiring** | Replace `MOCK_USER_ID` with the session user (`useAuthSession`); real email sign-up/login (screens exist); move prototype screens from `(proto)` back under the `(app)` gate. | sign up → land in app; user id flows into repo | AI |
+| **2 ✅** | **Data layer** | `SupabaseActivitiesRepository` + `getActivitiesRepository()` selector (mock ↔ supabase by `isSupabaseConfigured`); `ActivityView` carries spot counts (feed uses the RPC, not raw claims). | typecheck green + **live E2E**: feed RPC returns the overflow activity with `spots_taken` via a real JWT. | AI |
+| **3 ✅** | **Auth wiring** | `useActivitiesRepo()` hook → session user (`useAuthSession`) + selector; activity routes moved `(proto)` → `(app)` gate; ungated preview retired. | typecheck green; **sign-in + RLS + RPC verified live** (outsider sees overflow + count, not `group_only`, not claim rows). In-app signup UX (email validator / confirm) still open. | AI |
 | **4** | **Screens on real data** | Feed / Detail / Create / My Circles against Supabase; add **create-circle** and **join-circle** flows (missing from the mock). | manual E2E of the whole loop with 2 real accounts | AI + user |
 | **5** | **Pull instrumentation** | Record `overflow`-source claims as the pull metric; a simple in-app counter / log for closed testing. | overflow claim increments the metric | AI |
 
@@ -38,12 +38,14 @@ Exact-location reveal, circle chat, trust scoring, moderation queue, AI moderati
 - **RLS is never trusted by eyeballing** — Phase 1 gates on live positive/negative tests (docs/30 is safety-first; a wrong policy leaks the product's core promise).
 - Loop verified manually with **two real accounts** (owner + outsider) before v1 is "done".
 
-## 5. Current state (2026-07-10)
+## 5. Current state (2026-07-11)
 
-- Prototype on mocks: complete & felt viable-by-form ([`(proto)`](../apps/mobile/app/(proto)) routes, `ACT-001…006`).
-- **Phase 0 ✅** — Supabase project `antidot-dev` live; migrations applied via the session pooler; `.env` configured (publishable key only — DB password is kept **out of the repo**).
-- **Phase 1 ✅** — [schema](../supabase/migrations/20260708000001_activities_mvp_schema.sql) + [RLS](../supabase/migrations/20260708000002_activities_mvp_rls.sql) + [counts RPC](../supabase/migrations/20260710000003_activities_feed_rpc.sql) applied and **RLS verified against the live DB** (positive + negative — the "no people list" privacy invariant holds at the DB layer).
-- **Next: Phase 2** — `SupabaseActivitiesRepository` + repo selector + `ActivityView` carrying spot counts.
+- **Phase 0 ✅** — Supabase project `antidot-dev` live; migrations applied via the session pooler; `.env` configured (publishable key only — DB password kept **out of the repo**).
+- **Phase 1 ✅** — schema + RLS + counts RPC applied; **RLS verified live** (positive + negative — the "no people list" invariant holds at the DB layer).
+- **Phase 2 ✅** — `SupabaseActivitiesRepository` + selector + `ActivityView` spot counts; typecheck + live E2E.
+- **Phase 3 ✅** — screens use the session user via `useActivitiesRepo()`; activity routes under the `(app)` gate; `(proto)` preview retired. **Full stack verified live with a real JWT** (auth → RLS → RPC + REST).
+- Demo data + test accounts seeded in the live project: `owner.antidot@gmail.com` / `outsider.antidot@gmail.com` (pw `Passw0rd!`); circle «Четверговый футбол» with two activities.
+- **Next: Phase 4** — manual E2E in the app with two accounts (login works; in-app *signup* UX — email validator + confirm — still open). **Phase 5** — pull metric.
 - Still-open product hypothesis (unchanged): **pull** — real-world test, separate from this build.
 
-> Build order is strict: **0 ✅ → 1 ✅ → 2 → 3 → 4 → 5.**
+> Build order: **0 ✅ → 1 ✅ → 2 ✅ → 3 ✅ → 4 → 5.**

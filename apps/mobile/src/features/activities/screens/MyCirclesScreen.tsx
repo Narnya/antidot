@@ -8,23 +8,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, radius, spacing, typography } from '@social-events/ui';
 
-import { MOCK_USER_ID, mockActivitiesRepository } from '../data/mockRepository';
 import type { ActivityView } from '../data/repository';
 import { formatWhen, kindEmoji } from '../lib/format';
 import type { Group } from '../lib/model';
-
-const repo = mockActivitiesRepository;
+import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
 export function MyCirclesScreen() {
   const router = useRouter();
+  const { repo, userId } = useActivitiesRepo();
   const [groups, setGroups] = useState<Group[]>([]);
   const [byGroup, setByGroup] = useState<Record<string, ActivityView[]>>({});
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     const [gs, acts] = await Promise.all([
-      repo.listMyGroups(MOCK_USER_ID),
-      repo.listMyActivities(MOCK_USER_ID),
+      repo.listMyGroups(userId),
+      repo.listMyActivities(userId),
     ]);
     const grouped: Record<string, ActivityView[]> = {};
     for (const v of acts) {
@@ -33,7 +32,7 @@ export function MyCirclesScreen() {
     setGroups(gs);
     setByGroup(grouped);
     setLoading(false);
-  }, []);
+  }, [repo, userId]);
 
   useEffect(() => {
     void load();

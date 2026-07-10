@@ -10,23 +10,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, typography } from '@social-events/ui';
 
 import { ActivityCard } from '../components/ActivityCard';
-import { MOCK_USER_ID, mockActivitiesRepository } from '../data/mockRepository';
 import type { ActivityView } from '../data/repository';
-
-const repo = mockActivitiesRepository;
+import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
 export function FeedScreen() {
   const router = useRouter();
+  const { repo, userId } = useActivitiesRepo();
   const [views, setViews] = useState<ActivityView[]>([]);
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [claimedIds, setClaimedIds] = useState<ReadonlySet<string>>(new Set());
 
   const load = useCallback(async () => {
-    const next = await repo.listOpenInCity(MOCK_USER_ID);
+    const next = await repo.listOpenInCity(userId);
     setViews(next);
     setLoading(false);
-  }, []);
+  }, [repo, userId]);
 
   useEffect(() => {
     void load();
@@ -36,14 +35,14 @@ export function FeedScreen() {
     async (activityId: string) => {
       setClaimingId(activityId);
       try {
-        await repo.claimSlot(activityId, MOCK_USER_ID);
+        await repo.claimSlot(activityId, userId);
         setClaimedIds((prev) => new Set(prev).add(activityId));
         await load();
       } finally {
         setClaimingId(null);
       }
     },
-    [load],
+    [load, repo, userId],
   );
 
   return (
