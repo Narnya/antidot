@@ -77,6 +77,7 @@ function DetailBody({
   claiming: boolean;
   onClaim: () => void;
 }) {
+  const router = useRouter();
   const { activity, group } = view;
   const remaining = view.spotsRemaining;
   const taken = view.spotsTaken;
@@ -140,6 +141,15 @@ function DetailBody({
           {label}
         </Text>
       </Pressable>
+
+      <Pressable
+        onPress={() => router.push(`/report?type=activity&id=${activity.id}`)}
+        style={styles.reportLink}
+        accessibilityRole="button"
+        testID="detail-report"
+      >
+        <Text style={styles.reportText}>Пожаловаться на активность</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -202,4 +212,6 @@ const styles = StyleSheet.create({
   buttonText: { ...typography.button, color: colors.action.primaryText },
   buttonTextClaimed: { color: colors.safety.noticeText },
   buttonTextFull: { color: colors.text.muted },
+  reportLink: { paddingVertical: spacing[3], alignItems: 'center' },
+  reportText: { ...typography.body, color: colors.text.muted },
 });

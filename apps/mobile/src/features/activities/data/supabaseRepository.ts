@@ -12,6 +12,7 @@ import type {
   CircleView,
   CreateActivityInput,
   CreateCircleInput,
+  CreateReportInput,
   MemberCandidate,
 } from './repository';
 
@@ -240,6 +241,36 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
         { onConflict: 'group_id,user_id' },
       );
     if (error) throw new Error(error.message);
+  }
+
+  async createReport(input: CreateReportInput): Promise<void> {
+    const { error } = await supabase.from('reports').insert({
+      reporter_id: input.reporterId,
+      subject_type: input.subjectType,
+      subject_id: input.subjectId,
+      reason: input.reason,
+      note: input.note,
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  async blockUser(blockerId: Id, blockedId: Id): Promise<void> {
+    const { error } = await supabase
+      .from('blocks')
+      .upsert(
+        { blocker_id: blockerId, blocked_id: blockedId },
+        { onConflict: 'blocker_id,blocked_id' },
+      );
+    if (error) throw new Error(error.message);
+  }
+
+  async listBlockedUserIds(userId: Id): Promise<Id[]> {
+    const { data, error } = await supabase
+      .from('blocks')
+      .select('blocked_id')
+      .eq('blocker_id', userId);
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as unknown as { blocked_id: string }[]).map((b) => b.blocked_id);
   }
 
   async listMyActivities(userId: Id): Promise<ActivityView[]> {

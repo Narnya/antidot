@@ -184,6 +184,13 @@ function Body({
         <Text style={styles.primaryText}>Создать активность</Text>
       </Pressable>
       {isMember && !isOwner ? <Text style={styles.pauseLink}>Поставить участие на паузу</Text> : null}
+      <Pressable
+        onPress={() => router.push(`/report?type=circle&id=${group.id}`)}
+        accessibilityRole="button"
+        testID="ch-report"
+      >
+        <Text style={styles.reportLink}>Пожаловаться на круг</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -273,6 +280,12 @@ const styles = StyleSheet.create({
   },
   primaryText: { ...typography.button, color: colors.action.primaryText },
   pauseLink: {
+    ...typography.body,
+    color: colors.text.muted,
+    textAlign: 'center',
+    paddingVertical: spacing[2],
+  },
+  reportLink: {
     ...typography.body,
     color: colors.text.muted,
     textAlign: 'center',

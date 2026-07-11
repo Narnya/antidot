@@ -38,6 +38,9 @@ export type {
   CreateCircleInput,
   CircleView,
   MemberCandidate,
+  ReportSubjectType,
+  ReportReason,
+  CreateReportInput,
 } from './data/repository';
 export {
   MockActivitiesRepository,

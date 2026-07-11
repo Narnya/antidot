@@ -9,6 +9,7 @@ import type {
   CircleView,
   CreateActivityInput,
   CreateCircleInput,
+  CreateReportInput,
   MemberCandidate,
 } from './repository';
 
@@ -62,6 +63,10 @@ const claims: SlotClaim[] = [
   // an overflow guest on my football circle (g1) — a member candidate for the host.
   { id: 'c-a1-of', activityId: 'a1', userId: 'guest1', status: 'going', source: 'overflow', createdAt: '2026-07-05T00:00:00Z' },
 ];
+
+// T3 — in-memory report/block stores (mock).
+const reports: CreateReportInput[] = [];
+const blocks: { blockerId: Id; blockedId: Id }[] = [];
 
 function isMemberOf(groupId: Id, userId: Id): boolean {
   return memberships.some(
@@ -164,6 +169,20 @@ export class MockActivitiesRepository implements ActivitiesRepository {
       status: 'active',
       createdAt: new Date().toISOString(),
     });
+  }
+
+  async createReport(input: CreateReportInput): Promise<void> {
+    reports.push(input);
+  }
+
+  async blockUser(blockerId: Id, blockedId: Id): Promise<void> {
+    if (!blocks.some((b) => b.blockerId === blockerId && b.blockedId === blockedId)) {
+      blocks.push({ blockerId, blockedId });
+    }
+  }
+
+  async listBlockedUserIds(userId: Id): Promise<Id[]> {
+    return blocks.filter((b) => b.blockerId === userId).map((b) => b.blockedId);
   }
 
   async listMyActivities(userId: Id): Promise<ActivityView[]> {

@@ -103,7 +103,7 @@ Circle Chat (MOB-100…104) · women-only / comfort composition (MOB-017/083) ·
 |---|---|---|---|
 | **T1 ✅** | **Create Circle + Circle Home** | host makes a circle in-app (name/area/theme/rhythm); per-circle page (aggregate composition + next activity) | self-serve supply — **built; typecheck green; `theme`/`rhythm` migration applied to live DB** |
 | **T2 ✅** | **Membership mechanic** | host-confirm (§4.1 A): overflow guests → confirmed members via a host-only section on Circle Home | the belonging half of the loop — **built; typecheck green** |
-| **T3** | **Safety** | Report + Block UI + `reports`/`blocks` tables + RLS | Inv. 6 (mandatory) |
+| **T3 ~** | **Safety** | `reports`+`blocks` tables + RLS (own-only, live); Report screen (reason+note) wired from Activity & Circle; `blockUser`/`listBlockedUserIds` data built | Inv. 6 — **reporting live; block-user UI lands with T4 profile** |
 | **T4** | **Onboarding (min) + Profile** | real minimal onboarding + my/edit/public-safe profile | knowing who you meet |
 | **T5** | **Meeting reality** | exact-location reveal (§4.2) + attendance (going/attended/no-show) | people actually show up + attend→member + pull signal |
 | **T6** | **Settings** | settings + blocked list + delete account | account hygiene |

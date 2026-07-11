@@ -54,6 +54,17 @@ export interface MemberCandidate {
   throughActivityTitle: string;
 }
 
+export type ReportSubjectType = 'user' | 'activity' | 'circle' | 'message';
+export type ReportReason = 'unsafe' | 'spam' | 'abuse' | 'fake' | 'other';
+
+export interface CreateReportInput {
+  reporterId: Id;
+  subjectType: ReportSubjectType;
+  subjectId: Id;
+  reason: ReportReason;
+  note: string | null;
+}
+
 export interface ActivitiesRepository {
   /** Groups the user belongs to — the "My Circles" home (belonging surface). */
   listMyGroups(userId: Id): Promise<Group[]>;
@@ -65,6 +76,12 @@ export interface ActivitiesRepository {
   listMemberCandidates(circleId: Id): Promise<MemberCandidate[]>;
   /** Host confirms a guest into the circle as an active member (§4.1 A). */
   confirmMember(circleId: Id, userId: Id): Promise<void>;
+  /** File a report on any subject (Inv. 6). */
+  createReport(input: CreateReportInput): Promise<void>;
+  /** Block a user — blocked users cannot interact (Inv. 6). */
+  blockUser(blockerId: Id, blockedId: Id): Promise<void>;
+  /** Ids the user has blocked (used to hide their content). */
+  listBlockedUserIds(userId: Id): Promise<Id[]>;
   /** Upcoming activities from the user's own groups. */
   listMyActivities(userId: Id): Promise<ActivityView[]>;
   /** Open slots across the city the user can claim — the feed / объявления. */
