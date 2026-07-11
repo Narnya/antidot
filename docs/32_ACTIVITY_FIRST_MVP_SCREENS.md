@@ -31,7 +31,7 @@ Plus safety: 🔴 **Report / Block** is MVP-mandatory (Inv. 6), not post-MVP —
 |---|---|---|---|
 | Welcome / Login / Signup / Restricted | ✅ | MOB-001/002/003 | scaffolding built |
 | Invite / Waitlist | ✅ | MOB-004/005 | dev placeholder gate built |
-| **Onboarding (real)** — City/Area, Safety Principles, Display name + Photo | ⚠️ | MOB-011/012/013/020 | only a placeholder exists; activity-first needs a *minimal* onboarding (see §4.3) |
+| **Onboarding (real)** — Display name + City/Area + Safety Principles accept | ✅ (min) | MOB-011/012/013/020 | **built:** minimal form writes the `profiles` row (self-only insert RLS verified live); returning users auto-advance. Photo/vibe/rhythm deferred (§4.3). Fully durable gate-from-profiles (nav flag still in-memory) = ONB-014 follow-up |
 
 ### Discovery / Activity (activity-first core)
 | Screen | Status | Maps to | Note |
