@@ -24,7 +24,7 @@
 - **Backend — live Supabase project `antidot-dev`.** All 6 migrations in [`/supabase/migrations/`](../supabase/migrations/) are **APPLIED to the live DB**: circles/memberships/links/activities/slot_claims + counts RPCs; reports + blocks; profiles + circle theme/rhythm. **RLS on every table, verified with a real JWT** (outsider sees an overflow activity + aggregate count but never who's going / group_only / claim rows).
 - **Code — `apps/mobile` (Expo RN + TS).** Feature module [`src/features/activities`](../apps/mobile/src/features/activities): domain model + pure slot rules (+ tests) + repository interface + **mock impl** + **SupabaseActivitiesRepository** + selector `getActivitiesRepository()` (picks live vs mock by `isSupabaseConfigured`). Screens: Feed, Activity Detail, Create Activity, My Circles, **Create Circle**, **Circle Home** (+ host member-confirm), **Report**, **Profile** (self edit / public-safe + block). Routes under `app/(app)/`; entry redirect at `app/index.tsx`.
 - **Figma** — file `xZkaKij7DhLPpRE3Ob0Znd`, section `581:118` "Activity-First MVP (v2)" = **15 screens** on token/design-system. Node IDs in [[figma-prototype-build]] memory.
-- **Tranches (docs/32):** T1 ✅ Create Circle+Home · T2 ✅ membership (host-confirm) · T3 ✅ Report/Block · T4 ✅ Profiles. **T5, T6 remain.**
+- **Tranches (docs/32):** T1 ✅ Create Circle+Home · T2 ✅ membership (host-confirm) · T3 ✅ Report/Block · T4 ✅ Profiles · T5 ✅ Meeting reality (location reveal + attendance). **T6 remains.**
 
 ## 3. Run the MVP live (web)
 
@@ -50,7 +50,7 @@ Open **http://localhost:8090** (8081 is taken by VS Code). Flow: `/` redirects �
 
 ## 5. What's next
 
-- **T5** — exact meeting location (stored separately, revealed only to users with an active claim — Inv. 1) + attendance (going/attended/no_show; feeds the pull/trust signal).
+- **T5 ✅ (done)** — exact meeting location in its own RLS-gated `meeting_locations` table (revealed only to users with an active claim — Inv. 1) + host attendance marking (going/attended/no_show; feeds attend→member + the pull signal). Migration `20260711000007_meeting_reality.sql` applied to the live DB; RLS verified positive + negative (claimant/host see the location & can mark attendance; non-claimant/non-host cannot). A demo location is seeded on «Футбол 5×5».
 - **T6** — Settings (blocked-users list, delete account).
 - **Follow-up** — real onboarding should write the `profiles` row (the placeholder currently only flips the dev "onboarded" flag).
 - **Rewrite** doc 00 + CLAUDE.md to activity-first (retire the circle-first wording).

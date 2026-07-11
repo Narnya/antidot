@@ -43,6 +43,7 @@ export function CreateActivityScreen() {
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState<ActivityKind>('football');
   const [area, setArea] = useState('');
+  const [exactLocation, setExactLocation] = useState('');
   const [spots, setSpots] = useState(10);
   const [whenIso, setWhenIso] = useState(() => presets[0]?.iso ?? '');
   const [overflow, setOverflow] = useState(true);
@@ -87,6 +88,7 @@ export function CreateActivityScreen() {
         startsAt: whenIso,
         totalSpots: spots,
         overflow,
+        exactLocation: exactLocation.trim().length > 0 ? exactLocation.trim() : null,
       });
       router.replace(`/activity/${created.id}`);
     } catch {
@@ -184,6 +186,19 @@ export function CreateActivityScreen() {
           testID="create-area"
         />
 
+        <Text style={styles.label}>Точное место</Text>
+        <TextInput
+          value={exactLocation}
+          onChangeText={setExactLocation}
+          placeholder="Стадион «Волна», у входа"
+          placeholderTextColor={colors.text.muted}
+          style={styles.input}
+          testID="create-location"
+        />
+        <Text style={styles.fieldHint}>
+          Видно только тем, кто занял место. Можно добавить позже.
+        </Text>
+
         <Text style={styles.label}>Сколько всего мест</Text>
         <View style={styles.stepper}>
           <Pressable
@@ -245,6 +260,7 @@ const styles = StyleSheet.create({
   body: { padding: spacing[6], paddingTop: spacing[2], gap: spacing[3] },
   title: { ...typography.title, color: colors.text.primary, marginBottom: spacing[2] },
   label: { ...typography.bodyMedium, color: colors.text.secondary, marginTop: spacing[2] },
+  fieldHint: { ...typography.caption, color: colors.text.muted },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   chip: {
     backgroundColor: colors.surface.default,
@@ -279,7 +295,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepBtnText: { fontSize: 24, color: colors.text.primary },
-  stepValue: { ...typography.heading, color: colors.text.primary, minWidth: 40, textAlign: 'center' },
+  stepValue: {
+    ...typography.heading,
+    color: colors.text.primary,
+    minWidth: 40,
+    textAlign: 'center',
+  },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',

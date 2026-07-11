@@ -91,7 +91,7 @@ Circle Chat (MOB-100…104) · women-only / comfort composition (MOB-017/083) ·
 ## 4. Open product decisions (must resolve before building the gap)
 
 1. **Membership transition mechanic** — how does a slot-claimer become a circle member? Options: (a) **auto** after 1 attended meeting; (b) **host confirms** the attendee; (c) explicit **"join circle"** after attendance. *Recommendation: host-confirm for MVP (keeps host curation, matches Inv. 8 approval-as-fit-protection) with a one-tap action.* — **DECIDED: host-confirm (A), built in T2** (`confirmMember` + host section on Circle Home).
-2. **Exact-location model** — add `exact_location` to `activities` (or a separate RLS-gated `meeting_locations`), revealed only to users with an active claim (Inv. 1). Currently area-only. — **DECIDE field + reveal window.**
+2. **Exact-location model** — add `exact_location` to `activities` (or a separate RLS-gated `meeting_locations`), revealed only to users with an active claim (Inv. 1). Currently area-only. — **DECIDED, built in T5:** a separate **`meeting_locations`** table (a column would leak via the city-wide `activities` SELECT). Reveal window: visible to anyone with an **active claim** (`going`/`attended`) plus the host; no time-box for MVP. RLS verified live (positive + negative).
 3. **Onboarding minimalism** — activity-first does not need the full circle-discovery onboarding. Minimum: display name + city/area + safety-principles accept + 1 photo. Vibe/rhythm/composition → deferred. — **CONFIRM minimum set.**
 4. **Reports sink without a full admin app** — MVP ships the report/block *UI + `reports`/`blocks` tables + RLS*; review is manual (SQL/dashboard) until the admin app. — **CONFIRM interim.**
 
@@ -105,7 +105,7 @@ Circle Chat (MOB-100…104) · women-only / comfort composition (MOB-017/083) ·
 | **T2 ✅** | **Membership mechanic** | host-confirm (§4.1 A): overflow guests → confirmed members via a host-only section on Circle Home | the belonging half of the loop — **built; typecheck green** |
 | **T3 ~** | **Safety** | `reports`+`blocks` tables + RLS (own-only, live); Report screen (reason+note) wired from Activity & Circle; `blockUser`/`listBlockedUserIds` data built | Inv. 6 — **reporting live; block-user UI lands with T4 profile** |
 | **T4 ~** | **Onboarding (min) + Profile** | `profiles` table + RLS (live); ProfileScreen (self view/edit + Public Safe view with Report/Block — no DM CTA); wired from My Circles & Circle Home candidates. **Block-user UI now works (closes the T3 tail).** | knowing who you meet — **profile built; real onboarding→profile write is a small follow-up** |
-| **T5** | **Meeting reality** | exact-location reveal (§4.2) + attendance (going/attended/no-show) | people actually show up + attend→member + pull signal |
+| **T5 ✅** | **Meeting reality** | RLS-gated `meeting_locations` (reveal on active claim — Inv. 1); location field in Create Activity + host editor; host attendance roster (going/attended/no-show) on Activity Detail | people actually show up + attend→member + pull signal — **built; typecheck green; migration applied + RLS verified live (positive + negative)** |
 | **T6** | **Settings** | settings + blocked list + delete account | account hygiene |
 
 > After T1–T6 (+ docs/31 Phase 5 pull metric), the activity-first MVP loop is **complete and self-serve**: create circle → create activity → outsider claims → shows up (real location) → marked attended → becomes member → returns — with safety and profiles in place.

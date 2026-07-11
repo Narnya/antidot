@@ -4,7 +4,16 @@
 // built and run against an in-memory mock now and swapped to a Supabase-backed
 // implementation once a project exists (ACT-00X). Keeps the whole UX verifiable
 // without a live database.
-import type { Activity, AreaLabel, CircleRhythm, Group, Id, SlotClaim } from '../lib/model';
+import type {
+  Activity,
+  AreaLabel,
+  CircleRhythm,
+  ClaimSource,
+  ClaimStatus,
+  Group,
+  Id,
+  SlotClaim,
+} from '../lib/model';
 
 /** An activity plus everything a card / detail screen needs to render it. */
 export interface ActivityView {
@@ -29,6 +38,11 @@ export interface CreateActivityInput {
   totalSpots: number;
   /** Open to other groups across the city from the start? (MVP: city-wide.) */
   overflow: boolean;
+  /**
+   * Exact meeting point (address / landmark). Stored separately and revealed only
+   * to users who have claimed a spot (Inv. 1). Optional — the host may add it later.
+   */
+  exactLocation: string | null;
 }
 
 export interface CreateCircleInput {
@@ -53,6 +67,18 @@ export interface MemberCandidate {
   userId: Id;
   throughActivityTitle: string;
 }
+
+/** A claimant as the host sees them when marking attendance (T5). Host-only view. */
+export interface AttendanceEntry {
+  userId: Id;
+  /** Safe display name from the profile, if set; null falls back to a neutral label in UI. */
+  displayName: string | null;
+  status: ClaimStatus;
+  source: ClaimSource;
+}
+
+/** Attendance states a host can set after the meeting (never surfaced publicly — Inv. 12). */
+export type AttendanceMark = Extract<ClaimStatus, 'attended' | 'no_show'>;
 
 export type ReportSubjectType = 'user' | 'activity' | 'circle' | 'message';
 export type ReportReason = 'unsafe' | 'spam' | 'abuse' | 'fake' | 'other';
@@ -111,4 +137,19 @@ export interface ActivitiesRepository {
    */
   claimSlot(activityId: Id, userId: Id): Promise<SlotClaim>;
   cancelClaim(activityId: Id, userId: Id): Promise<void>;
+  /**
+   * The exact meeting location — returns it only when the caller is allowed to see
+   * it (has an active claim, or is the host). RLS enforces this; null means either
+   * "not revealed to you" or "not set yet" (the UI treats both as hidden).
+   */
+  getMeetingLocation(activityId: Id, userId: Id): Promise<string | null>;
+  /** Host sets / updates the exact meeting location for one of their activities. */
+  setMeetingLocation(activityId: Id, userId: Id, location: string): Promise<void>;
+  /** Roster of an activity's claimants for the host to mark attendance (host-only). */
+  listClaimants(activityId: Id, userId: Id): Promise<AttendanceEntry[]>;
+  /**
+   * Host marks a claimant present / absent after the meeting (feeds attend→member).
+   * `claimantId` is the user being marked; host authority is enforced by RLS.
+   */
+  markAttendance(activityId: Id, claimantId: Id, status: AttendanceMark): Promise<void>;
 }

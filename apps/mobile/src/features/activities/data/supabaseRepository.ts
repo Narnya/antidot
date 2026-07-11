@@ -9,6 +9,8 @@ import { spotsRemaining, spotsTaken } from '../lib/slots';
 import type {
   ActivitiesRepository,
   ActivityView,
+  AttendanceEntry,
+  AttendanceMark,
   CircleView,
   CreateActivityInput,
   CreateCircleInput,
@@ -223,7 +225,9 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       .eq('group_id', circleId)
       .eq('status', 'active');
     if (me) throw new Error(me.message);
-    const memberSet = new Set(((mem ?? []) as unknown as { user_id: string }[]).map((m) => m.user_id));
+    const memberSet = new Set(
+      ((mem ?? []) as unknown as { user_id: string }[]).map((m) => m.user_id),
+    );
 
     const seen = new Set<string>();
     const out: MemberCandidate[] = [];
@@ -414,7 +418,76 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       .select('*')
       .single();
     if (error) throw new Error(error.message);
-    return mapActivity(data as unknown as ActivityRow);
+    const activity = mapActivity(data as unknown as ActivityRow);
+    const exact = input.exactLocation?.trim();
+    if (exact) {
+      const { error: le } = await supabase
+        .from('meeting_locations')
+        .insert({ activity_id: activity.id, exact_location: exact, created_by: input.createdBy });
+      if (le) throw new Error(le.message);
+    }
+    return activity;
+  }
+
+  async getMeetingLocation(activityId: Id): Promise<string | null> {
+    // RLS decides visibility (claimant or host) from auth.uid(); a hidden / unset
+    // location returns no row. The caller id is unused here — RLS is the gate.
+    const { data, error } = await supabase
+      .from('meeting_locations')
+      .select('exact_location')
+      .eq('activity_id', activityId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    return (data as unknown as { exact_location: string }).exact_location;
+  }
+
+  async setMeetingLocation(activityId: Id, userId: Id, location: string): Promise<void> {
+    const { error } = await supabase.from('meeting_locations').upsert(
+      {
+        activity_id: activityId,
+        exact_location: location.trim(),
+        created_by: userId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'activity_id' },
+    );
+    if (error) throw new Error(error.message);
+  }
+
+  async listClaimants(activityId: Id): Promise<AttendanceEntry[]> {
+    // Host reads the full roster (RLS allows it as a group member); non-hosts get
+    // an empty set because the host UI is the only caller and RLS blocks the writes.
+    const { data, error } = await supabase
+      .from('slot_claims')
+      .select('user_id, status, source')
+      .eq('activity_id', activityId)
+      .neq('status', 'cancelled')
+      .order('created_at');
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as unknown as {
+      user_id: string;
+      status: SlotClaim['status'];
+      source: SlotClaim['source'];
+    }[];
+    if (rows.length === 0) return [];
+    const names = await this.displayNamesByIds(rows.map((r) => r.user_id));
+    return rows.map((r) => ({
+      userId: r.user_id,
+      displayName: names.get(r.user_id) ?? null,
+      status: r.status,
+      source: r.source,
+    }));
+  }
+
+  async markAttendance(activityId: Id, claimantId: Id, status: AttendanceMark): Promise<void> {
+    // Host authority is enforced by the slot_claims_host_update RLS policy.
+    const { error } = await supabase
+      .from('slot_claims')
+      .update({ status })
+      .eq('activity_id', activityId)
+      .eq('user_id', claimantId);
+    if (error) throw new Error(error.message);
   }
 
   async claimSlot(activityId: Id, userId: Id): Promise<SlotClaim> {
@@ -456,6 +529,21 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
     if (error) throw new Error(error.message);
   }
 
+  private async displayNamesByIds(userIds: Id[]): Promise<Map<Id, string>> {
+    const unique = [...new Set(userIds)];
+    if (unique.length === 0) return new Map();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, display_name')
+      .in('id', unique);
+    if (error) throw new Error(error.message);
+    const byId = new Map<Id, string>();
+    for (const row of (data ?? []) as unknown as { id: string; display_name: string }[]) {
+      byId.set(row.id, row.display_name);
+    }
+    return byId;
+  }
+
   private async myClaimsByActivity(activityIds: Id[], userId: Id): Promise<Map<Id, SlotClaim>> {
     const { data, error } = await supabase
       .from('slot_claims')
@@ -472,4 +560,5 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
   }
 }
 
-export const supabaseActivitiesRepository: ActivitiesRepository = new SupabaseActivitiesRepository();
+export const supabaseActivitiesRepository: ActivitiesRepository =
+  new SupabaseActivitiesRepository();

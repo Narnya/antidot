@@ -6,6 +6,8 @@ import { canClaim, isSeekingOverflow, spotsRemaining, spotsTaken } from '../lib/
 import type {
   ActivitiesRepository,
   ActivityView,
+  AttendanceEntry,
+  AttendanceMark,
   CircleView,
   CreateActivityInput,
   CreateCircleInput,
@@ -22,24 +24,128 @@ let seq = 1000;
 const nextId = (prefix: string): Id => `${prefix}-${(seq += 1)}`;
 
 const groups: Group[] = [
-  { id: 'g1', name: 'Четверговый футбол', area: 'Приморский', theme: 'Играем в футбол по четвергам. Свои и друзья друзей.', rhythm: 'weekly', ownerId: 'me', createdAt: '2026-06-01T00:00:00Z' },
-  { id: 'g2', name: 'Тихие прогулки', area: 'Центр', theme: null, rhythm: 'biweekly', ownerId: 'u2', createdAt: '2026-06-05T00:00:00Z' },
-  { id: 'g3', name: 'Настолки у Ани', area: 'Центр', theme: null, rhythm: 'weekly', ownerId: 'u3', createdAt: '2026-06-10T00:00:00Z' },
-  { id: 'g4', name: 'Утренний бег', area: 'Приморский', theme: null, rhythm: 'weekly', ownerId: 'u4', createdAt: '2026-06-12T00:00:00Z' },
+  {
+    id: 'g1',
+    name: 'Четверговый футбол',
+    area: 'Приморский',
+    theme: 'Играем в футбол по четвергам. Свои и друзья друзей.',
+    rhythm: 'weekly',
+    ownerId: 'me',
+    createdAt: '2026-06-01T00:00:00Z',
+  },
+  {
+    id: 'g2',
+    name: 'Тихие прогулки',
+    area: 'Центр',
+    theme: null,
+    rhythm: 'biweekly',
+    ownerId: 'u2',
+    createdAt: '2026-06-05T00:00:00Z',
+  },
+  {
+    id: 'g3',
+    name: 'Настолки у Ани',
+    area: 'Центр',
+    theme: null,
+    rhythm: 'weekly',
+    ownerId: 'u3',
+    createdAt: '2026-06-10T00:00:00Z',
+  },
+  {
+    id: 'g4',
+    name: 'Утренний бег',
+    area: 'Приморский',
+    theme: null,
+    rhythm: 'weekly',
+    ownerId: 'u4',
+    createdAt: '2026-06-12T00:00:00Z',
+  },
 ];
 
 const memberships: GroupMembership[] = [
-  { groupId: 'g1', userId: 'me', role: 'owner', status: 'active', createdAt: '2026-06-01T00:00:00Z' },
-  { groupId: 'g2', userId: 'me', role: 'member', status: 'active', createdAt: '2026-06-06T00:00:00Z' },
-  { groupId: 'g3', userId: 'u3', role: 'owner', status: 'active', createdAt: '2026-06-10T00:00:00Z' },
-  { groupId: 'g4', userId: 'u4', role: 'owner', status: 'active', createdAt: '2026-06-12T00:00:00Z' },
+  {
+    groupId: 'g1',
+    userId: 'me',
+    role: 'owner',
+    status: 'active',
+    createdAt: '2026-06-01T00:00:00Z',
+  },
+  {
+    groupId: 'g2',
+    userId: 'me',
+    role: 'member',
+    status: 'active',
+    createdAt: '2026-06-06T00:00:00Z',
+  },
+  {
+    groupId: 'g3',
+    userId: 'u3',
+    role: 'owner',
+    status: 'active',
+    createdAt: '2026-06-10T00:00:00Z',
+  },
+  {
+    groupId: 'g4',
+    userId: 'u4',
+    role: 'owner',
+    status: 'active',
+    createdAt: '2026-06-12T00:00:00Z',
+  },
 ];
 
 const activities: Activity[] = [
-  { id: 'a1', groupId: 'g1', createdBy: 'me', title: 'Футбол 5×5', kind: 'football', area: 'Приморский', startsAt: '2026-07-09T16:00:00Z', totalSpots: 10, status: 'scheduled', visibility: 'overflow', createdAt: '2026-07-01T00:00:00Z' },
-  { id: 'a2', groupId: 'g2', createdBy: 'u2', title: 'Вечерняя прогулка', kind: 'walk', area: 'Центр', startsAt: '2026-07-11T15:00:00Z', totalSpots: 8, status: 'scheduled', visibility: 'group_only', createdAt: '2026-07-02T00:00:00Z' },
-  { id: 'a3', groupId: 'g3', createdBy: 'u3', title: 'Настолки: Каркассон', kind: 'boardgames', area: 'Центр', startsAt: '2026-07-10T17:00:00Z', totalSpots: 6, status: 'scheduled', visibility: 'overflow', createdAt: '2026-07-03T00:00:00Z' },
-  { id: 'a4', groupId: 'g4', createdBy: 'u4', title: 'Пробежка 5 км', kind: 'run', area: 'Приморский', startsAt: '2026-07-08T05:30:00Z', totalSpots: 12, status: 'scheduled', visibility: 'overflow', createdAt: '2026-07-04T00:00:00Z' },
+  {
+    id: 'a1',
+    groupId: 'g1',
+    createdBy: 'me',
+    title: 'Футбол 5×5',
+    kind: 'football',
+    area: 'Приморский',
+    startsAt: '2026-07-09T16:00:00Z',
+    totalSpots: 10,
+    status: 'scheduled',
+    visibility: 'overflow',
+    createdAt: '2026-07-01T00:00:00Z',
+  },
+  {
+    id: 'a2',
+    groupId: 'g2',
+    createdBy: 'u2',
+    title: 'Вечерняя прогулка',
+    kind: 'walk',
+    area: 'Центр',
+    startsAt: '2026-07-11T15:00:00Z',
+    totalSpots: 8,
+    status: 'scheduled',
+    visibility: 'group_only',
+    createdAt: '2026-07-02T00:00:00Z',
+  },
+  {
+    id: 'a3',
+    groupId: 'g3',
+    createdBy: 'u3',
+    title: 'Настолки: Каркассон',
+    kind: 'boardgames',
+    area: 'Центр',
+    startsAt: '2026-07-10T17:00:00Z',
+    totalSpots: 6,
+    status: 'scheduled',
+    visibility: 'overflow',
+    createdAt: '2026-07-03T00:00:00Z',
+  },
+  {
+    id: 'a4',
+    groupId: 'g4',
+    createdBy: 'u4',
+    title: 'Пробежка 5 км',
+    kind: 'run',
+    area: 'Приморский',
+    startsAt: '2026-07-08T05:30:00Z',
+    totalSpots: 12,
+    status: 'scheduled',
+    visibility: 'overflow',
+    createdAt: '2026-07-04T00:00:00Z',
+  },
 ];
 
 const claims: SlotClaim[] = [
@@ -61,9 +167,23 @@ const claims: SlotClaim[] = [
     source: 'member' as const,
     createdAt: '2026-07-04T00:00:00Z',
   })),
-  { id: 'c-a3-of', activityId: 'a3', userId: 'x1', status: 'going', source: 'overflow', createdAt: '2026-07-05T00:00:00Z' },
+  {
+    id: 'c-a3-of',
+    activityId: 'a3',
+    userId: 'x1',
+    status: 'going',
+    source: 'overflow',
+    createdAt: '2026-07-05T00:00:00Z',
+  },
   // an overflow guest on my football circle (g1) — a member candidate for the host.
-  { id: 'c-a1-of', activityId: 'a1', userId: 'guest1', status: 'going', source: 'overflow', createdAt: '2026-07-05T00:00:00Z' },
+  {
+    id: 'c-a1-of',
+    activityId: 'a1',
+    userId: 'guest1',
+    status: 'going',
+    source: 'overflow',
+    createdAt: '2026-07-05T00:00:00Z',
+  },
 ];
 
 // T3 — in-memory report/block stores (mock).
@@ -76,6 +196,27 @@ const profiles: Profile[] = [
   { userId: 'u3', displayName: 'Аня', area: 'Центр' },
   { userId: 'guest1', displayName: 'Новый гость', area: null },
 ];
+
+// T5 — in-memory exact meeting locations (activityId → exact spot). Revealed only
+// to claimants / host (mirrors the RLS gate). Seeded for the football activity.
+const locations = new Map<Id, string>([['a1', 'Стадион «Волна», у входа с ул. Морской']]);
+
+function isHostOfActivity(activityId: Id, userId: Id): boolean {
+  const activity = activities.find((a) => a.id === activityId);
+  if (!activity) return false;
+  if (activity.createdBy === userId) return true;
+  const group = groups.find((g) => g.id === activity.groupId);
+  return group?.ownerId === userId;
+}
+
+function hasActiveClaim(activityId: Id, userId: Id): boolean {
+  return claims.some(
+    (c) =>
+      c.activityId === activityId &&
+      c.userId === userId &&
+      (c.status === 'going' || c.status === 'attended'),
+  );
+}
 
 function isMemberOf(groupId: Id, userId: Id): boolean {
   return memberships.some(
@@ -248,7 +389,43 @@ export class MockActivitiesRepository implements ActivitiesRepository {
       createdAt: new Date().toISOString(),
     };
     activities.push(activity);
+    if (input.exactLocation && input.exactLocation.trim().length > 0) {
+      locations.set(activity.id, input.exactLocation.trim());
+    }
     return activity;
+  }
+
+  async getMeetingLocation(activityId: Id, userId: Id): Promise<string | null> {
+    if (!isHostOfActivity(activityId, userId) && !hasActiveClaim(activityId, userId)) {
+      return null; // mirrors the RLS reveal gate
+    }
+    return locations.get(activityId) ?? null;
+  }
+
+  async setMeetingLocation(activityId: Id, userId: Id, location: string): Promise<void> {
+    if (!isHostOfActivity(activityId, userId)) throw new Error('not_host');
+    const trimmed = location.trim();
+    if (trimmed.length === 0) locations.delete(activityId);
+    else locations.set(activityId, trimmed);
+  }
+
+  async listClaimants(activityId: Id, userId: Id): Promise<AttendanceEntry[]> {
+    if (!isHostOfActivity(activityId, userId)) return [];
+    return claims
+      .filter((c) => c.activityId === activityId && c.status !== 'cancelled')
+      .map((c) => ({
+        userId: c.userId,
+        displayName: profiles.find((p) => p.userId === c.userId)?.displayName ?? null,
+        status: c.status,
+        source: c.source,
+      }));
+  }
+
+  async markAttendance(activityId: Id, claimantId: Id, status: AttendanceMark): Promise<void> {
+    // Host authority is implicit in mock mode (only the host UI calls this); RLS
+    // enforces it live.
+    const claim = claims.find((c) => c.activityId === activityId && c.userId === claimantId);
+    if (claim) claim.status = status;
   }
 
   async claimSlot(activityId: Id, userId: Id): Promise<SlotClaim> {
