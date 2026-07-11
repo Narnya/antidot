@@ -74,14 +74,19 @@ export function MyCirclesScreen() {
             const acts = byGroup[g.id] ?? [];
             return (
               <View key={g.id} style={styles.group}>
-                <View style={styles.groupHead}>
+                <Pressable
+                  style={styles.groupHead}
+                  onPress={() => router.push(`/circle/${g.id}`)}
+                  accessibilityRole="button"
+                  testID={`open-circle-${g.id}`}
+                >
                   <Text style={styles.groupName} numberOfLines={1}>
                     {g.name}
                   </Text>
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>✓ Проверен</Text>
                   </View>
-                </View>
+                </Pressable>
 
                 {acts.length === 0 ? (
                   <Text style={styles.emptyRow}>Пока нет активностей</Text>
@@ -114,6 +119,15 @@ export function MyCirclesScreen() {
               </View>
             );
           })}
+
+          <Pressable
+            onPress={() => router.push('/circle/create')}
+            style={({ pressed }) => [styles.newCircle, pressed && styles.pressed]}
+            accessibilityRole="button"
+            testID="circles-new-circle"
+          >
+            <Text style={styles.newCircleText}>+ Новый круг</Text>
+          </Pressable>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -170,4 +184,13 @@ const styles = StyleSheet.create({
   actMeta: { ...typography.caption, color: colors.text.secondary },
   actSpots: { ...typography.caption, color: colors.text.muted },
   pressed: { opacity: 0.85 },
+  newCircle: {
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    borderRadius: radius.md,
+    paddingVertical: spacing[3],
+    alignItems: 'center',
+    marginTop: spacing[2],
+  },
+  newCircleText: { ...typography.button, color: colors.text.primary },
 });

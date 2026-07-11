@@ -1,39 +1,36 @@
-import { Link } from 'expo-router';
-import { ScrollView, StyleSheet } from 'react-native';
+// "/" — app entry. Redirects to the right screen for the current auth / beta /
+// onboarding state, reusing the SAME gate decision as the route-group layouts
+// (`decideRouteAccess`) so the front-door logic lives in one place:
+//   guest → /welcome · authed-no-beta → /invite · beta-not-onboarded → /start ·
+//   fully onboarded → /home.
+//
+// Replaces the earlier dev shell (a manual list of links). Route gates are
+// UX-level only — real access is enforced server-side by RLS.
+import { Redirect } from 'expo-router';
 
-import { Placeholder } from '../components/Placeholder';
+import {
+  SessionLoadingScreen,
+  decideRouteAccess,
+  useAuthSession,
+  useOnboardingPlaceholder,
+} from '../src/features/auth';
+import { useBetaAccess } from '../src/features/beta';
 
-// "/" — app shell landing. Links exercise each route-group placeholder. No product logic.
 export default function Index() {
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Placeholder
-        routeName="/ (app shell)"
-        note="Mobile shell placeholder. No product logic implemented."
-      />
-      <Link href="/welcome" style={styles.link}>
-        (public) → /welcome
-      </Link>
-      <Link href="/login" style={styles.link}>
-        (public) → /login
-      </Link>
-      <Link href="/signup" style={styles.link}>
-        (public) → /signup
-      </Link>
-      <Link href="/start" style={styles.link}>
-        (onboarding) → /start
-      </Link>
-      <Link href="/home" style={styles.link}>
-        (app) → /home
-      </Link>
-      <Link href="/placeholder" style={styles.link}>
-        (modals) → /placeholder
-      </Link>
-    </ScrollView>
-  );
-}
+  const { isLoading: isAuthLoading, isAuthenticated } = useAuthSession();
+  const { isLoading: isBetaLoading, hasBetaAccess } = useBetaAccess();
+  const { isOnboardedPlaceholder } = useOnboardingPlaceholder();
 
-const styles = StyleSheet.create({
-  container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 },
-  link: { fontSize: 14, color: '#2F5BFF' },
-});
+  // The 'app' gate resolves the full forward-routing. 'allow' means the user is
+  // authenticated + has beta + is onboarded → send them to the app home.
+  const decision = decideRouteAccess('app', {
+    isLoading: isAuthLoading || isBetaLoading,
+    isAuthenticated,
+    hasBetaAccess,
+    isOnboardedPlaceholder,
+  });
+
+  if (decision.kind === 'loading') return <SessionLoadingScreen />;
+  if (decision.kind === 'redirect') return <Redirect href={decision.to} />;
+  return <Redirect href="/home" />;
+}

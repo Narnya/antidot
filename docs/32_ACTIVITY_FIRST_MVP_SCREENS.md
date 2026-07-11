@@ -101,7 +101,7 @@ Circle Chat (MOB-100…104) · women-only / comfort composition (MOB-017/083) ·
 
 | # | Tranche | Delivers | Unblocks |
 |---|---|---|---|
-| **T1** | **Create Circle + Circle Home** | host makes a circle in-app; per-circle page | self-serve supply |
+| **T1 ✅** | **Create Circle + Circle Home** | host makes a circle in-app (name/area/theme/rhythm); per-circle page (aggregate composition + next activity) | self-serve supply — **built; typecheck green; `theme`/`rhythm` migration applied to live DB** |
 | **T2** | **Membership mechanic** | attendee → member (§4.1) + light host member view | the belonging half of the loop |
 | **T3** | **Safety** | Report + Block UI + `reports`/`blocks` tables + RLS | Inv. 6 (mandatory) |
 | **T4** | **Onboarding (min) + Profile** | real minimal onboarding + my/edit/public-safe profile | knowing who you meet |

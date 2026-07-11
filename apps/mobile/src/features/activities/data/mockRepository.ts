@@ -3,7 +3,13 @@
 // Supabase-backed implementation later (ACT-00X). Not for production.
 import type { Activity, Group, GroupMembership, Id, SlotClaim } from '../lib/model';
 import { canClaim, isSeekingOverflow, spotsRemaining, spotsTaken } from '../lib/slots';
-import type { ActivitiesRepository, ActivityView, CreateActivityInput } from './repository';
+import type {
+  ActivitiesRepository,
+  ActivityView,
+  CircleView,
+  CreateActivityInput,
+  CreateCircleInput,
+} from './repository';
 
 /** The signed-in user in mock mode (screens read this until real auth is wired). */
 export const MOCK_USER_ID: Id = 'me';
@@ -12,10 +18,10 @@ let seq = 1000;
 const nextId = (prefix: string): Id => `${prefix}-${(seq += 1)}`;
 
 const groups: Group[] = [
-  { id: 'g1', name: 'Четверговый футбол', area: 'Приморский', ownerId: 'me', createdAt: '2026-06-01T00:00:00Z' },
-  { id: 'g2', name: 'Тихие прогулки', area: 'Центр', ownerId: 'u2', createdAt: '2026-06-05T00:00:00Z' },
-  { id: 'g3', name: 'Настолки у Ани', area: 'Центр', ownerId: 'u3', createdAt: '2026-06-10T00:00:00Z' },
-  { id: 'g4', name: 'Утренний бег', area: 'Приморский', ownerId: 'u4', createdAt: '2026-06-12T00:00:00Z' },
+  { id: 'g1', name: 'Четверговый футбол', area: 'Приморский', theme: 'Играем в футбол по четвергам. Свои и друзья друзей.', rhythm: 'weekly', ownerId: 'me', createdAt: '2026-06-01T00:00:00Z' },
+  { id: 'g2', name: 'Тихие прогулки', area: 'Центр', theme: null, rhythm: 'biweekly', ownerId: 'u2', createdAt: '2026-06-05T00:00:00Z' },
+  { id: 'g3', name: 'Настолки у Ани', area: 'Центр', theme: null, rhythm: 'weekly', ownerId: 'u3', createdAt: '2026-06-10T00:00:00Z' },
+  { id: 'g4', name: 'Утренний бег', area: 'Приморский', theme: null, rhythm: 'weekly', ownerId: 'u4', createdAt: '2026-06-12T00:00:00Z' },
 ];
 
 const memberships: GroupMembership[] = [
@@ -84,6 +90,46 @@ function toView(activity: Activity, userId: Id): ActivityView {
 export class MockActivitiesRepository implements ActivitiesRepository {
   async listMyGroups(userId: Id): Promise<Group[]> {
     return groups.filter((g) => isMemberOf(g.id, userId));
+  }
+
+  async createCircle(input: CreateCircleInput): Promise<Group> {
+    const group: Group = {
+      id: nextId('g'),
+      name: input.name,
+      area: input.area,
+      theme: input.theme,
+      rhythm: input.rhythm,
+      ownerId: input.ownerId,
+      createdAt: new Date().toISOString(),
+    };
+    groups.push(group);
+    memberships.push({
+      groupId: group.id,
+      userId: input.ownerId,
+      role: 'owner',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    });
+    return group;
+  }
+
+  async getCircle(circleId: Id, userId: Id): Promise<CircleView | null> {
+    const group = groups.find((g) => g.id === circleId);
+    if (!group) return null;
+    const memberCount = memberships.filter(
+      (m) => m.groupId === circleId && m.status === 'active',
+    ).length;
+    const upcoming = activities
+      .filter((a) => a.groupId === circleId && a.status === 'scheduled')
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+    const first = upcoming[0];
+    return {
+      group,
+      memberCount,
+      isMember: isMemberOf(circleId, userId),
+      isOwner: group.ownerId === userId,
+      nextActivity: first ? toView(first, userId) : null,
+    };
   }
 
   async listMyActivities(userId: Id): Promise<ActivityView[]> {

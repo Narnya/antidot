@@ -4,7 +4,7 @@
 // built and run against an in-memory mock now and swapped to a Supabase-backed
 // implementation once a project exists (ACT-00X). Keeps the whole UX verifiable
 // without a live database.
-import type { Activity, AreaLabel, Group, Id, SlotClaim } from '../lib/model';
+import type { Activity, AreaLabel, CircleRhythm, Group, Id, SlotClaim } from '../lib/model';
 
 /** An activity plus everything a card / detail screen needs to render it. */
 export interface ActivityView {
@@ -31,9 +31,30 @@ export interface CreateActivityInput {
   overflow: boolean;
 }
 
+export interface CreateCircleInput {
+  name: string;
+  area: AreaLabel;
+  theme: string | null;
+  rhythm: CircleRhythm;
+  ownerId: Id;
+}
+
+/** A circle's home view — aggregate composition (no people list) + next activity. */
+export interface CircleView {
+  group: Group;
+  memberCount: number;
+  isMember: boolean;
+  isOwner: boolean;
+  nextActivity: ActivityView | null;
+}
+
 export interface ActivitiesRepository {
   /** Groups the user belongs to — the "My Circles" home (belonging surface). */
   listMyGroups(userId: Id): Promise<Group[]>;
+  /** Create a new circle; the creator becomes its owner-member. */
+  createCircle(input: CreateCircleInput): Promise<Group>;
+  /** A circle's home view — aggregate composition + next activity. */
+  getCircle(circleId: Id, userId: Id): Promise<CircleView | null>;
   /** Upcoming activities from the user's own groups. */
   listMyActivities(userId: Id): Promise<ActivityView[]>;
   /** Open slots across the city the user can claim — the feed / объявления. */

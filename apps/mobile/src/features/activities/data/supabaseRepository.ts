@@ -6,9 +6,23 @@
 import { supabase } from '../../../lib/supabase/client';
 import type { Activity, Group, Id, SlotClaim } from '../lib/model';
 import { spotsRemaining, spotsTaken } from '../lib/slots';
-import type { ActivitiesRepository, ActivityView, CreateActivityInput } from './repository';
+import type {
+  ActivitiesRepository,
+  ActivityView,
+  CircleView,
+  CreateActivityInput,
+  CreateCircleInput,
+} from './repository';
 
-type GroupRow = { id: string; name: string; area: string; owner_id: string; created_at: string };
+type GroupRow = {
+  id: string;
+  name: string;
+  area: string;
+  theme: string | null;
+  rhythm: Group['rhythm'];
+  owner_id: string;
+  created_at: string;
+};
 type ActivityRow = {
   id: string;
   group_id: string;
@@ -48,6 +62,8 @@ const mapGroup = (r: GroupRow): Group => ({
   id: r.id,
   name: r.name,
   area: r.area,
+  theme: r.theme,
+  rhythm: r.rhythm,
   ownerId: r.owner_id,
   createdAt: r.created_at,
 });
@@ -106,6 +122,75 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       .map(mapGroup);
   }
 
+  async createCircle(input: CreateCircleInput): Promise<Group> {
+    const { data, error } = await supabase
+      .from('groups')
+      .insert({
+        name: input.name,
+        area: input.area,
+        theme: input.theme,
+        rhythm: input.rhythm,
+        owner_id: input.ownerId,
+      })
+      .select('*')
+      .single();
+    if (error) throw new Error(error.message);
+    const group = mapGroup(data as unknown as GroupRow);
+    const { error: me } = await supabase
+      .from('group_memberships')
+      .insert({ group_id: group.id, user_id: input.ownerId, role: 'owner', status: 'active' });
+    if (me) throw new Error(me.message);
+    return group;
+  }
+
+  async getCircle(circleId: Id, userId: Id): Promise<CircleView | null> {
+    const { data, error } = await supabase
+      .from('groups')
+      .select('*')
+      .eq('id', circleId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    const group = mapGroup(data as unknown as GroupRow);
+
+    const { count, error: ce } = await supabase
+      .from('group_memberships')
+      .select('*', { count: 'exact', head: true })
+      .eq('group_id', circleId)
+      .eq('status', 'active');
+    if (ce) throw new Error(ce.message);
+
+    const { data: mineRows, error: mineErr } = await supabase
+      .from('group_memberships')
+      .select('role')
+      .eq('group_id', circleId)
+      .eq('user_id', userId)
+      .eq('status', 'active');
+    if (mineErr) throw new Error(mineErr.message);
+
+    const { data: aData, error: ae } = await supabase
+      .from('activities')
+      .select('*, slot_claims(*)')
+      .eq('group_id', circleId)
+      .eq('status', 'scheduled')
+      .order('starts_at')
+      .limit(1);
+    if (ae) throw new Error(ae.message);
+    const rows = (aData ?? []) as unknown as (ActivityRow & { slot_claims: ClaimRow[] })[];
+    const row = rows[0];
+    const nextActivity = row
+      ? buildMemberView(mapActivity(row), group, (row.slot_claims ?? []).map(mapClaim), userId)
+      : null;
+
+    return {
+      group,
+      memberCount: count ?? 0,
+      isMember: (mineRows ?? []).length > 0,
+      isOwner: group.ownerId === userId,
+      nextActivity,
+    };
+  }
+
   async listMyActivities(userId: Id): Promise<ActivityView[]> {
     const groups = await this.listMyGroups(userId);
     if (groups.length === 0) return [];
@@ -158,6 +243,8 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
         id: r.group_id,
         name: r.group_name,
         area: r.area,
+        theme: null,
+        rhythm: 'weekly',
         ownerId: '',
         createdAt: '',
       };

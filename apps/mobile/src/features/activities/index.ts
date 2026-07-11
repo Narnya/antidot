@@ -13,6 +13,7 @@ export type {
   AreaLabel,
   Group,
   GroupRole,
+  CircleRhythm,
   MembershipStatus,
   GroupMembership,
   GroupLink,
@@ -30,7 +31,13 @@ export {
   type ClaimEligibility,
 } from './lib/slots';
 
-export type { ActivitiesRepository, ActivityView, CreateActivityInput } from './data/repository';
+export type {
+  ActivitiesRepository,
+  ActivityView,
+  CreateActivityInput,
+  CreateCircleInput,
+  CircleView,
+} from './data/repository';
 export {
   MockActivitiesRepository,
   mockActivitiesRepository,

@@ -81,6 +81,9 @@ export interface SlotClaim {
 
 export type GroupRole = 'owner' | 'member';
 
+/** Meeting cadence of a circle. */
+export type CircleRhythm = 'weekly' | 'biweekly' | 'monthly' | 'adhoc';
+
 export type MembershipStatus =
   | 'active'
   | 'paused' // temporarily stepped back; no public signal to other members
@@ -100,6 +103,10 @@ export interface Group {
   id: Id;
   name: string;
   area: AreaLabel;
+  /** What the circle is about (optional free text). */
+  theme: string | null;
+  /** Meeting cadence. */
+  rhythm: CircleRhythm;
   ownerId: Id;
   createdAt: IsoTimestamp;
 }
