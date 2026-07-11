@@ -121,6 +121,15 @@ export interface ActivitiesRepository {
   blockUser(blockerId: Id, blockedId: Id): Promise<void>;
   /** Ids the user has blocked (used to hide their content). */
   listBlockedUserIds(userId: Id): Promise<Id[]>;
+  /** Blocked users as safe profiles (name/area) — for the Settings blocked list. */
+  listBlockedProfiles(userId: Id): Promise<Profile[]>;
+  /** Remove a block — the user can interact again. */
+  unblockUser(blockerId: Id, blockedId: Id): Promise<void>;
+  /**
+   * Permanently delete the caller's account and all their data (hard delete,
+   * cascades server-side). After this succeeds the caller must be signed out.
+   */
+  deleteAccount(userId: Id): Promise<void>;
   /** A user's safe profile (name + area). */
   getProfile(userId: Id): Promise<Profile | null>;
   /** Create or update the current user's profile. */

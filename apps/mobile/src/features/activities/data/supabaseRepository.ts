@@ -279,6 +279,42 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
     return ((data ?? []) as unknown as { blocked_id: string }[]).map((b) => b.blocked_id);
   }
 
+  async listBlockedProfiles(userId: Id): Promise<Profile[]> {
+    const ids = await this.listBlockedUserIds(userId);
+    if (ids.length === 0) return [];
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, display_name, area')
+      .in('id', ids);
+    if (error) throw new Error(error.message);
+    const byId = new Map(
+      ((data ?? []) as unknown as { id: string; display_name: string; area: string | null }[]).map(
+        (r) => [r.id, r] as const,
+      ),
+    );
+    // One entry per blocked id, even if the user has no profile row.
+    return ids.map((id) => {
+      const r = byId.get(id);
+      return { userId: id, displayName: r?.display_name ?? 'Пользователь', area: r?.area ?? null };
+    });
+  }
+
+  async unblockUser(blockerId: Id, blockedId: Id): Promise<void> {
+    const { error } = await supabase
+      .from('blocks')
+      .delete()
+      .eq('blocker_id', blockerId)
+      .eq('blocked_id', blockedId);
+    if (error) throw new Error(error.message);
+  }
+
+  async deleteAccount(): Promise<void> {
+    // Server-side cascade delete via a security-definer RPC (deletes auth.uid()'s
+    // own row). No service role on the client (Инв. 12). Caller signs out after.
+    const { error } = await supabase.rpc('delete_own_account');
+    if (error) throw new Error(error.message);
+  }
+
   async getProfile(userId: Id): Promise<Profile | null> {
     const { data, error } = await supabase
       .from('profiles')

@@ -148,14 +148,24 @@ export function ProfileScreen({ profileUserId }: Props) {
               {profile?.area ? <Text style={styles.area}>{profile.area}</Text> : null}
 
               {isSelf ? (
-                <Pressable
-                  onPress={() => setEditing(true)}
-                  style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
-                  accessibilityRole="button"
-                  testID="pf-edit"
-                >
-                  <Text style={styles.secondaryText}>Редактировать профиль</Text>
-                </Pressable>
+                <>
+                  <Pressable
+                    onPress={() => setEditing(true)}
+                    style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+                    accessibilityRole="button"
+                    testID="pf-edit"
+                  >
+                    <Text style={styles.secondaryText}>Редактировать профиль</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => router.push('/settings')}
+                    style={styles.settingsLink}
+                    accessibilityRole="button"
+                    testID="pf-settings"
+                  >
+                    <Text style={styles.settingsLinkText}>Настройки</Text>
+                  </Pressable>
+                </>
               ) : (
                 <>
                   <Text style={styles.note}>Написать можно будет после общей встречи.</Text>
@@ -245,6 +255,8 @@ const styles = StyleSheet.create({
     marginTop: spacing[4],
   },
   secondaryText: { ...typography.button, color: colors.text.primary },
+  settingsLink: { paddingVertical: spacing[3], alignItems: 'center', marginTop: spacing[1] },
+  settingsLinkText: { ...typography.body, color: colors.text.secondary },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[2] },
   actBtn: {
     flex: 1,

@@ -335,6 +335,39 @@ export class MockActivitiesRepository implements ActivitiesRepository {
     return blocks.filter((b) => b.blockerId === userId).map((b) => b.blockedId);
   }
 
+  async listBlockedProfiles(userId: Id): Promise<Profile[]> {
+    return blocks
+      .filter((b) => b.blockerId === userId)
+      .map(
+        (b) =>
+          profiles.find((p) => p.userId === b.blockedId) ?? {
+            userId: b.blockedId,
+            displayName: 'Пользователь',
+            area: null,
+          },
+      );
+  }
+
+  async unblockUser(blockerId: Id, blockedId: Id): Promise<void> {
+    const i = blocks.findIndex((b) => b.blockerId === blockerId && b.blockedId === blockedId);
+    if (i >= 0) blocks.splice(i, 1);
+  }
+
+  async deleteAccount(userId: Id): Promise<void> {
+    // Purge the user's in-memory data (mirrors the live cascade delete).
+    const drop = <T>(arr: T[], keep: (x: T) => boolean) => {
+      for (let i = arr.length - 1; i >= 0; i -= 1) if (!keep(arr[i] as T)) arr.splice(i, 1);
+    };
+    const ownedGroups = new Set(groups.filter((g) => g.ownerId === userId).map((g) => g.id));
+    drop(activities, (a) => a.createdBy !== userId && !ownedGroups.has(a.groupId));
+    drop(claims, (c) => c.userId !== userId);
+    drop(memberships, (m) => m.userId !== userId && !ownedGroups.has(m.groupId));
+    drop(groups, (g) => g.ownerId !== userId);
+    drop(blocks, (b) => b.blockerId !== userId && b.blockedId !== userId);
+    drop(profiles, (p) => p.userId !== userId);
+    for (const [aid] of locations) if (!activities.some((a) => a.id === aid)) locations.delete(aid);
+  }
+
   async getProfile(userId: Id): Promise<Profile | null> {
     return profiles.find((p) => p.userId === userId) ?? null;
   }

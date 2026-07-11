@@ -54,6 +54,26 @@ export default function Home() {
               <Text style={styles.linkButtonAltText}>Создать активность</Text>
             </Pressable>
           </Link>
+
+          <Link href="/profile" asChild>
+            <Pressable
+              style={({ pressed }) => [styles.linkButtonAlt, pressed && styles.buttonPressed]}
+              accessibilityRole="button"
+              testID="app-open-profile"
+            >
+              <Text style={styles.linkButtonAltText}>Профиль</Text>
+            </Pressable>
+          </Link>
+
+          <Link href="/settings" asChild>
+            <Pressable
+              style={({ pressed }) => [styles.linkButtonAlt, pressed && styles.buttonPressed]}
+              accessibilityRole="button"
+              testID="app-open-settings"
+            >
+              <Text style={styles.linkButtonAltText}>Настройки</Text>
+            </Pressable>
+          </Link>
         </View>
 
         <View style={styles.actions}>
