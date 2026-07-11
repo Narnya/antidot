@@ -9,6 +9,7 @@ import type {
   CircleView,
   CreateActivityInput,
   CreateCircleInput,
+  MemberCandidate,
 } from './repository';
 
 /** The signed-in user in mock mode (screens read this until real auth is wired). */
@@ -58,6 +59,8 @@ const claims: SlotClaim[] = [
     createdAt: '2026-07-04T00:00:00Z',
   })),
   { id: 'c-a3-of', activityId: 'a3', userId: 'x1', status: 'going', source: 'overflow', createdAt: '2026-07-05T00:00:00Z' },
+  // an overflow guest on my football circle (g1) — a member candidate for the host.
+  { id: 'c-a1-of', activityId: 'a1', userId: 'guest1', status: 'going', source: 'overflow', createdAt: '2026-07-05T00:00:00Z' },
 ];
 
 function isMemberOf(groupId: Id, userId: Id): boolean {
@@ -130,6 +133,37 @@ export class MockActivitiesRepository implements ActivitiesRepository {
       isOwner: group.ownerId === userId,
       nextActivity: first ? toView(first, userId) : null,
     };
+  }
+
+  async listMemberCandidates(circleId: Id): Promise<MemberCandidate[]> {
+    const circleActs = new Set(activities.filter((a) => a.groupId === circleId).map((a) => a.id));
+    const titleByActivity = new Map(activities.map((a) => [a.id, a.title]));
+    const seen = new Set<Id>();
+    const out: MemberCandidate[] = [];
+    for (const c of claims) {
+      if (!circleActs.has(c.activityId)) continue;
+      if (c.source !== 'overflow') continue;
+      if (c.status !== 'going' && c.status !== 'attended') continue;
+      if (isMemberOf(circleId, c.userId) || seen.has(c.userId)) continue;
+      seen.add(c.userId);
+      out.push({ userId: c.userId, throughActivityTitle: titleByActivity.get(c.activityId) ?? '' });
+    }
+    return out;
+  }
+
+  async confirmMember(circleId: Id, userId: Id): Promise<void> {
+    const existing = memberships.find((m) => m.groupId === circleId && m.userId === userId);
+    if (existing) {
+      existing.status = 'active';
+      return;
+    }
+    memberships.push({
+      groupId: circleId,
+      userId,
+      role: 'member',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    });
   }
 
   async listMyActivities(userId: Id): Promise<ActivityView[]> {

@@ -48,6 +48,12 @@ export interface CircleView {
   nextActivity: ActivityView | null;
 }
 
+/** An overflow guest who can be confirmed into the circle (host-confirm — §4.1 A). */
+export interface MemberCandidate {
+  userId: Id;
+  throughActivityTitle: string;
+}
+
 export interface ActivitiesRepository {
   /** Groups the user belongs to — the "My Circles" home (belonging surface). */
   listMyGroups(userId: Id): Promise<Group[]>;
@@ -55,6 +61,10 @@ export interface ActivitiesRepository {
   createCircle(input: CreateCircleInput): Promise<Group>;
   /** A circle's home view — aggregate composition + next activity. */
   getCircle(circleId: Id, userId: Id): Promise<CircleView | null>;
+  /** Overflow guests on this circle's activities who can be confirmed as members (host). */
+  listMemberCandidates(circleId: Id): Promise<MemberCandidate[]>;
+  /** Host confirms a guest into the circle as an active member (§4.1 A). */
+  confirmMember(circleId: Id, userId: Id): Promise<void>;
   /** Upcoming activities from the user's own groups. */
   listMyActivities(userId: Id): Promise<ActivityView[]>;
   /** Open slots across the city the user can claim — the feed / объявления. */

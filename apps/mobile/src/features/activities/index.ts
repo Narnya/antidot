@@ -37,6 +37,7 @@ export type {
   CreateActivityInput,
   CreateCircleInput,
   CircleView,
+  MemberCandidate,
 } from './data/repository';
 export {
   MockActivitiesRepository,

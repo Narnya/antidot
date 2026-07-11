@@ -1,6 +1,7 @@
-// ACT-009 — Circle Home. Per-circle hub (belonging surface): aggregate
-// composition (no people list — Inv.), theme/rhythm, next activity, and actions.
-// Mirrors docs/32 §T1 and the Figma Circle Home screen.
+// ACT-009 / T2 — Circle Home. Per-circle hub (belonging surface): aggregate
+// composition (no people list — Inv.), theme/rhythm, next activity, actions, and
+// — for the host — overflow guests to confirm as members (host-confirm, §4.1 A).
+// Mirrors docs/32 §T1–T2 and the Figma Circle Home screen.
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -8,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, radius, spacing, typography } from '@social-events/ui';
 
-import type { CircleView } from '../data/repository';
+import type { CircleView, MemberCandidate } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { formatWhen, kindEmoji } from '../lib/format';
 import type { CircleRhythm } from '../lib/model';
@@ -23,20 +24,36 @@ const RHYTHM_LABEL: Record<CircleRhythm, string> = {
 type Props = { circleId: string };
 
 export function CircleHomeScreen({ circleId }: Props) {
-  const router = useRouter();
   const { repo, userId } = useActivitiesRepo();
   const [view, setView] = useState<CircleView | null>(null);
+  const [candidates, setCandidates] = useState<MemberCandidate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const router = useRouter();
 
   const load = useCallback(async () => {
     const next = await repo.getCircle(circleId, userId);
     setView(next);
+    setCandidates(next?.isOwner ? await repo.listMemberCandidates(circleId) : []);
     setLoading(false);
   }, [circleId, repo, userId]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const handleConfirm = useCallback(
+    async (candidateId: string) => {
+      setConfirmingId(candidateId);
+      try {
+        await repo.confirmMember(circleId, candidateId);
+        await load();
+      } finally {
+        setConfirmingId(null);
+      }
+    },
+    [circleId, repo, load],
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -58,13 +75,28 @@ export function CircleHomeScreen({ circleId }: Props) {
           <Text style={styles.empty}>Круг не найден.</Text>
         </View>
       ) : (
-        <Body view={view} />
+        <Body
+          view={view}
+          candidates={candidates}
+          confirmingId={confirmingId}
+          onConfirm={handleConfirm}
+        />
       )}
     </SafeAreaView>
   );
 }
 
-function Body({ view }: { view: CircleView }) {
+function Body({
+  view,
+  candidates,
+  confirmingId,
+  onConfirm,
+}: {
+  view: CircleView;
+  candidates: MemberCandidate[];
+  confirmingId: string | null;
+  onConfirm: (candidateId: string) => void;
+}) {
   const router = useRouter();
   const { group, memberCount, nextActivity, isMember, isOwner } = view;
   return (
@@ -111,6 +143,37 @@ function Body({ view }: { view: CircleView }) {
       ) : (
         <Text style={styles.emptyRow}>Пока нет запланированных встреч</Text>
       )}
+
+      {isOwner && candidates.length > 0 ? (
+        <View style={styles.candBlock}>
+          <Text style={styles.sectionLabel}>Гости, которых можно принять</Text>
+          {candidates.map((c) => (
+            <View key={c.userId} style={styles.candRow}>
+              <View style={styles.candMain}>
+                <Text style={styles.candName}>Новый гость</Text>
+                <Text style={styles.candMeta} numberOfLines={1}>
+                  С встречи «{c.throughActivityTitle}»
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => onConfirm(c.userId)}
+                disabled={confirmingId === c.userId}
+                style={({ pressed }) => [
+                  styles.confirmBtn,
+                  confirmingId === c.userId && styles.pressed,
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                testID={`confirm-${c.userId}`}
+              >
+                <Text style={styles.confirmText}>
+                  {confirmingId === c.userId ? '…' : 'Принять'}
+                </Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       <Pressable
         onPress={() => router.push('/create')}
@@ -180,6 +243,27 @@ const styles = StyleSheet.create({
   actMeta: { ...typography.caption, color: colors.text.secondary },
   actSpots: { ...typography.caption, color: colors.text.muted },
   emptyRow: { ...typography.body, color: colors.text.muted, paddingVertical: spacing[2] },
+  candBlock: { gap: spacing[2] },
+  candRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    backgroundColor: colors.surface.default,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    borderRadius: radius.md,
+    padding: spacing[3],
+  },
+  candMain: { flex: 1, gap: 2 },
+  candName: { ...typography.bodyMedium, color: colors.text.primary },
+  candMeta: { ...typography.caption, color: colors.text.secondary },
+  confirmBtn: {
+    backgroundColor: colors.action.primary,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+  },
+  confirmText: { ...typography.button, color: colors.action.primaryText },
   primary: {
     backgroundColor: colors.action.primary,
     borderRadius: radius.md,

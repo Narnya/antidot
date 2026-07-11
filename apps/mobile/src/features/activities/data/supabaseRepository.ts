@@ -12,6 +12,7 @@ import type {
   CircleView,
   CreateActivityInput,
   CreateCircleInput,
+  MemberCandidate,
 } from './repository';
 
 type GroupRow = {
@@ -189,6 +190,56 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       isOwner: group.ownerId === userId,
       nextActivity,
     };
+  }
+
+  async listMemberCandidates(circleId: Id): Promise<MemberCandidate[]> {
+    const { data: acts, error: ae } = await supabase
+      .from('activities')
+      .select('id, title')
+      .eq('group_id', circleId);
+    if (ae) throw new Error(ae.message);
+    const actRows = (acts ?? []) as unknown as { id: string; title: string }[];
+    if (actRows.length === 0) return [];
+    const titleById = new Map(actRows.map((a) => [a.id, a.title]));
+
+    const { data: cl, error: ce } = await supabase
+      .from('slot_claims')
+      .select('user_id, activity_id')
+      .in(
+        'activity_id',
+        actRows.map((a) => a.id),
+      )
+      .eq('source', 'overflow')
+      .in('status', ['going', 'attended']);
+    if (ce) throw new Error(ce.message);
+    const claimRows = (cl ?? []) as unknown as { user_id: string; activity_id: string }[];
+
+    const { data: mem, error: me } = await supabase
+      .from('group_memberships')
+      .select('user_id')
+      .eq('group_id', circleId)
+      .eq('status', 'active');
+    if (me) throw new Error(me.message);
+    const memberSet = new Set(((mem ?? []) as unknown as { user_id: string }[]).map((m) => m.user_id));
+
+    const seen = new Set<string>();
+    const out: MemberCandidate[] = [];
+    for (const c of claimRows) {
+      if (memberSet.has(c.user_id) || seen.has(c.user_id)) continue;
+      seen.add(c.user_id);
+      out.push({ userId: c.user_id, throughActivityTitle: titleById.get(c.activity_id) ?? '' });
+    }
+    return out;
+  }
+
+  async confirmMember(circleId: Id, userId: Id): Promise<void> {
+    const { error } = await supabase
+      .from('group_memberships')
+      .upsert(
+        { group_id: circleId, user_id: userId, role: 'member', status: 'active' },
+        { onConflict: 'group_id,user_id' },
+      );
+    if (error) throw new Error(error.message);
   }
 
   async listMyActivities(userId: Id): Promise<ActivityView[]> {
