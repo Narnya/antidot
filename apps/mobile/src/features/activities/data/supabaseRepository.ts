@@ -14,6 +14,8 @@ import type {
   CreateCircleInput,
   CreateReportInput,
   MemberCandidate,
+  Profile,
+  UpsertProfileInput,
 } from './repository';
 
 type GroupRow = {
@@ -271,6 +273,31 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       .eq('blocker_id', userId);
     if (error) throw new Error(error.message);
     return ((data ?? []) as unknown as { blocked_id: string }[]).map((b) => b.blocked_id);
+  }
+
+  async getProfile(userId: Id): Promise<Profile | null> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, display_name, area')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    const r = data as unknown as { id: string; display_name: string; area: string | null };
+    return { userId: r.id, displayName: r.display_name, area: r.area };
+  }
+
+  async upsertProfile(input: UpsertProfileInput): Promise<void> {
+    const { error } = await supabase.from('profiles').upsert(
+      {
+        id: input.userId,
+        display_name: input.displayName,
+        area: input.area,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' },
+    );
+    if (error) throw new Error(error.message);
   }
 
   async listMyActivities(userId: Id): Promise<ActivityView[]> {

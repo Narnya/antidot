@@ -41,6 +41,8 @@ export type {
   ReportSubjectType,
   ReportReason,
   CreateReportInput,
+  Profile,
+  UpsertProfileInput,
 } from './data/repository';
 export {
   MockActivitiesRepository,

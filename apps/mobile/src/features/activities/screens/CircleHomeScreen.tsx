@@ -149,12 +149,17 @@ function Body({
           <Text style={styles.sectionLabel}>Гости, которых можно принять</Text>
           {candidates.map((c) => (
             <View key={c.userId} style={styles.candRow}>
-              <View style={styles.candMain}>
+              <Pressable
+                style={styles.candMain}
+                onPress={() => router.push(`/profile/${c.userId}`)}
+                accessibilityRole="button"
+                testID={`cand-profile-${c.userId}`}
+              >
                 <Text style={styles.candName}>Новый гость</Text>
                 <Text style={styles.candMeta} numberOfLines={1}>
                   С встречи «{c.throughActivityTitle}»
                 </Text>
-              </View>
+              </Pressable>
               <Pressable
                 onPress={() => onConfirm(c.userId)}
                 disabled={confirmingId === c.userId}

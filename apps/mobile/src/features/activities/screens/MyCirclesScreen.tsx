@@ -41,7 +41,16 @@ export function MyCirclesScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Мои круги</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Мои круги</Text>
+          <Pressable
+            onPress={() => router.push('/profile')}
+            accessibilityRole="button"
+            testID="circles-profile"
+          >
+            <Text style={styles.profileLink}>Профиль</Text>
+          </Pressable>
+        </View>
         <Text style={styles.subtitle}>Твои круги и их ближайшие встречи</Text>
       </View>
 
@@ -144,6 +153,8 @@ const styles = StyleSheet.create({
   },
   title: { ...typography.title, color: colors.text.primary },
   subtitle: { ...typography.body, color: colors.text.secondary },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  profileLink: { ...typography.button, color: colors.status.info },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
   body: { padding: spacing[6], paddingTop: spacing[2], gap: spacing[5] },
   navRow: { flexDirection: 'row', gap: spacing[3] },

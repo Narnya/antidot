@@ -65,6 +65,19 @@ export interface CreateReportInput {
   note: string | null;
 }
 
+/** Minimal safe profile — display name + area only (no sensitive fields). */
+export interface Profile {
+  userId: Id;
+  displayName: string;
+  area: string | null;
+}
+
+export interface UpsertProfileInput {
+  userId: Id;
+  displayName: string;
+  area: string | null;
+}
+
 export interface ActivitiesRepository {
   /** Groups the user belongs to — the "My Circles" home (belonging surface). */
   listMyGroups(userId: Id): Promise<Group[]>;
@@ -82,6 +95,10 @@ export interface ActivitiesRepository {
   blockUser(blockerId: Id, blockedId: Id): Promise<void>;
   /** Ids the user has blocked (used to hide their content). */
   listBlockedUserIds(userId: Id): Promise<Id[]>;
+  /** A user's safe profile (name + area). */
+  getProfile(userId: Id): Promise<Profile | null>;
+  /** Create or update the current user's profile. */
+  upsertProfile(input: UpsertProfileInput): Promise<void>;
   /** Upcoming activities from the user's own groups. */
   listMyActivities(userId: Id): Promise<ActivityView[]>;
   /** Open slots across the city the user can claim — the feed / объявления. */

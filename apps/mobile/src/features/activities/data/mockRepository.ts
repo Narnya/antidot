@@ -11,6 +11,8 @@ import type {
   CreateCircleInput,
   CreateReportInput,
   MemberCandidate,
+  Profile,
+  UpsertProfileInput,
 } from './repository';
 
 /** The signed-in user in mock mode (screens read this until real auth is wired). */
@@ -67,6 +69,13 @@ const claims: SlotClaim[] = [
 // T3 — in-memory report/block stores (mock).
 const reports: CreateReportInput[] = [];
 const blocks: { blockerId: Id; blockedId: Id }[] = [];
+
+// T4 — in-memory profiles (mock).
+const profiles: Profile[] = [
+  { userId: 'me', displayName: 'Рафаэль', area: 'Приморский, СПб' },
+  { userId: 'u3', displayName: 'Аня', area: 'Центр' },
+  { userId: 'guest1', displayName: 'Новый гость', area: null },
+];
 
 function isMemberOf(groupId: Id, userId: Id): boolean {
   return memberships.some(
@@ -183,6 +192,24 @@ export class MockActivitiesRepository implements ActivitiesRepository {
 
   async listBlockedUserIds(userId: Id): Promise<Id[]> {
     return blocks.filter((b) => b.blockerId === userId).map((b) => b.blockedId);
+  }
+
+  async getProfile(userId: Id): Promise<Profile | null> {
+    return profiles.find((p) => p.userId === userId) ?? null;
+  }
+
+  async upsertProfile(input: UpsertProfileInput): Promise<void> {
+    const existing = profiles.find((p) => p.userId === input.userId);
+    if (existing) {
+      existing.displayName = input.displayName;
+      existing.area = input.area;
+    } else {
+      profiles.push({
+        userId: input.userId,
+        displayName: input.displayName,
+        area: input.area,
+      });
+    }
   }
 
   async listMyActivities(userId: Id): Promise<ActivityView[]> {
