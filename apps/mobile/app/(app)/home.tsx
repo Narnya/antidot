@@ -7,16 +7,36 @@
 // "Сбросить онбординг (placeholder)" reverses the dev onboarding flag so the
 // (app) gate redirects back to onboarding. "Выйти" returns to the guest state.
 import { Link } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, spacing, typography } from '@social-events/ui';
+import { colors, radius, spacing, typography } from '@social-events/ui';
 
+import { useActivitiesRepo } from '../../src/features/activities/hooks/useActivitiesRepo';
+import type { PullMetrics } from '../../src/features/activities/data/repository';
 import { useAuthSession, useOnboardingPlaceholder } from '../../src/features/auth';
 
 export default function Home() {
   const { isSigningOut, signOut } = useAuthSession();
   const { resetOnboardedPlaceholder } = useOnboardingPlaceholder();
+  const { repo, userId } = useActivitiesRepo();
+  const [pull, setPull] = useState<PullMetrics | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void repo
+      .getPullMetrics(userId)
+      .then((m) => {
+        if (active) setPull(m);
+      })
+      .catch(() => {
+        /* closed-testing instrument — silent if unavailable */
+      });
+    return () => {
+      active = false;
+    };
+  }, [repo, userId]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -74,6 +94,25 @@ export default function Home() {
               <Text style={styles.linkButtonAltText}>Настройки</Text>
             </Pressable>
           </Link>
+
+          {pull ? (
+            <View style={styles.pullCard} testID="app-pull-metrics">
+              <Text style={styles.pullTitle}>Pull · закрытый тест</Text>
+              <Text style={styles.pullHint}>
+                Занимают ли чужие открытые слоты сами (по вашим кругам).
+              </Text>
+              <View style={styles.pullRow}>
+                <PullStat value={pull.overflowClaims} label="чужих заняли" />
+                <PullStat value={pull.pullUsers} label="человек" />
+                <PullStat value={pull.memberClaims} label="своих" />
+              </View>
+              <Text style={styles.pullHint}>
+                {pull.overflowClaims === 0
+                  ? 'Пока никто извне не занял слот — это и есть вопрос на проверку.'
+                  : `Активностей с чужими: ${pull.activitiesWithPull}.`}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.actions}>
@@ -103,6 +142,15 @@ export default function Home() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function PullStat({ value, label }: { value: number; label: string }) {
+  return (
+    <View style={styles.pullStat}>
+      <Text style={styles.pullValue}>{value}</Text>
+      <Text style={styles.pullLabel}>{label}</Text>
+    </View>
   );
 }
 
@@ -178,4 +226,19 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.6 },
   buttonPressed: { opacity: 0.85 },
+  pullCard: {
+    marginTop: spacing[4],
+    backgroundColor: colors.surface.default,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    borderRadius: radius.lg,
+    padding: spacing[4],
+    gap: spacing[2],
+  },
+  pullTitle: { ...typography.bodyMedium, color: colors.text.primary },
+  pullHint: { ...typography.caption, color: colors.text.muted },
+  pullRow: { flexDirection: 'row', gap: spacing[3], marginVertical: spacing[1] },
+  pullStat: { flex: 1, alignItems: 'center', gap: 2 },
+  pullValue: { ...typography.heading, color: colors.text.primary },
+  pullLabel: { ...typography.caption, color: colors.text.secondary, textAlign: 'center' },
 });

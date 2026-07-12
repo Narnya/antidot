@@ -17,6 +17,7 @@ import type {
   CreateReportInput,
   MemberCandidate,
   Profile,
+  PullMetrics,
   UpsertProfileInput,
 } from './repository';
 
@@ -524,6 +525,58 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       .eq('activity_id', activityId)
       .eq('user_id', claimantId);
     if (error) throw new Error(error.message);
+  }
+
+  async getPullMetrics(userId: Id): Promise<PullMetrics> {
+    const empty: PullMetrics = {
+      overflowClaims: 0,
+      memberClaims: 0,
+      activitiesWithPull: 0,
+      pullUsers: 0,
+    };
+    const groups = await this.listMyGroups(userId);
+    if (groups.length === 0) return empty;
+    const { data: acts, error: ae } = await supabase
+      .from('activities')
+      .select('id')
+      .in(
+        'group_id',
+        groups.map((g) => g.id),
+      );
+    if (ae) throw new Error(ae.message);
+    const activityIds = ((acts ?? []) as unknown as { id: string }[]).map((a) => a.id);
+    if (activityIds.length === 0) return empty;
+    // RLS returns these rows because the caller is a member of the owning groups.
+    const { data: cl, error: ce } = await supabase
+      .from('slot_claims')
+      .select('activity_id, user_id, source')
+      .in('activity_id', activityIds)
+      .in('status', ['going', 'attended']);
+    if (ce) throw new Error(ce.message);
+    const rows = (cl ?? []) as unknown as {
+      activity_id: string;
+      user_id: string;
+      source: SlotClaim['source'];
+    }[];
+    const pullActivities = new Set<string>();
+    const pullUsers = new Set<string>();
+    let overflowClaims = 0;
+    let memberClaims = 0;
+    for (const r of rows) {
+      if (r.source === 'overflow') {
+        overflowClaims += 1;
+        pullActivities.add(r.activity_id);
+        pullUsers.add(r.user_id);
+      } else {
+        memberClaims += 1;
+      }
+    }
+    return {
+      overflowClaims,
+      memberClaims,
+      activitiesWithPull: pullActivities.size,
+      pullUsers: pullUsers.size,
+    };
   }
 
   async claimSlot(activityId: Id, userId: Id): Promise<SlotClaim> {

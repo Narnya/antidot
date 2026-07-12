@@ -30,7 +30,7 @@ Exact-location reveal, circle chat, trust scoring, moderation queue, AI moderati
 | **2 ✅** | **Data layer** | `SupabaseActivitiesRepository` + `getActivitiesRepository()` selector (mock ↔ supabase by `isSupabaseConfigured`); `ActivityView` carries spot counts (feed uses the RPC, not raw claims). | typecheck green + **live E2E**: feed RPC returns the overflow activity with `spots_taken` via a real JWT. | AI |
 | **3 ✅** | **Auth wiring** | `useActivitiesRepo()` hook → session user (`useAuthSession`) + selector; activity routes moved `(proto)` → `(app)` gate; ungated preview retired. | typecheck green; **sign-in + RLS + RPC verified live** (outsider sees overflow + count, not `group_only`, not claim rows). In-app signup UX (email validator / confirm) still open. | AI |
 | **4** | **Screens on real data** | Feed / Detail / Create / My Circles against Supabase; add **create-circle** and **join-circle** flows (missing from the mock). | manual E2E of the whole loop with 2 real accounts | AI + user |
-| **5** | **Pull instrumentation** | Record `overflow`-source claims as the pull metric; a simple in-app counter / log for closed testing. | overflow claim increments the metric | AI |
+| **5 ✅** | **Pull instrumentation** | `getPullMetrics(userId)` aggregates `overflow` vs `member` occupying claims across the user's own circles (RLS-honest, no new migration, aggregate-only — no PII); surfaced as a "Pull · закрытый тест" card on the home screen. | overflow claim increments the metric — **built; typecheck green; verified live (owner: 0 overflow / 3 member)** | AI |
 
 ## 4. Verification discipline
 
@@ -48,4 +48,4 @@ Exact-location reveal, circle chat, trust scoring, moderation queue, AI moderati
 - **Next: Phase 4** — manual E2E in the app with two accounts (login works; in-app *signup* UX — email validator + confirm — still open). **Phase 5** — pull metric.
 - Still-open product hypothesis (unchanged): **pull** — real-world test, separate from this build.
 
-> Build order: **0 ✅ → 1 ✅ → 2 ✅ → 3 ✅ → 4 → 5.**
+> Build order: **0 ✅ → 1 ✅ → 2 ✅ → 3 ✅ → 4 ✅ → 5 ✅.** All phases built on live Supabase; the MVP loop (T1–T6, docs/32) + pull instrumentation are in place. Remaining is the real-world **pull test** with people (no-code) and opportunistic downstream-doc migration.

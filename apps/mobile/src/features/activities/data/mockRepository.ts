@@ -14,6 +14,7 @@ import type {
   CreateReportInput,
   MemberCandidate,
   Profile,
+  PullMetrics,
   UpsertProfileInput,
 } from './repository';
 
@@ -459,6 +460,34 @@ export class MockActivitiesRepository implements ActivitiesRepository {
     // enforces it live.
     const claim = claims.find((c) => c.activityId === activityId && c.userId === claimantId);
     if (claim) claim.status = status;
+  }
+
+  async getPullMetrics(userId: Id): Promise<PullMetrics> {
+    const myGroupIds = new Set(groups.filter((g) => isMemberOf(g.id, userId)).map((g) => g.id));
+    const myActivityIds = new Set(
+      activities.filter((a) => myGroupIds.has(a.groupId)).map((a) => a.id),
+    );
+    let overflowClaims = 0;
+    let memberClaims = 0;
+    const pullActivities = new Set<Id>();
+    const pullUsers = new Set<Id>();
+    for (const c of claims) {
+      if (!myActivityIds.has(c.activityId)) continue;
+      if (c.status !== 'going' && c.status !== 'attended') continue;
+      if (c.source === 'overflow') {
+        overflowClaims += 1;
+        pullActivities.add(c.activityId);
+        pullUsers.add(c.userId);
+      } else {
+        memberClaims += 1;
+      }
+    }
+    return {
+      overflowClaims,
+      memberClaims,
+      activitiesWithPull: pullActivities.size,
+      pullUsers: pullUsers.size,
+    };
   }
 
   async claimSlot(activityId: Id, userId: Id): Promise<SlotClaim> {

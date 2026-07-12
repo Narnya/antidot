@@ -80,6 +80,23 @@ export interface AttendanceEntry {
 /** Attendance states a host can set after the meeting (never surfaced publicly — Inv. 12). */
 export type AttendanceMark = Extract<ClaimStatus, 'attended' | 'no_show'>;
 
+/**
+ * The PULL signal for closed testing (docs/31 Phase 5) — aggregate counts across
+ * the user's own circles. Answers "did outsiders claim open slots themselves?"
+ * Aggregate only — no identities, no PII (safe under Inv. 3/13/14). Not a global
+ * analytics view (that's a later PostHog concern); scoped to circles the user is in.
+ */
+export interface PullMetrics {
+  /** Occupying claims made by outsiders (source = overflow) — the pull. */
+  overflowClaims: number;
+  /** Occupying claims made by circle members (source = member) — the push baseline. */
+  memberClaims: number;
+  /** Activities in the user's circles that received at least one overflow claim. */
+  activitiesWithPull: number;
+  /** Distinct outsiders who claimed a slot across the user's circles. */
+  pullUsers: number;
+}
+
 export type ReportSubjectType = 'user' | 'activity' | 'circle' | 'message';
 export type ReportReason = 'unsafe' | 'spam' | 'abuse' | 'fake' | 'other';
 
@@ -161,4 +178,6 @@ export interface ActivitiesRepository {
    * `claimantId` is the user being marked; host authority is enforced by RLS.
    */
   markAttendance(activityId: Id, claimantId: Id, status: AttendanceMark): Promise<void>;
+  /** Pull signal (closed testing) — aggregate overflow-vs-member claims over the user's circles. */
+  getPullMetrics(userId: Id): Promise<PullMetrics>;
 }
