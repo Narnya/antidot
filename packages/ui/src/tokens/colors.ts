@@ -1,52 +1,54 @@
-// Semantic color tokens — warm-minimal direction (light, clean, friendly, premium,
-// soft, safety-forward; not romantic / not dating / not Material-default).
+// Semantic color tokens — "Warm-Green" direction (docs/35_DESIGN_SYSTEM_V2_WARM_GREEN.md):
+// calm, premium, editorial, warm, trustworthy. Green = product (actions, trust, CTA,
+// membership); coral = brand only (never the main app color). Supersedes the earlier
+// "Urban Air" (black primary) palette.
 //
-// These are infrastructure placeholders that map to Figma foundations and are subject
-// to design review. Product Core overrides visual design on conflict. Nothing here may
-// encode dating visuals, public ratings, or a raw/numeric trust score: the `trust.*`
-// tokens style the soft "Verified" badge only, never a score.
+// Product Core overrides visual design on conflict. Nothing here may encode dating
+// visuals, public ratings, or a raw/numeric trust score: the `trust.*` tokens style the
+// soft "Проверен" badge only, never a score (Invariant 3).
 export const colors = {
   background: {
-    default: '#FAFAF7',
-    subtle: '#F3F1EA',
+    default: '#F7F5EF', // warm ivory
+    subtle: '#EFE9DE',
   },
   surface: {
-    default: '#FFFFFF',
-    elevated: '#FFFFFF',
+    default: '#FFFDF9', // cards
+    elevated: '#FFFDF9',
   },
   text: {
-    primary: '#111111',
-    secondary: '#555A5F',
-    muted: '#8A8F95',
-    inverse: '#FFFFFF',
+    primary: '#15130F',
+    secondary: '#68645C',
+    muted: '#9A938A',
+    inverse: '#FFFDF9', // on green
   },
   border: {
-    default: '#E7E4DC',
-    strong: '#D8D3C7',
+    default: '#E8DDCF', // warm hairline
+    strong: '#D9CBB8',
   },
   action: {
-    primary: '#111111',
-    primaryText: '#FFFFFF',
-    secondary: '#F3F1EA',
-    destructive: '#E5484D',
+    primary: '#18392D', // green — product
+    primaryText: '#FFFDF9',
+    secondary: '#EFE9DE', // warm secondary button bg
+    destructive: '#C0402E',
   },
   status: {
-    success: '#1B9A65',
-    warning: '#F5A524',
-    danger: '#E5484D',
-    info: '#2F5BFF',
+    success: '#2E6B4F',
+    warning: '#C8892F',
+    danger: '#C0402E',
+    info: '#18392D',
   },
-  // Soft "Verified" badge only — NOT a numeric/raw trust score (Invariant 3).
+  // Soft "Проверен" badge only — green = trust — NOT a numeric/raw trust score (Invariant 3).
   trust: {
-    verifiedBg: '#EEF3FF',
-    verifiedText: '#2F5BFF',
+    verifiedBg: '#DCEAD8',
+    verifiedText: '#18392D',
   },
+  // "Точное место скрыто до записи" notice — calm, not error (Invariant 1).
   safety: {
-    noticeBg: '#EEF7F2',
-    noticeText: '#176B4D',
+    noticeBg: '#DCEAD8',
+    noticeText: '#18392D',
   },
   accent: {
-    coral: '#FF6B4A',
+    coral: '#F05A3A', // brand accent only
     lime: '#B7FF4A',
     violet: '#7C4DFF',
     blue: '#2F5BFF',
