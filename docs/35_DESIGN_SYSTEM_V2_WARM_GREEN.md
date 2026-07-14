@@ -44,6 +44,7 @@ Green = **product** (actions, trust, CTA, membership, confirmed). Coral = **bran
 - **Headlines / accents:** **Playfair Display** (editorial serif). H1 36/44 · H2 28/36 · H3 22/28.
 - **Body / interface:** **Inter**. Body 16/24 · Small 14/20 · Caption 12/16.
 - Very large hierarchy, lots of whitespace, minimal copy.
+- **Wordmark (BRAND RULE — remember):** `ANTIDOT` in **Inter**, uppercase, wide tracking, `#18392D`, with a coral `#F05A3A` **dot always centered above the letter «I»** (the middle of the word) — it must never drift sideways. Playfair is **only** for emotional brand moments (Welcome headline); the app UI is Inter everywhere.
 
 ---
 

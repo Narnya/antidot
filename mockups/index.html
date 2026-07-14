@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Antidot — шаблоны страниц</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: 'Inter', system-ui, sans-serif; background: #F7F5EF; color: #15130F; padding: 40px 24px; }
+      h1 { font-family: 'Playfair Display', serif; font-size: 34px; margin-bottom: 6px; }
+      p.sub { color: #68645C; margin-bottom: 28px; }
+      .grid { display: flex; flex-wrap: wrap; gap: 22px; }
+      a.card {
+        display: block; text-decoration: none; color: inherit;
+        background: #FFFDF9; border: 1px solid #E8DDCF; border-radius: 18px;
+        padding: 16px; width: 230px;
+      }
+      a.card .thumb {
+        width: 198px; height: 360px; border-radius: 12px; overflow: hidden;
+        border: 1px solid #E8DDCF; margin-bottom: 12px; background: #EFE9DE;
+      }
+      a.card iframe { width: 390px; height: 844px; border: 0; transform: scale(0.5077); transform-origin: top left; }
+      a.card .name { font-weight: 600; font-size: 16px; }
+      a.card .status { color: #68645C; font-size: 13px; margin-top: 2px; }
+    </style>
+  </head>
+  <body>
+    <h1>Antidot — шаблоны страниц</h1>
+    <p class="sub">Утверждаем каждый экран, потом переносим в приложение. Клик — открыть в полный размер.</p>
+    <div class="grid">
+      <a class="card" href="welcome.html">
+        <div class="thumb"><iframe src="welcome.html" scrolling="no"></iframe></div>
+        <div class="name">1 · Welcome</div>
+        <div class="status">на утверждении</div>
+      </a>
+    </div>
+  </body>
+</html>
