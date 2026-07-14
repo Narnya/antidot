@@ -32,5 +32,5 @@ export default function Index() {
 
   if (decision.kind === 'loading') return <SessionLoadingScreen />;
   if (decision.kind === 'redirect') return <Redirect href={decision.to} />;
-  return <Redirect href="/home" />;
+  return <Redirect href="/feed" />;
 }

@@ -30,7 +30,7 @@ export type GateInput = {
 // Routes used by gates. Kept as a string-union so a typo would fail typecheck.
 // We never redirect to a `(group)` literally; Expo Router resolves screens by
 // their inner pathname (`/welcome`, `/invite`, `/start`, `/home`).
-export type RedirectTarget = '/welcome' | '/invite' | '/start' | '/home';
+export type RedirectTarget = '/welcome' | '/invite' | '/start' | '/feed';
 
 export type GateDecision =
   | { kind: 'loading' }
@@ -65,20 +65,20 @@ export function decideRouteAccess(group: GroupKind, input: GateInput): GateDecis
       if (!input.isAuthenticated) return { kind: 'allow' };
       if (!input.hasBetaAccess) return { kind: 'redirect', to: '/invite' };
       if (!input.isOnboardedPlaceholder) return { kind: 'redirect', to: '/start' };
-      return { kind: 'redirect', to: '/home' };
+      return { kind: 'redirect', to: '/feed' };
     }
     case 'beta': {
       if (!input.isAuthenticated) return { kind: 'redirect', to: '/welcome' };
       if (input.hasBetaAccess) {
         if (!input.isOnboardedPlaceholder) return { kind: 'redirect', to: '/start' };
-        return { kind: 'redirect', to: '/home' };
+        return { kind: 'redirect', to: '/feed' };
       }
       return { kind: 'allow' };
     }
     case 'onboarding': {
       if (!input.isAuthenticated) return { kind: 'redirect', to: '/welcome' };
       if (!input.hasBetaAccess) return { kind: 'redirect', to: '/invite' };
-      if (input.isOnboardedPlaceholder) return { kind: 'redirect', to: '/home' };
+      if (input.isOnboardedPlaceholder) return { kind: 'redirect', to: '/feed' };
       return { kind: 'allow' };
     }
     case 'app': {
