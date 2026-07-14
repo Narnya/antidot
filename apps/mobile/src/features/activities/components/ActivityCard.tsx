@@ -7,7 +7,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, typography } from '@social-events/ui';
 
 import type { ActivityView } from '../data/repository';
-import { formatWhen, kindEmoji } from '../lib/format';
+import { formatWhen } from '../lib/format';
+import { KindIcon } from './KindIcon';
 
 type Props = {
   view: ActivityView;
@@ -39,7 +40,7 @@ export function ActivityCard({ view, claimed, claiming, onClaim, onOpen }: Props
       testID={`open-${activity.id}`}
     >
       <View style={styles.titleRow}>
-        <Text style={styles.emoji}>{kindEmoji(activity.kind)}</Text>
+        <KindIcon kind={activity.kind} size={20} color={colors.action.primary} />
         <Text style={styles.title}>{activity.title}</Text>
       </View>
 
@@ -97,7 +98,6 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  emoji: { fontSize: 22 },
   title: { ...typography.section, color: colors.text.primary, flex: 1 },
   meta: { ...typography.body, color: colors.text.secondary },
   spots: { ...typography.bodyMedium, color: colors.text.primary },

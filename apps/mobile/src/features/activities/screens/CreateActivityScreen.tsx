@@ -12,12 +12,12 @@ import type { ActivityKind, Group } from '../lib/model';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
 const KIND_OPTIONS: { kind: ActivityKind; label: string }[] = [
-  { kind: 'football', label: '⚽ Футбол' },
-  { kind: 'walk', label: '🚶 Прогулка' },
-  { kind: 'boardgames', label: '🎲 Настолки' },
-  { kind: 'coffee', label: '☕ Кофе' },
-  { kind: 'run', label: '🏃 Бег' },
-  { kind: 'other', label: '✨ Другое' },
+  { kind: 'football', label: 'Футбол' },
+  { kind: 'walk', label: 'Прогулка' },
+  { kind: 'boardgames', label: 'Настолки' },
+  { kind: 'coffee', label: 'Кофе' },
+  { kind: 'run', label: 'Бег' },
+  { kind: 'other', label: 'Другое' },
 ];
 
 function buildWhenPresets(): { label: string; iso: string }[] {

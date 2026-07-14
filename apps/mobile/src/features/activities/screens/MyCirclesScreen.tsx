@@ -9,9 +9,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radius, spacing, typography } from '@social-events/ui';
 
 import type { ActivityView } from '../data/repository';
-import { formatWhen, kindEmoji } from '../lib/format';
+import { formatWhen } from '../lib/format';
 import type { Group } from '../lib/model';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
+import { KindIcon } from '../components/KindIcon';
 
 export function MyCirclesScreen() {
   const router = useRouter();
@@ -111,7 +112,7 @@ export function MyCirclesScreen() {
                         accessibilityRole="button"
                         testID={`circle-act-${v.activity.id}`}
                       >
-                        <Text style={styles.actEmoji}>{kindEmoji(v.activity.kind)}</Text>
+                        <KindIcon kind={v.activity.kind} size={20} color={colors.action.primary} />
                         <View style={styles.actMain}>
                           <Text style={styles.actTitle} numberOfLines={1}>
                             {v.activity.title}
@@ -189,7 +190,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing[3],
   },
-  actEmoji: { fontSize: 22 },
   actMain: { flex: 1, gap: 2 },
   actTitle: { ...typography.bodyMedium, color: colors.text.primary },
   actMeta: { ...typography.caption, color: colors.text.secondary },

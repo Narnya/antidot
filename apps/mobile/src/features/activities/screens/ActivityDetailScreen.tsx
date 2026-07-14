@@ -19,9 +19,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, radius, spacing, typography } from '@social-events/ui';
 
+import { Ionicons } from '@expo/vector-icons';
+
 import type { ActivityView, AttendanceEntry, AttendanceMark } from '../data/repository';
-import { formatWhen, kindEmoji } from '../lib/format';
+import { formatWhen } from '../lib/format';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
+import { KindIcon } from '../components/KindIcon';
 
 type Props = { activityId: string };
 
@@ -153,7 +156,7 @@ function DetailBody({
   return (
     <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
       <View style={styles.titleRow}>
-        <Text style={styles.emoji}>{kindEmoji(activity.kind)}</Text>
+        <KindIcon kind={activity.kind} size={26} color={colors.action.primary} />
         <Text style={styles.title}>{activity.title}</Text>
       </View>
 
@@ -167,15 +170,19 @@ function DetailBody({
         <LocationEditor location={location} onSave={onSaveLocation} />
       ) : location ? (
         <View style={styles.reveal}>
-          <Text style={styles.revealLabel}>📍 Место встречи</Text>
+          <View style={styles.noticeHead}>
+            <Ionicons name="location-outline" size={16} color={colors.safety.noticeText} />
+            <Text style={styles.revealLabel}>Место встречи</Text>
+          </View>
           <Text style={styles.revealValue}>{location}</Text>
         </View>
       ) : (
-        <View style={styles.notice}>
+        <View style={styles.noticeRow}>
+          <Ionicons name="lock-closed-outline" size={16} color={colors.safety.noticeText} />
           <Text style={styles.noticeText}>
             {alreadyGoing
-              ? '📍 Организатор ещё не указал точное место'
-              : '📍 Точное место откроется после записи'}
+              ? 'Организатор ещё не указал точное место'
+              : 'Точное место откроется после записи'}
           </Text>
         </View>
       )}
@@ -370,7 +377,6 @@ const styles = StyleSheet.create({
   empty: { ...typography.body, color: colors.text.muted },
   body: { padding: spacing[6], paddingTop: spacing[2], gap: spacing[4] },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  emoji: { fontSize: 28 },
   title: { ...typography.title, color: colors.text.primary, flex: 1 },
   card: {
     backgroundColor: colors.surface.default,
@@ -383,18 +389,22 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowLabel: { ...typography.body, color: colors.text.muted },
   rowValue: { ...typography.bodyMedium, color: colors.text.primary },
-  notice: {
+  noticeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
     backgroundColor: colors.safety.noticeBg,
     borderRadius: radius.md,
     padding: spacing[3],
   },
-  noticeText: { ...typography.caption, color: colors.safety.noticeText },
+  noticeText: { ...typography.caption, color: colors.safety.noticeText, flex: 1 },
   reveal: {
     backgroundColor: colors.safety.noticeBg,
     borderRadius: radius.md,
     padding: spacing[4],
     gap: 2,
   },
+  noticeHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
   revealLabel: { ...typography.caption, color: colors.safety.noticeText },
   revealValue: { ...typography.bodyMedium, color: colors.text.primary },
   hostCard: {

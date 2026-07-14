@@ -11,8 +11,9 @@ import { colors, radius, spacing, typography } from '@social-events/ui';
 
 import type { CircleView, MemberCandidate } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
-import { formatWhen, kindEmoji } from '../lib/format';
+import { formatWhen } from '../lib/format';
 import type { CircleRhythm } from '../lib/model';
+import { KindIcon } from '../components/KindIcon';
 
 const RHYTHM_LABEL: Record<CircleRhythm, string> = {
   weekly: 'раз в неделю',
@@ -127,7 +128,7 @@ function Body({
           accessibilityRole="button"
           testID="ch-next"
         >
-          <Text style={styles.actEmoji}>{kindEmoji(nextActivity.activity.kind)}</Text>
+          <KindIcon kind={nextActivity.activity.kind} size={20} color={colors.action.primary} />
           <View style={styles.actMain}>
             <Text style={styles.actTitle} numberOfLines={1}>
               {nextActivity.activity.title}
@@ -188,7 +189,9 @@ function Body({
       >
         <Text style={styles.primaryText}>Создать активность</Text>
       </Pressable>
-      {isMember && !isOwner ? <Text style={styles.pauseLink}>Поставить участие на паузу</Text> : null}
+      {isMember && !isOwner ? (
+        <Text style={styles.pauseLink}>Поставить участие на паузу</Text>
+      ) : null}
       <Pressable
         onPress={() => router.push(`/report?type=circle&id=${group.id}`)}
         accessibilityRole="button"
@@ -249,7 +252,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing[3],
   },
-  actEmoji: { fontSize: 22 },
   actMain: { flex: 1, gap: 2 },
   actTitle: { ...typography.bodyMedium, color: colors.text.primary },
   actMeta: { ...typography.caption, color: colors.text.secondary },
