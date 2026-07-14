@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,6 +26,7 @@ import type { ActivityView, AttendanceEntry, AttendanceMark } from '../data/repo
 import { formatWhen } from '../lib/format';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { KindIcon } from '../components/KindIcon';
+import { kindImage } from '../lib/kindImage';
 
 type Props = { activityId: string };
 
@@ -145,6 +147,7 @@ function DetailBody({
   const full = remaining === 0;
   const alreadyGoing = view.mine !== null;
   const disabled = claiming || full || alreadyGoing;
+  const [saved, setSaved] = useState(false);
   const label = claiming
     ? 'Записываем…'
     : alreadyGoing
@@ -155,6 +158,23 @@ function DetailBody({
 
   return (
     <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+      <View style={styles.hero}>
+        <Image source={kindImage(activity.kind)} style={styles.heroImg} resizeMode="cover" />
+        <Pressable
+          onPress={() => setSaved((s) => !s)}
+          style={styles.saveBtn}
+          accessibilityRole="button"
+          accessibilityState={{ selected: saved }}
+          testID="detail-save"
+        >
+          <Ionicons
+            name={saved ? 'heart' : 'heart-outline'}
+            size={20}
+            color={saved ? colors.accent.coral : colors.text.inverse}
+          />
+        </Pressable>
+      </View>
+
       <View style={styles.titleRow}>
         <KindIcon kind={activity.kind} size={26} color={colors.action.primary} />
         <Text style={styles.title}>{activity.title}</Text>
@@ -376,6 +396,19 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
   empty: { ...typography.body, color: colors.text.muted },
   body: { padding: spacing[6], paddingTop: spacing[2], gap: spacing[4] },
+  hero: { borderRadius: radius.lg, overflow: 'hidden', height: 200 },
+  heroImg: { width: '100%', height: 200 },
+  saveBtn: {
+    position: 'absolute',
+    top: spacing[3],
+    right: spacing[3],
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(21,19,15,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   title: { ...typography.title, color: colors.text.primary, flex: 1 },
   card: {
