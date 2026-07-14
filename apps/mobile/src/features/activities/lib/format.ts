@@ -14,3 +14,24 @@ export function formatWhen(iso: IsoTimestamp): string {
   const mm = String(d.getMinutes()).padStart(2, '0');
   return `${day}, ${d.getDate()} ${month} · ${hh}:${mm}`;
 }
+
+/** "19:00" — local time only. */
+export function formatTime(iso: IsoTimestamp): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** "Сегодня" / "Завтра" / "9 июл" — for feed day-group headers. */
+export function formatDayLabel(iso: IsoTimestamp): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(d);
+  target.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((target.getTime() - today.getTime()) / 86_400_000);
+  if (diffDays === 0) return 'Сегодня';
+  if (diffDays === 1) return 'Завтра';
+  return `${d.getDate()} ${MONTHS[d.getMonth()] ?? ''}`;
+}

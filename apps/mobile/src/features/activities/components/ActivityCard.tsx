@@ -1,46 +1,42 @@
-// ACT-003 / DS v2 — Activity card for the feed (объявления): a photo-hero
-// "invitation" card. Presentation only; the claim decision lives in the slot
-// rules / repository. You claim a SLOT here — never a person, and the city feed
-// shows only AGGREGATE slots, never who is going (no people marketplace — Inv. 1/13).
+// ACT-003 / DS v2 — Activity "invitation" card for the feed. Photo hero + time /
+// slots chips + title + area + composition footer. Tapping opens the detail (the
+// claim happens there). The city feed shows only AGGREGATE composition: the avatar
+// row is DECORATIVE (anonymous — no real identities), because revealing who is
+// going to strangers would break Inv. 1/13 + our RLS ("no people marketplace").
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius, spacing, typography } from '@social-events/ui';
 
 import type { ActivityView } from '../data/repository';
-import { formatWhen } from '../lib/format';
+import { formatDayLabel, formatTime } from '../lib/format';
 import { kindImage } from '../lib/kindImage';
 
 type Props = {
   view: ActivityView;
-  claimed: boolean;
-  claiming: boolean;
-  onClaim: (activityId: string) => void;
   onOpen?: (activityId: string) => void;
 };
 
-export function ActivityCard({ view, claimed, claiming, onClaim, onOpen }: Props) {
+// Decorative avatar tints (warm, anonymous — NOT tied to any real user).
+const AVATAR_TINTS = ['#D9CBB8', '#C9B9A2', '#B7C2AE', '#D6C3B0', '#C2B4A0'];
+
+export function ActivityCard({ view, onOpen }: Props) {
   const { activity, group } = view;
   const remaining = view.spotsRemaining;
   const full = remaining === 0;
-  const disabled = claimed || full || claiming;
-
-  const buttonLabel = claiming
-    ? 'Записываем…'
-    : claimed
-      ? '✓ Вы записаны'
-      : full
-        ? 'Мест нет'
-        : 'Занять место';
+  const avatarCount = Math.min(view.spotsTaken, 5);
 
   return (
     <Pressable
-      style={styles.card}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       onPress={() => onOpen?.(activity.id)}
       accessibilityRole="button"
       testID={`open-${activity.id}`}
     >
       <View style={styles.heroWrap}>
         <Image source={kindImage(activity.kind)} style={styles.hero} resizeMode="cover" />
+        <View style={styles.timeChip}>
+          <Text style={styles.timeChipText}>{formatTime(activity.startsAt)}</Text>
+        </View>
         <View style={styles.slotChip}>
           <Text style={styles.slotChipText}>
             {full ? 'Мест нет' : `${remaining} ${remaining === 1 ? 'место' : 'мест'}`}
@@ -52,12 +48,29 @@ export function ActivityCard({ view, claimed, claiming, onClaim, onOpen }: Props
         <Text style={styles.title} numberOfLines={1}>
           {activity.title}
         </Text>
-        <Text style={styles.meta}>
-          {formatWhen(activity.startsAt)} · {activity.area}
+        <Text style={styles.meta} numberOfLines={1}>
+          {activity.area} · {formatDayLabel(activity.startsAt)}
         </Text>
-        <Text style={styles.spots}>
-          {full ? 'Мест не осталось' : `Идут ${view.spotsTaken} из ${activity.totalSpots}`}
-        </Text>
+
+        <View style={styles.footer}>
+          <View style={styles.avatars}>
+            {Array.from({ length: avatarCount }).map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.avatar,
+                  {
+                    backgroundColor: AVATAR_TINTS[i % AVATAR_TINTS.length],
+                    marginLeft: i === 0 ? 0 : -8,
+                  },
+                ]}
+              />
+            ))}
+          </View>
+          <Text style={styles.count}>
+            {view.spotsTaken}/{activity.totalSpots} мест занято
+          </Text>
+        </View>
 
         <View style={styles.circleRow}>
           <Text style={styles.circleName} numberOfLines={1}>
@@ -67,30 +80,6 @@ export function ActivityCard({ view, claimed, claiming, onClaim, onOpen }: Props
             <Text style={styles.badgeText}>✓ Проверен</Text>
           </View>
         </View>
-
-        <Pressable
-          onPress={() => onClaim(activity.id)}
-          disabled={disabled}
-          style={({ pressed }) => [
-            styles.button,
-            claimed && styles.buttonClaimed,
-            full && !claimed && styles.buttonFull,
-            pressed && !disabled && styles.buttonPressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityState={{ disabled }}
-          testID={`claim-${activity.id}`}
-        >
-          <Text
-            style={[
-              styles.buttonText,
-              claimed && styles.buttonTextClaimed,
-              full && !claimed && styles.buttonTextFull,
-            ]}
-          >
-            {buttonLabel}
-          </Text>
-        </Pressable>
       </View>
     </Pressable>
   );
@@ -104,22 +93,42 @@ const styles = StyleSheet.create({
     borderColor: colors.border.default,
     overflow: 'hidden',
   },
-  heroWrap: { height: 150, width: '100%' },
-  hero: { width: '100%', height: 150 },
+  pressed: { opacity: 0.9 },
+  heroWrap: { height: 160, width: '100%' },
+  hero: { width: '100%', height: 160 },
+  timeChip: {
+    position: 'absolute',
+    top: spacing[2],
+    left: spacing[2],
+    backgroundColor: 'rgba(21,19,15,0.55)',
+    paddingHorizontal: spacing[2],
+    paddingVertical: 3,
+    borderRadius: radius.full,
+  },
+  timeChipText: { ...typography.badge, color: colors.text.inverse },
   slotChip: {
     position: 'absolute',
     top: spacing[2],
     right: spacing[2],
     backgroundColor: colors.surface.default,
     paddingHorizontal: spacing[3],
-    paddingVertical: spacing[1],
+    paddingVertical: 3,
     borderRadius: radius.full,
   },
   slotChipText: { ...typography.badge, color: colors.text.primary },
   body: { padding: spacing[4], gap: spacing[2] },
   title: { ...typography.section, color: colors.text.primary },
   meta: { ...typography.body, color: colors.text.secondary },
-  spots: { ...typography.bodyMedium, color: colors.text.primary },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
+  avatars: { flexDirection: 'row', alignItems: 'center' },
+  avatar: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.full,
+    borderWidth: 2,
+    borderColor: colors.surface.default,
+  },
+  count: { ...typography.caption, color: colors.text.muted },
   circleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[1] },
   circleName: { ...typography.caption, color: colors.text.muted, flex: 1 },
   badge: {
@@ -129,17 +138,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   badgeText: { ...typography.badge, color: colors.trust.verifiedText },
-  button: {
-    backgroundColor: colors.action.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing[3],
-    alignItems: 'center',
-    marginTop: spacing[2],
-  },
-  buttonClaimed: { backgroundColor: colors.safety.noticeBg },
-  buttonFull: { backgroundColor: colors.action.secondary },
-  buttonPressed: { opacity: 0.85 },
-  buttonText: { ...typography.button, color: colors.action.primaryText },
-  buttonTextClaimed: { color: colors.safety.noticeText },
-  buttonTextFull: { color: colors.text.muted },
 });
