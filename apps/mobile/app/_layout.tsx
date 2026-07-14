@@ -1,3 +1,4 @@
+import { PlayfairDisplay_700Bold, useFonts } from '@expo-google-fonts/playfair-display';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -16,6 +17,11 @@ import { BetaAccessProvider } from '../src/features/beta';
 // Real beta and onboarding sources of truth will layer on top once Schema v2 /
 // RLS v2 land in Sprint 4 (DBV2-004 / DBV2-006, RLSV2-001…003).
 export default function RootLayout() {
+  // Editorial serif for headlines (Warm-Green DS v2 — docs/35). Render nothing until
+  // the font is ready; if it errors, render anyway (system serif fallback).
+  const [fontsLoaded, fontError] = useFonts({ PlayfairDisplay_700Bold });
+  if (!fontsLoaded && !fontError) return null;
+
   return (
     <SafeAreaProvider>
       <AuthProvider>
