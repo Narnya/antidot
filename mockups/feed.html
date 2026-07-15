@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Antidot — Для тебя (лента) v0.2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f7f5ef; --surface: #fffdf9; --primary: #15130f; --secondary: #68645c;
+        --muted: #9a938a; --border: #e8ddcf; --green: #18392d; --coral: #f05a3a;
+        --trust-bg: #dcead8; --trust-tx: #18392d; --inverse: #fffdf9;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 100%; background: var(--bg); }
+      .screen {
+        position: relative; width: 100%; min-height: 100vh; min-height: 100dvh;
+        margin: 0 auto; max-width: 480px; background: var(--bg);
+        font-family: 'Inter', system-ui, sans-serif; color: var(--primary);
+        padding-bottom: 88px;
+      }
+
+      /* ————— Sticky translucent header (top bar) ————— */
+      .header {
+        position: sticky; top: 0; z-index: 5;
+        background: rgba(247, 245, 239, 0.82); backdrop-filter: blur(14px);
+        border-bottom: 1px solid rgba(232, 221, 207, 0.6);
+      }
+      .statusgap { height: max(50px, calc(env(safe-area-inset-top) + 8px)); }
+      .context {
+        display: flex; align-items: center; gap: 7px; padding: 4px 24px 14px;
+        color: var(--primary); font-size: 16px; font-weight: 600; letter-spacing: -0.1px;
+      }
+      .context .chev { margin-left: 1px; opacity: 0.6; }
+      .filters { display: flex; gap: 8px; padding: 0 24px 14px; overflow-x: auto; scrollbar-width: none; }
+      .filters::-webkit-scrollbar { display: none; }
+      .chip {
+        flex: 0 0 auto; border: 1px solid var(--border); background: var(--surface);
+        color: var(--secondary); font-size: 15px; font-weight: 500; line-height: 1;
+        padding: 10px 16px; border-radius: 999px; white-space: nowrap;
+      }
+      .chip.active { background: var(--green); border-color: var(--green); color: var(--inverse); }
+
+      /* ————— Feed ————— */
+      .list { padding: 16px 24px 0; }
+      .group { margin-bottom: 26px; }
+      .daylabel {
+        font-size: 13px; font-weight: 600; letter-spacing: 0.4px; color: var(--secondary);
+        text-transform: uppercase; margin: 2px 2px 12px;
+      }
+      .card {
+        background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+        overflow: hidden; margin-bottom: 14px; box-shadow: 0 6px 20px rgba(21, 19, 15, 0.06);
+      }
+      .hero { position: relative; width: 100%; height: 158px; }
+      .hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .hero .scrim { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(21,19,15,0.28) 0%, rgba(21,19,15,0) 34%); }
+      .time-chip {
+        position: absolute; top: 12px; left: 12px; display: inline-flex; align-items: center; gap: 5px;
+        background: rgba(21, 19, 15, 0.55); color: var(--inverse); font-size: 13px; font-weight: 600;
+        padding: 5px 10px 5px 8px; border-radius: 999px; backdrop-filter: blur(2px);
+      }
+      .slot-chip {
+        position: absolute; top: 12px; right: 12px; background: var(--surface); color: var(--green);
+        font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 999px;
+      }
+      .bookmark {
+        position: absolute; bottom: 12px; right: 12px; width: 34px; height: 34px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(255, 253, 249, 0.92); border-radius: 999px;
+      }
+      .body { padding: 14px 16px 15px; }
+      .card-title { font-size: 18px; font-weight: 600; line-height: 24px; color: var(--primary); }
+      .meta { font-size: 14.5px; font-weight: 400; line-height: 20px; color: var(--secondary); margin-top: 3px; }
+      .footer { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+      .avatars { display: flex; }
+      .avatar { width: 24px; height: 24px; border-radius: 999px; border: 2px solid var(--surface); }
+      .avatar + .avatar { margin-left: -8px; }
+      .count { font-size: 13px; color: var(--muted); }
+      .circle-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+      .circle-name { flex: 1; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .badge { display: inline-flex; align-items: center; gap: 4px; background: var(--trust-bg); color: var(--trust-tx); font-size: 12.5px; font-weight: 600; padding: 3px 9px 3px 7px; border-radius: 999px; }
+
+      /* ————— Bottom nav — fixed, frosted, minimal labels, active fills green ————— */
+      .ic { display: block; }
+      .tabbar {
+        position: fixed; left: 0; right: 0; bottom: 0; margin: 0 auto; max-width: 480px;
+        display: flex; background: rgba(255, 253, 249, 0.94); border-top: 1px solid var(--border);
+        padding: 9px 6px calc(9px + env(safe-area-inset-bottom)); backdrop-filter: blur(12px);
+      }
+      .tab {
+        flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+        color: var(--muted); /* icon (currentColor) + label both inherit this */
+        transition: color 0.15s ease;
+      }
+      .tab.active { color: var(--green); } /* active fills green: icon AND label */
+      .tab span { font-size: 10px; font-weight: 500; letter-spacing: 0.1px; }
+    </style>
+  </head>
+  <body>
+    <!-- icon sprite -->
+    <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+      <symbol id="ic-foryou" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M15.5 8.5l-2 5-5 2 2-5 5-2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-circles" viewBox="0 0 24 24"><circle cx="9" cy="12" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="15" cy="12" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+      <symbol id="ic-rhythm" viewBox="0 0 24 24"><path d="M3.5 13.5h3l2-5 3 8 2.5-6 1.5 3h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-bell" viewBox="0 0 24 24"><path d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5H4.5S6 14 6 10Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 18.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+      <symbol id="ic-profile" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 19c0-3.4 2.9-5.5 6.5-5.5s6.5 2.1 6.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    </svg>
+
+    <div class="screen">
+      <div class="header">
+        <div class="statusgap"></div>
+        <div class="context">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+          Санкт-Петербург · Приморский
+          <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="filters">
+          <div class="chip active">Все</div>
+          <div class="chip">Спорт</div>
+          <div class="chip">Настолки</div>
+          <div class="chip">Прогулки</div>
+          <div class="chip">Кофе</div>
+        </div>
+      </div>
+
+      <div class="list">
+        <div class="group">
+          <div class="daylabel">Сегодня</div>
+          <div class="card">
+            <div class="hero">
+              <img src="activity-football.jpg" alt="" />
+              <div class="scrim"></div>
+              <div class="time-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#fffdf9" stroke-width="1.6"/><path d="M12 7.5V12l3 2" stroke="#fffdf9" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>19:00</div>
+              <div class="slot-chip">3 места</div>
+              <div class="bookmark"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M6 4.5h12a1 1 0 0 1 1 1V20l-7-4-7 4V5.5a1 1 0 0 1 1-1Z" stroke="#18392d" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+            </div>
+            <div class="body">
+              <div class="card-title">Футбол 5×5</div>
+              <div class="meta">Приморский</div>
+              <div class="footer">
+                <div class="avatars">
+                  <div class="avatar" style="background:#D9CBB8"></div><div class="avatar" style="background:#C9B9A2"></div><div class="avatar" style="background:#B7C2AE"></div><div class="avatar" style="background:#D6C3B0"></div><div class="avatar" style="background:#C2B4A0"></div>
+                </div>
+                <div class="count">7/10 мест занято</div>
+              </div>
+              <div class="circle-row">
+                <div class="circle-name">Круг «Четверговый футбол»</div>
+                <div class="badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#18392d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Проверен</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="daylabel">Завтра</div>
+          <div class="card">
+            <div class="hero">
+              <img src="activity-boardgames.jpg" alt="" />
+              <div class="scrim"></div>
+              <div class="time-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#fffdf9" stroke-width="1.6"/><path d="M12 7.5V12l3 2" stroke="#fffdf9" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>20:00</div>
+              <div class="slot-chip">2 места</div>
+              <div class="bookmark"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M6 4.5h12a1 1 0 0 1 1 1V20l-7-4-7 4V5.5a1 1 0 0 1 1-1Z" stroke="#18392d" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+            </div>
+            <div class="body">
+              <div class="card-title">Настолки: Каркассон</div>
+              <div class="meta">Центр</div>
+              <div class="footer">
+                <div class="avatars">
+                  <div class="avatar" style="background:#C9B9A2"></div><div class="avatar" style="background:#B7C2AE"></div><div class="avatar" style="background:#D6C3B0"></div><div class="avatar" style="background:#D9CBB8"></div>
+                </div>
+                <div class="count">4/6 мест занято</div>
+              </div>
+              <div class="circle-row">
+                <div class="circle-name">Круг «Настолки у Ани»</div>
+                <div class="badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#18392d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Проверен</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fixed bottom nav — minimal labels, active fills green (icon + label) -->
+      <nav class="tabbar">
+        <div class="tab active"><svg class="ic" width="24" height="24"><use href="#ic-foryou"/></svg><span>Для тебя</span></div>
+        <div class="tab"><svg class="ic" width="24" height="24"><use href="#ic-circles"/></svg><span>Мои круги</span></div>
+        <div class="tab"><svg class="ic" width="24" height="24"><use href="#ic-rhythm"/></svg><span>Ритм</span></div>
+        <div class="tab"><svg class="ic" width="24" height="24"><use href="#ic-bell"/></svg><span>Уведомления</span></div>
+        <div class="tab"><svg class="ic" width="24" height="24"><use href="#ic-profile"/></svg><span>Профиль</span></div>
+      </nav>
+    </div>
+  </body>
+</html>

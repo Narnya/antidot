@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Antidot — Welcome v2.0</title>
+    <title>Antidot — Welcome v2.1</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -19,60 +19,62 @@
         margin: 0 auto; max-width: 480px;
       }
       .bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
-      /* ivory field that SMOOTHLY blends into the photo — a long, gradual fade so
-         there is no hard edge (like the reference). */
+      /* ivory field that fades into the photo — opaque up top, transparent by ~48%
+         so the sunset/sky emerges right under the subtitle (like the reference). */
       .scrim-top {
-        position: absolute; top: 0; left: 0; right: 0; height: 64%;
-        background: linear-gradient(to bottom, #f7f5ef 0%, #f7f5ef 38%, rgba(247, 245, 239, 0) 100%);
+        position: absolute; top: 0; left: 0; right: 0; height: 50%;
+        background: linear-gradient(to bottom, #f7f5ef 0%, #f7f5ef 65%, rgba(247, 245, 239, 0) 100%);
       }
       .scrim-bot {
         position: absolute; bottom: 0; left: 0; right: 0; height: 30%;
-        background: linear-gradient(to top, rgba(21, 19, 15, 0.5), rgba(21, 19, 15, 0));
+        background: linear-gradient(to top, rgba(21, 19, 15, 0.55), rgba(21, 19, 15, 0));
       }
       .content {
         position: absolute; inset: 0;
         display: flex; flex-direction: column; justify-content: space-between; align-items: center;
-        padding: max(54px, calc(env(safe-area-inset-top) + 12px)) 26px
-          max(38px, calc(env(safe-area-inset-bottom) + 16px));
+        padding: max(88px, calc(env(safe-area-inset-top) + 40px)) 35px
+          max(48px, calc(env(safe-area-inset-bottom) + 22px));
         text-align: center;
       }
       .top { display: flex; flex-direction: column; align-items: center; width: 100%; }
       /* wordmark: letters laid out with flex `gap` (equal spacing, NO trailing space),
          so it is always perfectly centered. The dot always sits above the letter "I". */
       .brand {
-        display: flex; justify-content: center; align-items: flex-start; gap: 13px;
-        font-family: 'Inter', sans-serif; font-weight: 500; font-size: 22px;
+        display: flex; justify-content: center; align-items: flex-start; gap: 11px;
+        font-family: 'Inter', sans-serif; font-weight: 500; font-size: 20px;
         text-transform: uppercase; color: #18392d;
       }
       .brand > span { display: inline-block; }
       .brand .i { position: relative; }
       .brand .idot {
-        position: absolute; left: 50%; top: -14px; transform: translateX(-50%);
+        position: absolute; left: 50%; top: -22px; transform: translateX(-50%);
         width: 7px; height: 7px; border-radius: 50%; background: #f05a3a;
       }
       .headline {
-        font-family: 'Playfair Display', serif; font-weight: 500;
-        font-size: clamp(40px, 13vw, 51px); line-height: 1.07; letter-spacing: -0.5px;
-        color: #18392d; margin-top: 50px;
+        font-family: 'Playfair Display', serif; font-weight: 600;
+        font-size: 42px; line-height: 1.24; letter-spacing: -0.5px;
+        color: #18392d; margin-top: 32px;
       }
       .accent {
         font-family: 'Playfair Display', serif; font-weight: 500;
-        font-size: clamp(28px, 8.4vw, 33px); line-height: 1.1; color: #f05a3a; margin-top: 12px;
+        font-size: 22px; line-height: 1.1; color: #f05a3a; margin-top: 15px;
+      }
+      .divider {
+        width: 1px; height: 32px; background: #45564c; opacity: 0.55; margin-top: 14px;
       }
       .subtitle {
         font-family: 'Inter', sans-serif; font-weight: 400;
-        font-size: 19px; line-height: 28px; color: #545049; margin-top: 24px;
+        font-size: 13.5px; line-height: 22px; color: #33423b; margin-top: 16px;
       }
       .bottom { width: 100%; display: flex; flex-direction: column; align-items: center; }
       .cta {
         position: relative; display: flex; align-items: center; justify-content: center;
-        width: 100%; height: 54px; background: #18392d; color: #ffffff;
-        border-radius: 18px; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 17px;
+        width: 100%; height: 60px; background: #18392d; color: #fffdf9;
+        border-radius: 20px; font-family: 'Inter', sans-serif; font-weight: 500; font-size: 16px;
       }
-      .cta .arrow { position: absolute; right: 22px; top: 50%; transform: translateY(-50%); font-size: 19px; font-weight: 400; }
       .login {
         font-family: 'Inter', sans-serif; font-weight: 400; font-size: 15px;
-        color: #f4efe6; margin-top: 18px;
+        color: #f0ebe1; margin-top: 18px;
       }
       .login .link { color: #f05a3a; font-weight: 500; }
     </style>
@@ -89,10 +91,11 @@
           </div>
           <div class="headline">Найди<br />свой круг</div>
           <div class="accent">без дейтинга</div>
+          <div class="divider"></div>
           <div class="subtitle">Сначала общее занятие.<br />Потом знакомство.</div>
         </div>
         <div class="bottom">
-          <div class="cta">Посмотреть активности<span class="arrow">→</span></div>
+          <div class="cta">Посмотреть активности</div>
           <div class="login">Уже есть аккаунт? <span class="link">Войти</span></div>
         </div>
       </div>
