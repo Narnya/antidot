@@ -1,0 +1,1195 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Antidot — все экраны на одном листе</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f7f5ef; --surface: #fffdf9; --primary: #15130f; --secondary: #68645c;
+        --muted: #9a938a; --border: #e8ddcf; --green: #18392d; --coral: #f05a3a;
+        --trust-bg: #dcead8; --trust-tx: #18392d; --inverse: #fffdf9;
+        --field: #fbf8f1;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { background: #e7e0d2; -webkit-font-smoothing: antialiased; }
+      body { font-family: 'Inter', system-ui, sans-serif; color: var(--primary); padding: 56px 40px 80px; }
+
+      /* ————— Sheet header ————— */
+      .sheet-head { max-width: 1400px; margin: 0 auto 44px; }
+      .sheet-head h1 { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 40px; letter-spacing: -0.5px; color: var(--green); }
+      .sheet-head p { color: #6c665b; font-size: 16px; margin-top: 8px; }
+      .sheet-head .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--coral); margin: 0 2px; vertical-align: 2px; }
+
+      /* ————— Grid of device frames ————— */
+      .grid { display: flex; flex-wrap: wrap; gap: 30px 34px; justify-content: center; align-items: flex-start; max-width: 1720px; margin: 0 auto; }
+      .frame { width: 390px; }
+      .frame .caption { display: flex; align-items: baseline; gap: 8px; margin: 0 6px 12px; }
+      .frame .num { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 17px; color: var(--green); }
+      .frame .cap-name { font-weight: 600; font-size: 15px; color: var(--primary); }
+      .frame .cap-tag { font-size: 12px; color: #8a8478; margin-left: auto; }
+
+      .phone {
+        position: relative; width: 390px; height: 844px; border-radius: 46px; overflow: hidden;
+        background: var(--bg); border: 1px solid #d8cfbe;
+        box-shadow: 0 26px 60px rgba(21,19,15,0.18), 0 4px 10px rgba(21,19,15,0.10);
+      }
+      .screen {
+        position: absolute; inset: 0; overflow: hidden;
+        display: flex; flex-direction: column; background: var(--bg);
+      }
+      /* faux status bar */
+      .statusbar {
+        position: absolute; top: 0; left: 0; right: 0; height: 50px; z-index: 30;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 17px 28px 0; pointer-events: none;
+      }
+      .statusbar .time { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+      .statusbar .sig { display: flex; align-items: center; gap: 6px; opacity: 0.9; }
+      .statusbar.light .time, .statusbar.light svg { color: var(--inverse); fill: var(--inverse); }
+
+      /* generic scroll body under status bar */
+      .body-scroll { flex: 1; overflow: hidden; padding-top: 50px; }
+
+      /* ————— shared header (context / back) ————— */
+      .ctx-header {
+        background: rgba(247, 245, 239, 0.9); backdrop-filter: blur(14px);
+        border-bottom: 1px solid rgba(232, 221, 207, 0.6);
+      }
+      .context {
+        display: flex; align-items: center; gap: 7px; padding: 6px 24px 14px;
+        font-size: 16px; font-weight: 600; letter-spacing: -0.1px;
+      }
+      .context .chev { margin-left: 1px; opacity: 0.55; }
+      .stack-top { display: flex; align-items: center; gap: 14px; padding: 6px 20px 16px; }
+      .iconbtn { width: 38px; height: 38px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--primary); }
+      .stack-title { font-size: 18px; font-weight: 600; }
+      .stack-title.big { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 24px; letter-spacing: -0.3px; }
+
+      /* filters */
+      .filters { display: flex; gap: 8px; padding: 0 24px 14px; overflow: hidden; }
+      .chip {
+        flex: 0 0 auto; border: 1px solid var(--border); background: var(--surface);
+        color: var(--secondary); font-size: 15px; font-weight: 500; line-height: 1;
+        padding: 10px 16px; border-radius: 999px; white-space: nowrap;
+      }
+      .chip.active { background: var(--green); border-color: var(--green); color: var(--inverse); }
+      .chip.sm { font-size: 13.5px; padding: 8px 13px; }
+
+      /* ————— feed card ————— */
+      .list { padding: 16px 24px 0; overflow: hidden; }
+      .group { margin-bottom: 24px; }
+      .daylabel { font-size: 13px; font-weight: 600; letter-spacing: 0.4px; color: var(--secondary); text-transform: uppercase; margin: 2px 2px 12px; }
+      .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; margin-bottom: 14px; box-shadow: 0 6px 20px rgba(21, 19, 15, 0.06); }
+      .hero { position: relative; width: 100%; height: 158px; }
+      .hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .hero .scrim { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(21,19,15,0.28) 0%, rgba(21,19,15,0) 34%); }
+      .time-chip { position: absolute; top: 12px; left: 12px; display: inline-flex; align-items: center; gap: 5px; background: rgba(21, 19, 15, 0.55); color: var(--inverse); font-size: 13px; font-weight: 600; padding: 5px 10px 5px 8px; border-radius: 999px; }
+      .slot-chip { position: absolute; top: 12px; right: 12px; background: var(--surface); color: var(--green); font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 999px; }
+      .bookmark { position: absolute; bottom: 12px; right: 12px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: rgba(255, 253, 249, 0.92); border-radius: 999px; }
+      .cbody { padding: 14px 16px 15px; }
+      .card-title { font-size: 18px; font-weight: 600; line-height: 24px; }
+      .meta { font-size: 14.5px; line-height: 20px; color: var(--secondary); margin-top: 3px; }
+      .footer { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+      .avatars { display: flex; }
+      .avatar { width: 24px; height: 24px; border-radius: 999px; border: 2px solid var(--surface); }
+      .avatar + .avatar { margin-left: -8px; }
+      .count { font-size: 13px; color: var(--muted); }
+      .circle-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+      .circle-name { flex: 1; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .badge { display: inline-flex; align-items: center; gap: 4px; background: var(--trust-bg); color: var(--trust-tx); font-size: 12.5px; font-weight: 600; padding: 3px 9px 3px 7px; border-radius: 999px; }
+
+      /* ————— bottom nav ————— */
+      .tabbar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; background: rgba(255, 253, 249, 0.96); border-top: 1px solid var(--border); padding: 9px 6px 26px; backdrop-filter: blur(12px); z-index: 20; }
+      .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--muted); }
+      .tab.active { color: var(--green); }
+      .tab span { font-size: 10px; font-weight: 500; letter-spacing: 0.1px; }
+
+      /* ————— generic content blocks ————— */
+      .pad { padding: 4px 24px 0; }
+      .h-hero { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 30px; line-height: 1.18; letter-spacing: -0.4px; color: var(--green); }
+      .sub { font-size: 15px; line-height: 22px; color: var(--secondary); margin-top: 10px; }
+      .label { font-size: 13px; font-weight: 600; color: var(--secondary); margin: 0 2px 8px; }
+      .field { display: flex; align-items: center; gap: 10px; background: var(--field); border: 1px solid var(--border); border-radius: 15px; padding: 15px 16px; font-size: 15.5px; color: var(--primary); }
+      .field .ph { color: var(--muted); }
+      .field.area { color: var(--secondary); }
+      .btn { height: 56px; border-radius: 18px; background: var(--green); color: var(--inverse); font-weight: 600; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+      .btn.coral { background: var(--coral); }
+      .btn-ghost { height: 54px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); color: var(--primary); font-weight: 600; font-size: 15.5px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+      .stack-cta { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 24px 30px; background: rgba(247,245,239,0.94); backdrop-filter: blur(12px); border-top: 1px solid var(--border); z-index: 20; }
+
+      /* rows / list items */
+      .rowcard { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 15px 16px; }
+      .listrow { display: flex; align-items: center; gap: 13px; padding: 15px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; }
+      .listrow .txt { flex: 1; min-width: 0; }
+      .listrow .t1 { font-size: 15.5px; font-weight: 600; }
+      .listrow .t2 { font-size: 13px; color: var(--secondary); margin-top: 2px; }
+      .av-lg { width: 46px; height: 46px; border-radius: 999px; flex: 0 0 auto; }
+      .ic-tile { width: 42px; height: 42px; border-radius: 12px; background: var(--trust-bg); color: var(--green); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+
+      .divider-lbl { font-size: 13px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: var(--muted); margin: 22px 2px 12px; }
+
+      /* profile header */
+      .prof-top { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 8px 24px 0; }
+      .prof-av { width: 92px; height: 92px; border-radius: 999px; border: 3px solid var(--surface); box-shadow: 0 8px 20px rgba(21,19,15,0.12); }
+      .prof-name { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 26px; margin-top: 14px; }
+      .prof-sub { font-size: 14px; color: var(--secondary); margin-top: 4px; }
+      .badge-wrap { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+      .stat-row { display: flex; gap: 12px; margin-top: 20px; }
+      .stat { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 10px; text-align: center; }
+      .stat .n { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 24px; color: var(--green); }
+      .stat .l { font-size: 12px; color: var(--secondary); margin-top: 3px; }
+
+      /* rhythm */
+      .streak { display: flex; gap: 7px; margin-top: 16px; }
+      .wk { flex: 1; text-align: center; }
+      .wk .d { width: 100%; aspect-ratio: 1; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; font-weight: 600; }
+      .wk .d.on { background: var(--green); border-color: var(--green); color: var(--inverse); }
+      .wk .d.soft { background: var(--trust-bg); border-color: #cfe0ca; color: var(--green); }
+      .wk .lbl { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+      /* onboarding progress */
+      .progress { display: flex; gap: 6px; padding: 6px 24px 0; }
+      .progress i { height: 4px; border-radius: 999px; background: var(--border); flex: 1; }
+      .progress i.on { background: var(--green); }
+
+      /* welcome */
+      .wel { position: absolute; inset: 0; }
+      .wel .bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      .wel .scrim-top { position: absolute; top: 0; left: 0; right: 0; height: 50%; background: linear-gradient(to bottom, #f7f5ef 0%, #f7f5ef 62%, rgba(247,245,239,0) 100%); }
+      .wel .scrim-bot { position: absolute; bottom: 0; left: 0; right: 0; height: 32%; background: linear-gradient(to top, rgba(21,19,15,0.5), rgba(21,19,15,0)); }
+      .wel .content { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 92px 35px 46px; text-align: center; }
+      .wel .brand { display: flex; justify-content: center; align-items: flex-start; gap: 11px; font-weight: 500; font-size: 20px; text-transform: uppercase; color: var(--green); }
+      .wel .brand .i { position: relative; }
+      .wel .brand .idot { position: absolute; left: 50%; top: -22px; transform: translateX(-50%); width: 7px; height: 7px; border-radius: 50%; background: var(--coral); }
+      .wel .headline { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 42px; line-height: 1.22; letter-spacing: -0.5px; color: var(--green); margin-top: 30px; }
+      .wel .accent { font-family: 'Playfair Display', serif; font-weight: 500; font-size: 22px; color: var(--coral); margin-top: 14px; }
+      .wel .divider { width: 1px; height: 30px; background: #45564c; opacity: 0.55; margin-top: 14px; }
+      .wel .subtitle { font-size: 13.5px; line-height: 22px; color: #33423b; margin-top: 15px; }
+      .wel .cta { display: flex; align-items: center; justify-content: center; width: 100%; height: 60px; background: var(--green); color: var(--inverse); border-radius: 20px; font-weight: 500; font-size: 16px; }
+      .wel .login { font-size: 15px; color: #f0ebe1; margin-top: 17px; }
+      .wel .login .link { color: var(--coral); font-weight: 500; }
+
+      .brand-mini { display: inline-flex; align-items: flex-start; gap: 8px; font-weight: 500; font-size: 17px; text-transform: uppercase; color: var(--green); }
+      .brand-mini .i { position: relative; }
+      .brand-mini .idot { position: absolute; left: 50%; top: -17px; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: var(--coral); }
+
+      .notice { font-size: 12.5px; line-height: 18px; color: var(--muted); display: flex; gap: 8px; }
+      .notice svg { flex: 0 0 auto; margin-top: 1px; }
+
+      /* ————— section divider on the sheet ————— */
+      .sheet-sub { max-width: 1400px; margin: 64px auto 8px; border-top: 1px solid #cdc4b3; padding-top: 40px; }
+      .sheet-sub h2 { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 28px; color: var(--green); }
+      .sheet-sub p { color: #6c665b; font-size: 15px; margin-top: 6px; }
+      .tag-new { display: inline-block; background: var(--coral); color: #fff; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; vertical-align: 3px; margin-left: 8px; letter-spacing: 0.2px; }
+
+      /* ————— onboarding value slides ————— */
+      .ob-hero { position: absolute; top: 0; left: 0; right: 0; height: 430px; }
+      .ob-hero img { width: 100%; height: 100%; object-fit: cover; }
+      .ob-hero .fade { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(21,19,15,0.12), rgba(247,245,239,0) 46%, rgba(247,245,239,1) 90%); }
+      .skip { position: absolute; top: 60px; right: 24px; z-index: 25; font-size: 14px; color: var(--inverse); font-weight: 500; opacity: 0.92; }
+      .ob-content { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 30px 46px; z-index: 20; }
+      .dots { display: flex; gap: 7px; }
+      .dots i { width: 7px; height: 7px; border-radius: 999px; background: var(--border); }
+      .dots i.on { width: 22px; background: var(--green); }
+
+      /* ————— social auth buttons ————— */
+      .soc { height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 600; font-size: 15.5px; }
+      .soc.apple { background: #15130f; color: #fff; }
+      .soc.google, .soc.mail { background: var(--surface); border: 1px solid var(--border); color: var(--primary); }
+
+      /* ————— radio rows (claim) ————— */
+      .radio-row { display: flex; align-items: center; gap: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 15px; padding: 15px 16px; }
+      .radio-row.sel { border-color: var(--green); background: #f1f5ef; }
+      .rdot { width: 22px; height: 22px; border-radius: 999px; border: 2px solid var(--muted); flex: 0 0 auto; }
+      .radio-row.sel .rdot { border: 7px solid var(--green); }
+      .radio-row .rt1 { font-size: 15.5px; font-weight: 600; }
+      .radio-row .rt2 { font-size: 12.5px; color: var(--secondary); margin-top: 1px; }
+      .textarea { background: var(--field); border: 1px solid var(--border); border-radius: 15px; padding: 14px 16px; font-size: 15px; color: var(--secondary); min-height: 76px; line-height: 21px; }
+
+      /* ————— bottom-sheet modal (pause/leave) ————— */
+      .dim { position: absolute; inset: 0; background: rgba(21,19,15,0.45); z-index: 15; }
+      .sheet-modal { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 26px 26px 0 0; padding: 8px 22px 34px; z-index: 25; box-shadow: 0 -12px 44px rgba(0,0,0,0.22); }
+      .grabber { width: 42px; height: 5px; border-radius: 999px; background: var(--border); margin: 8px auto 14px; }
+      .opt-row { display: flex; align-items: center; gap: 14px; padding: 16px 2px; }
+      .opt-row + .opt-row { border-top: 1px solid var(--border); }
+      .opt-row .ot1 { font-size: 16px; font-weight: 600; }
+      .opt-row .ot2 { font-size: 12.5px; color: var(--secondary); margin-top: 2px; line-height: 17px; }
+      .checkbox { width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--muted); flex: 0 0 auto; }
+      .checkbox.on { background: var(--green); border-color: var(--green); display: flex; align-items: center; justify-content: center; }
+
+      /* ————— centered gate (restricted) ————— */
+      .gate-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 36px; }
+      .gate-ic { width: 78px; height: 78px; border-radius: 22px; background: var(--trust-bg); color: var(--green); display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }
+      .empty-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 40px; }
+
+      /* ————— circle chat ————— */
+      .pinned { margin: 12px 18px 4px; background: #eef3ec; border: 1px solid #d6e2d0; border-radius: 14px; padding: 11px 13px; display: flex; gap: 10px; align-items: center; }
+      .pinned .pt1 { font-size: 13px; font-weight: 600; color: var(--green); }
+      .pinned .pt2 { font-size: 12px; color: #4a5c50; margin-top: 1px; }
+      .chat-wrap { display: flex; flex-direction: column; gap: 11px; padding: 16px 18px; }
+      .sys { align-self: center; background: var(--field); border: 1px solid var(--border); color: var(--secondary); font-size: 12px; padding: 6px 13px; border-radius: 999px; text-align: center; }
+      .msg { display: flex; gap: 9px; max-width: 82%; align-items: flex-end; }
+      .msg .ava { width: 30px; height: 30px; border-radius: 999px; flex: 0 0 auto; }
+      .bubble { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 9px 13px; }
+      .bubble .who { font-size: 12px; font-weight: 600; color: var(--green); margin-bottom: 2px; }
+      .bubble .tx { font-size: 14px; line-height: 19px; }
+      .msg.me { align-self: flex-end; }
+      .msg.me .bubble { background: var(--green); color: var(--inverse); border-color: var(--green); }
+      .chat-input { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 28px; background: rgba(247,245,239,0.96); border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; z-index: 20; }
+      .chat-input .box { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 12px 16px; font-size: 14px; color: var(--muted); }
+      .chat-input .send { width: 44px; height: 44px; border-radius: 999px; background: var(--green); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+
+      /* ————— attendance chips (host) ————— */
+      .att-chip { font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border); }
+      .att-chip.on { background: var(--green); color: var(--inverse); border-color: var(--green); }
+      .att-chip.off { background: var(--surface); color: var(--secondary); }
+
+      /* ————— success screens ————— */
+      .succ-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 34px; }
+      .succ-ic { width: 88px; height: 88px; border-radius: 999px; background: var(--trust-bg); color: var(--green); display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }
+    </style>
+  </head>
+  <body>
+    <!-- icon sprite -->
+    <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+      <symbol id="ic-foryou" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M15.5 8.5l-2 5-5 2 2-5 5-2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-circles" viewBox="0 0 24 24"><circle cx="9" cy="12" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="15" cy="12" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+      <symbol id="ic-rhythm" viewBox="0 0 24 24"><path d="M3.5 13.5h3l2-5 3 8 2.5-6 1.5 3h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-bell" viewBox="0 0 24 24"><path d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5H4.5S6 14 6 10Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 18.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+      <symbol id="ic-profile" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 19c0-3.4 2.9-5.5 6.5-5.5s6.5 2.1 6.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+      <symbol id="ic-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-pin" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+      <symbol id="ic-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-chev-r" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+      <symbol id="ic-users" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 18.5c0-3 2.5-4.8 5.5-4.8s5.5 1.8 5.5 4.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M16 7.2a3 3 0 0 1 0 5.4M17.5 18.5c0-2.2-1-3.8-2.6-4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+      <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M5 5.5h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-4 3.2V6.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="5.5" y="10.5" width="13" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+      <symbol id="ic-shield" viewBox="0 0 24 24"><path d="M12 3.5l6.5 2.5v5c0 4.5-3 7.5-6.5 9-3.5-1.5-6.5-4.5-6.5-9v-5L12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 3.5v2.5M12 18v2.5M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M3.5 12H6M18 12h2.5M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+      <symbol id="ic-cal" viewBox="0 0 24 24"><rect x="4.5" y="6" width="15" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4.5 10h15M8.5 4v3M15.5 4v3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+      <symbol id="ic-mail" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 8l7 5 7-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 4h11l-2 3.5L17 11H6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-out" viewBox="0 0 24 24"><path d="M15 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-2M10 12h10m0 0l-3-3m3 3l-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-trash" viewBox="0 0 24 24"><path d="M5.5 7h13M9.5 7V5.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V7M7 7l1 12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 12h17M12 3.5c2.5 2.3 3.8 5.3 3.8 8.5S14.5 18.2 12 20.5C9.5 18.2 8.2 15.2 8.2 12S9.5 5.8 12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+      <symbol id="ic-wifi" viewBox="0 0 24 24"><path d="M2 8.5C5 6 8.3 4.7 12 4.7S19 6 22 8.5M5 11.8C7 10 9.4 9 12 9s5 1 7 2.8M8 15c1.1-1 2.5-1.5 4-1.5s2.9.5 4 1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="18.5" r="1.3" fill="currentColor"/></symbol>
+    </svg>
+
+    <div class="sheet-head">
+      <h1>ANTIDOT<span class="dot"></span>&nbsp;&nbsp;все экраны на одном листе</h1>
+      <p>Activity-first MVP — знакомства через активность. Единая дизайн-система (Playfair + Inter, тёплая палитра). Экраны 1–12 по кор-лупу.</p>
+    </div>
+
+    <div class="grid">
+
+      <!-- 1 · WELCOME -->
+      <div class="frame">
+        <div class="caption"><span class="num">01</span><span class="cap-name">Welcome</span><span class="cap-tag">утверждён</span></div>
+        <div class="phone">
+          <div class="statusbar light"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="wel">
+            <img class="bg" src="welcome-bg.png" alt="" />
+            <div class="scrim-top"></div>
+            <div class="scrim-bot"></div>
+            <div class="content">
+              <div>
+                <div class="brand"><span>A</span><span>N</span><span>T</span><span class="i">I<span class="idot"></span></span><span>D</span><span>O</span><span>T</span></div>
+                <div class="headline">Найди<br />свой круг</div>
+                <div class="accent">без дейтинга</div>
+                <div class="divider" style="margin:14px auto 0"></div>
+                <div class="subtitle">Сначала общее занятие.<br />Потом знакомство.</div>
+              </div>
+              <div style="width:100%">
+                <div class="cta">Посмотреть активности</div>
+                <div class="login">Уже есть аккаунт? <span class="link">Войти</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 · LOGIN -->
+      <div class="frame">
+        <div class="caption"><span class="num">02</span><span class="cap-name">Вход</span><span class="cap-tag">auth · OTP</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="stack-top"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div></div>
+              <div class="pad" style="margin-top:14px">
+                <div class="brand-mini"><span>A</span><span>N</span><span>T</span><span class="i">I<span class="idot"></span></span><span>D</span><span>O</span><span>T</span></div>
+                <div class="h-hero" style="margin-top:22px">С возвращением</div>
+                <div class="sub">Войди по e-mail — пришлём код для входа. Без паролей.</div>
+
+                <div style="margin-top:30px">
+                  <div class="label">E-mail</div>
+                  <div class="field"><svg width="20" height="20" style="color:var(--muted)"><use href="#ic-mail"/></svg><span>rafael@antidot.space</span></div>
+                </div>
+                <div style="margin-top:16px">
+                  <div class="label">Код из письма</div>
+                  <div class="field"><span class="ph">— — — —</span></div>
+                </div>
+
+                <div class="btn" style="margin-top:26px">Продолжить</div>
+                <div class="btn-ghost" style="margin-top:12px">Отправить код заново</div>
+
+                <div class="notice" style="margin-top:26px">
+                  <svg width="16" height="16"><use href="#ic-lock"/></svg>
+                  <span>Твой e-mail и активность не видны другим участникам. Точное место встречи открывается только когда ты занял слот.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 · ONBOARDING -->
+      <div class="frame">
+        <div class="caption"><span class="num">03</span><span class="cap-name">Онбординг</span><span class="cap-tag">профиль</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="stack-top"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div></div>
+              <div class="progress"><i class="on"></i><i class="on"></i><i></i></div>
+              <div class="pad" style="margin-top:20px">
+                <div class="h-hero">Немного<br />о тебе</div>
+                <div class="sub">Это увидят участники круга, когда вы окажетесь на одной активности.</div>
+
+                <div style="margin-top:24px">
+                  <div class="label">Как тебя зовут</div>
+                  <div class="field"><span>Рафаэль</span></div>
+                </div>
+                <div style="margin-top:16px">
+                  <div class="label">Город и район</div>
+                  <div class="field"><svg width="20" height="20" style="color:var(--muted)"><use href="#ic-pin"/></svg><span>Санкт-Петербург · Приморский</span></div>
+                </div>
+                <div style="margin-top:18px">
+                  <div class="label">Что тебе интересно</div>
+                  <div class="filters" style="flex-wrap:wrap; padding:0; gap:8px">
+                    <div class="chip sm active">Спорт</div><div class="chip sm">Настолки</div><div class="chip sm active">Прогулки</div><div class="chip sm">Кофе</div><div class="chip sm">Бег</div><div class="chip sm">Музыка</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="stack-cta"><div class="btn">Далее</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 · FEED «ДЛЯ ТЕБЯ» -->
+      <div class="frame">
+        <div class="caption"><span class="num">04</span><span class="cap-name">Для тебя · лента</span><span class="cap-tag">вход</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll" style="padding-top:50px">
+              <div class="ctx-header">
+                <div class="context">
+                  <svg width="16" height="16"><use href="#ic-pin"/></svg>
+                  Санкт-Петербург · Приморский
+                  <svg class="chev" width="15" height="15"><use href="#ic-chev-r" style="transform:rotate(90deg);transform-origin:center"/></svg>
+                </div>
+                <div class="filters">
+                  <div class="chip active">Все</div><div class="chip">Спорт</div><div class="chip">Настолки</div><div class="chip">Прогулки</div><div class="chip">Кофе</div>
+                </div>
+              </div>
+              <div class="list">
+                <div class="group">
+                  <div class="daylabel">Сегодня</div>
+                  <div class="card">
+                    <div class="hero">
+                      <img src="activity-football.jpg" alt="" /><div class="scrim"></div>
+                      <div class="time-chip"><svg width="13" height="13" style="color:#fff"><use href="#ic-clock"/></svg>19:00</div>
+                      <div class="slot-chip">3 места</div>
+                      <div class="bookmark"><svg width="17" height="17" style="color:var(--green)" viewBox="0 0 24 24"><path d="M6 4.5h12a1 1 0 0 1 1 1V20l-7-4-7 4V5.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+                    </div>
+                    <div class="cbody">
+                      <div class="card-title">Футбол 5×5</div>
+                      <div class="meta">Приморский</div>
+                      <div class="footer">
+                        <div class="avatars"><div class="avatar" style="background:#D9CBB8"></div><div class="avatar" style="background:#C9B9A2"></div><div class="avatar" style="background:#B7C2AE"></div><div class="avatar" style="background:#D6C3B0"></div></div>
+                        <div class="count">7/10 мест занято</div>
+                      </div>
+                      <div class="circle-row"><div class="circle-name">Круг «Четверговый футбол»</div><div class="badge"><svg width="13" height="13" style="color:var(--green)"><use href="#ic-check"/></svg>Проверен</div></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="group">
+                  <div class="daylabel">Завтра</div>
+                  <div class="card">
+                    <div class="hero">
+                      <img src="activity-boardgames.jpg" alt="" /><div class="scrim"></div>
+                      <div class="time-chip"><svg width="13" height="13" style="color:#fff"><use href="#ic-clock"/></svg>20:00</div>
+                      <div class="slot-chip">2 места</div>
+                    </div>
+                    <div class="cbody"><div class="card-title">Настолки: Каркассон</div><div class="meta">Центр</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <nav class="tabbar">
+              <div class="tab active"><svg width="24" height="24"><use href="#ic-foryou"/></svg><span>Для тебя</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-circles"/></svg><span>Мои круги</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-rhythm"/></svg><span>Ритм</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-bell"/></svg><span>Уведомления</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-profile"/></svg><span>Профиль</span></div>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5 · ACTIVITY DETAIL -->
+      <div class="frame">
+        <div class="caption"><span class="num">05</span><span class="cap-name">Активность · детали</span><span class="cap-tag">только район</span></div>
+        <div class="phone">
+          <div class="statusbar light"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll" style="padding-top:0">
+              <div style="position:relative; height:280px">
+                <img src="activity-football.jpg" style="width:100%;height:100%;object-fit:cover" />
+                <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(21,19,15,0.35),rgba(21,19,15,0) 30%,rgba(21,19,15,0) 55%,rgba(247,245,239,1))"></div>
+                <div style="position:absolute;top:56px;left:20px" class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div>
+                <div style="position:absolute;top:56px;right:20px" class="iconbtn"><svg width="18" height="18"><use href="#ic-flag"/></svg></div>
+              </div>
+              <div class="pad" style="margin-top:-8px">
+                <div class="h-hero" style="font-size:28px">Футбол 5×5</div>
+                <div style="display:flex;gap:14px;margin-top:12px;flex-wrap:wrap">
+                  <div class="badge" style="background:var(--surface);border:1px solid var(--border);color:var(--secondary)"><svg width="14" height="14"><use href="#ic-clock"/></svg>Сегодня, 19:00</div>
+                  <div class="badge" style="background:var(--surface);border:1px solid var(--border);color:var(--secondary)"><svg width="14" height="14"><use href="#ic-pin"/></svg>Приморский р-н</div>
+                </div>
+                <div class="rowcard" style="margin-top:16px;display:flex;align-items:center;gap:12px">
+                  <div class="ic-tile"><svg width="22" height="22"><use href="#ic-lock"/></svg></div>
+                  <div style="flex:1"><div style="font-size:14px;font-weight:600">Точное место — после того как займёшь слот</div><div style="font-size:12.5px;color:var(--secondary);margin-top:2px">Пока виден только район · Приморский</div></div>
+                </div>
+                <div class="rowcard" style="margin-top:14px">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div class="avatars"><div class="avatar" style="background:#D9CBB8"></div><div class="avatar" style="background:#C9B9A2"></div><div class="avatar" style="background:#B7C2AE"></div><div class="avatar" style="background:#D6C3B0"></div><div class="avatar" style="background:#C2B4A0"></div></div>
+                    <div style="font-size:14px;font-weight:600">7 из 10 · свои и гости</div>
+                  </div>
+                  <div class="circle-row"><div class="circle-name" style="color:var(--secondary)">Круг «Четверговый футбол»</div><div class="badge"><svg width="13" height="13" style="color:var(--green)"><use href="#ic-check"/></svg>Уже проводил встречи</div></div>
+                </div>
+              </div>
+            </div>
+            <div class="stack-cta"><div class="btn">Занять слот · 3 свободно</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6 · CREATE ACTIVITY -->
+      <div class="frame">
+        <div class="caption"><span class="num">06</span><span class="cap-name">Новая активность</span><span class="cap-tag">overflow</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="stack-top"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div><div class="stack-title big">Новая активность</div></div>
+              <div class="pad">
+                <div class="label">Чем займётесь</div>
+                <div class="filters" style="flex-wrap:wrap;padding:0;gap:8px;margin-bottom:18px">
+                  <div class="chip sm active">⚽ Спорт</div><div class="chip sm">🎲 Настолки</div><div class="chip sm">🚶 Прогулка</div><div class="chip sm">☕ Кофе</div>
+                </div>
+                <div class="label">Название</div>
+                <div class="field" style="margin-bottom:16px"><span>Футбол 5×5</span></div>
+                <div style="display:flex;gap:12px;margin-bottom:16px">
+                  <div style="flex:1"><div class="label">Когда</div><div class="field"><svg width="18" height="18" style="color:var(--muted)"><use href="#ic-cal"/></svg><span>Чт, 19:00</span></div></div>
+                  <div style="width:120px"><div class="label">Слотов</div><div class="field"><span>10</span></div></div>
+                </div>
+                <div class="label">Район</div>
+                <div class="field" style="margin-bottom:16px"><svg width="18" height="18" style="color:var(--muted)"><use href="#ic-pin"/></svg><span>Приморский</span></div>
+                <div class="label">Круг</div>
+                <div class="field" style="margin-bottom:18px"><svg width="18" height="18" style="color:var(--muted)"><use href="#ic-circles"/></svg><span>Четверговый футбол</span></div>
+                <div class="rowcard" style="display:flex;align-items:center;gap:12px">
+                  <div class="ic-tile"><svg width="22" height="22"><use href="#ic-globe"/></svg></div>
+                  <div style="flex:1"><div style="font-size:14.5px;font-weight:600">Открыть места городу</div><div style="font-size:12.5px;color:var(--secondary);margin-top:2px">Свободные слоты займут чужие (overflow)</div></div>
+                  <div style="width:46px;height:28px;border-radius:999px;background:var(--green);position:relative"><div style="position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;background:#fff"></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="stack-cta"><div class="btn">Опубликовать активность</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7 · MY CIRCLES -->
+      <div class="frame">
+        <div class="caption"><span class="num">07</span><span class="cap-name">Мои круги</span><span class="cap-tag">принадлежность</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="pad" style="display:flex;align-items:center;justify-content:space-between">
+                <div class="stack-title big">Мои круги</div>
+                <div class="iconbtn"><svg width="20" height="20"><use href="#ic-plus"/></svg></div>
+              </div>
+              <div class="pad" style="margin-top:8px">
+                <div class="card" style="margin-bottom:14px">
+                  <div class="cbody" style="padding:16px">
+                    <div style="display:flex;align-items:center;gap:12px">
+                      <div class="av-lg" style="background:#cddac4;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" style="color:var(--green)"><use href="#ic-circles"/></svg></div>
+                      <div style="flex:1"><div class="card-title" style="font-size:17px">Четверговый футбол</div><div class="meta" style="margin-top:1px">12 участников · Приморский</div></div>
+                    </div>
+                    <div class="rowcard" style="margin-top:14px;background:var(--field);display:flex;align-items:center;gap:10px;padding:12px 14px">
+                      <svg width="18" height="18" style="color:var(--green)"><use href="#ic-clock"/></svg>
+                      <div style="flex:1;font-size:13.5px;font-weight:600">Ближайшая: сегодня 19:00</div>
+                      <div class="badge">3 места</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card" style="margin-bottom:14px">
+                  <div class="cbody" style="padding:16px">
+                    <div style="display:flex;align-items:center;gap:12px">
+                      <div class="av-lg" style="background:#e0cdbb;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" style="color:#8a5a3a"><use href="#ic-circles"/></svg></div>
+                      <div style="flex:1"><div class="card-title" style="font-size:17px">Настолки у Ани</div><div class="meta" style="margin-top:1px">8 участников · Центр</div></div>
+                    </div>
+                    <div class="rowcard" style="margin-top:14px;background:var(--field);display:flex;align-items:center;gap:10px;padding:12px 14px">
+                      <svg width="18" height="18" style="color:var(--muted)"><use href="#ic-clock"/></svg>
+                      <div style="flex:1;font-size:13.5px;color:var(--secondary)">Ближайшая: завтра 20:00</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="notice" style="margin:6px 4px"><svg width="16" height="16"><use href="#ic-check"/></svg><span>Нашёл свои круги — это и есть цель. Мы не подгоняем искать новые.</span></div>
+              </div>
+            </div>
+            <nav class="tabbar">
+              <div class="tab"><svg width="24" height="24"><use href="#ic-foryou"/></svg><span>Для тебя</span></div>
+              <div class="tab active"><svg width="24" height="24"><use href="#ic-circles"/></svg><span>Мои круги</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-rhythm"/></svg><span>Ритм</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-bell"/></svg><span>Уведомления</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-profile"/></svg><span>Профиль</span></div>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- 8 · CIRCLE HOME -->
+      <div class="frame">
+        <div class="caption"><span class="num">08</span><span class="cap-name">Круг · home</span><span class="cap-tag">member</span></div>
+        <div class="phone">
+          <div class="statusbar light"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll" style="padding-top:0">
+              <div style="position:relative;height:190px">
+                <img src="activity-run.jpg" style="width:100%;height:100%;object-fit:cover" />
+                <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(21,19,15,0.3),rgba(21,19,15,0) 40%,rgba(247,245,239,1))"></div>
+                <div style="position:absolute;top:56px;left:20px" class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div>
+              </div>
+              <div class="pad" style="margin-top:-30px">
+                <div class="h-hero" style="font-size:27px">Четверговый футбол</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
+                  <div class="avatars"><div class="avatar" style="background:#D9CBB8"></div><div class="avatar" style="background:#C9B9A2"></div><div class="avatar" style="background:#B7C2AE"></div><div class="avatar" style="background:#D6C3B0"></div></div>
+                  <div style="font-size:13.5px;color:var(--secondary)">12 участников · Приморский</div>
+                </div>
+
+                <div class="divider-lbl">Ближайшая активность</div>
+                <div class="card">
+                  <div class="hero" style="height:120px"><img src="activity-football.jpg" /><div class="scrim"></div><div class="time-chip"><svg width="13" height="13" style="color:#fff"><use href="#ic-clock"/></svg>Сегодня 19:00</div></div>
+                  <div class="cbody"><div class="card-title" style="font-size:16px">Футбол 5×5</div><div class="meta">7/10 занято · ты в составе</div></div>
+                </div>
+
+                <div class="listrow" style="margin-top:14px"><div class="ic-tile"><svg width="22" height="22"><use href="#ic-chat"/></svg></div><div class="txt"><div class="t1">Чат круга</div><div class="t2">Только для участников · 3 новых</div></div><svg width="20" height="20" style="color:var(--muted)"><use href="#ic-chev-r"/></svg></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 9 · RHYTHM -->
+      <div class="frame">
+        <div class="caption"><span class="num">09</span><span class="cap-name">Ритм</span><span class="cap-tag">возврат</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="pad"><div class="stack-title big">Твой ритм</div></div>
+              <div class="pad" style="margin-top:8px">
+                <div class="rowcard" style="text-align:center;padding:22px 16px">
+                  <div style="font-family:'Playfair Display',serif;font-weight:600;font-size:40px;color:var(--green)">6 недель</div>
+                  <div style="font-size:14px;color:var(--secondary);margin-top:4px">подряд с активностью в круге</div>
+                </div>
+                <div class="divider-lbl">Эта неделя</div>
+                <div class="streak">
+                  <div class="wk"><div class="d">П</div><div class="lbl">пн</div></div>
+                  <div class="wk"><div class="d soft">В</div><div class="lbl">вт</div></div>
+                  <div class="wk"><div class="d">С</div><div class="lbl">ср</div></div>
+                  <div class="wk"><div class="d on"><svg width="16" height="16" style="color:#fff"><use href="#ic-check"/></svg></div><div class="lbl">чт</div></div>
+                  <div class="wk"><div class="d">П</div><div class="lbl">пт</div></div>
+                  <div class="wk"><div class="d">С</div><div class="lbl">сб</div></div>
+                  <div class="wk"><div class="d">В</div><div class="lbl">вс</div></div>
+                </div>
+                <div class="divider-lbl">Недавно</div>
+                <div class="listrow" style="margin-bottom:10px"><div class="ic-tile"><svg width="20" height="20"><use href="#ic-check"/></svg></div><div class="txt"><div class="t1">Футбол 5×5</div><div class="t2">Прошлый четверг · пришёл</div></div></div>
+                <div class="listrow"><div class="ic-tile" style="background:#efe6d8;color:#8a5a3a"><svg width="20" height="20"><use href="#ic-users"/></svg></div><div class="txt"><div class="t1">Настолки: Каркассон</div><div class="t2">2 недели назад · пришёл</div></div></div>
+              </div>
+            </div>
+            <nav class="tabbar">
+              <div class="tab"><svg width="24" height="24"><use href="#ic-foryou"/></svg><span>Для тебя</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-circles"/></svg><span>Мои круги</span></div>
+              <div class="tab active"><svg width="24" height="24"><use href="#ic-rhythm"/></svg><span>Ритм</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-bell"/></svg><span>Уведомления</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-profile"/></svg><span>Профиль</span></div>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- 10 · NOTIFICATIONS -->
+      <div class="frame">
+        <div class="caption"><span class="num">10</span><span class="cap-name">Уведомления</span><span class="cap-tag">system</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="pad"><div class="stack-title big">Уведомления</div></div>
+              <div class="pad" style="margin-top:8px;display:flex;flex-direction:column;gap:10px">
+                <div class="listrow"><div class="ic-tile"><svg width="22" height="22"><use href="#ic-check"/></svg></div><div class="txt"><div class="t1">Тебя приняли в круг</div><div class="t2">«Четверговый футбол» · участие подтверждено</div></div></div>
+                <div class="listrow"><div class="ic-tile"><svg width="22" height="22"><use href="#ic-pin"/></svg></div><div class="txt"><div class="t1">Место встречи открыто</div><div class="t2">Футбол 5×5 · ты занял слот</div></div></div>
+                <div class="listrow"><div class="ic-tile" style="background:#f7ded6;color:var(--coral)"><svg width="22" height="22"><use href="#ic-clock"/></svg></div><div class="txt"><div class="t1">Напоминание</div><div class="t2">Сегодня в 19:00 · Футбол 5×5</div></div></div>
+                <div class="listrow"><div class="ic-tile"><svg width="22" height="22"><use href="#ic-chat"/></svg></div><div class="txt"><div class="t1">Новое в чате круга</div><div class="t2">«Настолки у Ани» · 3 сообщения</div></div></div>
+                <div class="listrow" style="opacity:0.7"><div class="ic-tile" style="background:#ece6da;color:var(--secondary)"><svg width="22" height="22"><use href="#ic-users"/></svg></div><div class="txt"><div class="t1">Состав круга обновился</div><div class="t2">«Четверговый футбол»</div></div></div>
+              </div>
+            </div>
+            <nav class="tabbar">
+              <div class="tab"><svg width="24" height="24"><use href="#ic-foryou"/></svg><span>Для тебя</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-circles"/></svg><span>Мои круги</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-rhythm"/></svg><span>Ритм</span></div>
+              <div class="tab active"><svg width="24" height="24"><use href="#ic-bell"/></svg><span>Уведомления</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-profile"/></svg><span>Профиль</span></div>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- 11 · PROFILE -->
+      <div class="frame">
+        <div class="caption"><span class="num">11</span><span class="cap-name">Профиль</span><span class="cap-tag">soft badges</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="pad" style="display:flex;justify-content:flex-end"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-gear"/></svg></div></div>
+              <div class="prof-top">
+                <div class="prof-av" style="background:#cdbba6"></div>
+                <div class="prof-name">Рафаэль</div>
+                <div class="prof-sub">Санкт-Петербург · Приморский</div>
+                <div class="badge-wrap">
+                  <div class="badge"><svg width="13" height="13" style="color:var(--green)"><use href="#ic-shield"/></svg>Проверен</div>
+                  <div class="badge"><svg width="13" height="13" style="color:var(--green)"><use href="#ic-check"/></svg>Надёжный участник</div>
+                  <div class="badge"><svg width="13" height="13" style="color:var(--green)"><use href="#ic-users"/></svg>Проводил встречи</div>
+                </div>
+                <div class="stat-row" style="width:100%">
+                  <div class="stat"><div class="n">2</div><div class="l">круга</div></div>
+                  <div class="stat"><div class="n">14</div><div class="l">встреч</div></div>
+                  <div class="stat"><div class="n">6</div><div class="l">недель ритм</div></div>
+                </div>
+              </div>
+              <div class="pad" style="margin-top:22px">
+                <div class="label">О себе</div>
+                <div class="rowcard" style="font-size:14px;line-height:20px;color:var(--secondary)">Играю по четвергам, люблю настолки и утренний бег вдоль залива.</div>
+                <div class="filters" style="flex-wrap:wrap;padding:14px 0 0;gap:8px">
+                  <div class="chip sm">Спорт</div><div class="chip sm">Настолки</div><div class="chip sm">Бег</div>
+                </div>
+              </div>
+            </div>
+            <nav class="tabbar">
+              <div class="tab"><svg width="24" height="24"><use href="#ic-foryou"/></svg><span>Для тебя</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-circles"/></svg><span>Мои круги</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-rhythm"/></svg><span>Ритм</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-bell"/></svg><span>Уведомления</span></div>
+              <div class="tab active"><svg width="24" height="24"><use href="#ic-profile"/></svg><span>Профиль</span></div>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- 12 · SETTINGS -->
+      <div class="frame">
+        <div class="caption"><span class="num">12</span><span class="cap-name">Настройки</span><span class="cap-tag">safety</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="stack-top"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div><div class="stack-title big">Настройки</div></div>
+              <div class="pad">
+                <div class="divider-lbl" style="margin-top:6px">Заблокированные</div>
+                <div class="listrow" style="margin-bottom:10px"><div class="av-lg" style="background:#d3c4b2"></div><div class="txt"><div class="t1">Скрытый участник</div><div class="t2">Не увидит тебя и твои активности</div></div><div class="chip sm" style="border-color:var(--border)">Разблокировать</div></div>
+                <div class="listrow"><div class="av-lg" style="background:#c9bda9"></div><div class="txt"><div class="t1">Скрытый участник</div><div class="t2">Заблокирован 3 дня назад</div></div><div class="chip sm">Разблокировать</div></div>
+
+                <div class="divider-lbl">Аккаунт</div>
+                <div class="listrow" style="margin-bottom:10px"><div class="ic-tile" style="background:#ece6da;color:var(--secondary)"><svg width="20" height="20"><use href="#ic-out"/></svg></div><div class="txt"><div class="t1">Выйти</div></div><svg width="20" height="20" style="color:var(--muted)"><use href="#ic-chev-r"/></svg></div>
+                <div class="listrow" style="border-color:#f0d4cb"><div class="ic-tile" style="background:#f7ded6;color:var(--coral)"><svg width="20" height="20"><use href="#ic-trash"/></svg></div><div class="txt"><div class="t1" style="color:var(--coral)">Удалить аккаунт</div><div class="t2">Безвозвратно удалит профиль и данные</div></div></div>
+
+                <div class="notice" style="margin-top:22px"><svg width="16" height="16"><use href="#ic-shield"/></svg><span>Antidot не показывает рейтинги, счётчики жалоб или отказов. Кто вышел или на паузе — просто исчезает из состава.</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================= -->
+    <!--  MISSING SCREENS — из референса ChatGPT + продуктового лупа   -->
+    <!-- ============================================================= -->
+    <div class="sheet-sub">
+      <h2>Чего не хватало — добавил<span class="tag-new">NEW</span></h2>
+      <p>Онбординг-ценность (3 слайда) и регистрация — из референса ChatGPT. «Занять место» — ключевой момент кор-лупа (pull), которого не было ни у нас, ни в референсе как отдельного подтверждения.</p>
+    </div>
+
+    <div class="grid">
+
+      <!-- A1 · ONBOARDING VALUE 1 -->
+      <div class="frame">
+        <div class="caption"><span class="num">A1</span><span class="cap-name">Онбординг · ценность 1/3</span><span class="cap-tag">анти-дейтинг</span></div>
+        <div class="phone">
+          <div class="statusbar light"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="ob-hero"><img src="activity-football.jpg" alt="" /><div class="fade"></div></div>
+            <div class="skip">Пропустить</div>
+            <div class="ob-content">
+              <div class="h-hero" style="font-size:33px">Сначала<br />общее занятие</div>
+              <div class="sub" style="margin-top:14px;font-size:16px;color:var(--secondary)">Ты приходишь на активность, а не на свидание.</div>
+              <div class="dots" style="margin-top:30px"><i class="on"></i><i></i><i></i></div>
+              <div class="btn" style="margin-top:22px">Далее</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- A2 · ONBOARDING VALUE 2 -->
+      <div class="frame">
+        <div class="caption"><span class="num">A2</span><span class="cap-name">Онбординг · ценность 2/3</span><span class="cap-tag">группа, не 1:1</span></div>
+        <div class="phone">
+          <div class="statusbar light"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="ob-hero"><img src="activity-coffee.jpg" alt="" /><div class="fade"></div></div>
+            <div class="skip">Пропустить</div>
+            <div class="ob-content">
+              <div class="h-hero" style="font-size:33px">Знакомства<br />происходят сами</div>
+              <div class="sub" style="margin-top:14px;font-size:16px;color:var(--secondary)">Ты общаешься в группе, а не один на один.</div>
+              <div class="dots" style="margin-top:30px"><i></i><i class="on"></i><i></i></div>
+              <div class="btn" style="margin-top:22px">Далее</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- A3 · ONBOARDING VALUE 3 -->
+      <div class="frame">
+        <div class="caption"><span class="num">A3</span><span class="cap-name">Онбординг · ценность 3/3</span><span class="cap-tag">принадлежность</span></div>
+        <div class="phone">
+          <div class="statusbar light"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="ob-hero"><img src="activity-walk.jpg" alt="" /><div class="fade"></div></div>
+            <div class="skip">Пропустить</div>
+            <div class="ob-content">
+              <div class="h-hero" style="font-size:33px">Круги делают<br />людей ближе</div>
+              <div class="sub" style="margin-top:14px;font-size:16px;color:var(--secondary)">Ты становишься частью постоянного круга.</div>
+              <div class="dots" style="margin-top:30px"><i></i><i></i><i class="on"></i></div>
+              <div class="btn" style="margin-top:22px">Начать</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- B · REGISTRATION -->
+      <div class="frame">
+        <div class="caption"><span class="num">B</span><span class="cap-name">Создай аккаунт</span><span class="cap-tag">регистрация</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="stack-top"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div></div>
+              <div class="pad" style="margin-top:24px">
+                <div class="brand-mini"><span>A</span><span>N</span><span>T</span><span class="i">I<span class="idot"></span></span><span>D</span><span>O</span><span>T</span></div>
+                <div class="h-hero" style="margin-top:22px">Создай аккаунт</div>
+                <div class="sub">Это займёт минуту. Никакого свайпа и каталогов людей.</div>
+                <div style="margin-top:32px;display:flex;flex-direction:column;gap:12px">
+                  <div class="soc apple"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M16.4 12.7c0-2.2 1.8-3.3 1.9-3.3-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.8-.8-1.4 0-2.7.8-3.5 2.1-1.5 2.6-.4 6.4 1.1 8.5.7 1 1.5 2.2 2.6 2.1 1-.04 1.4-.7 2.7-.7 1.2 0 1.6.7 2.7.6 1.1-.02 1.8-1 2.5-2 .8-1.2 1.1-2.3 1.1-2.4-.02-.01-2.1-.8-2.1-3.2Zm-2.2-6c.6-.7 1-1.7.9-2.7-.8.04-1.9.6-2.5 1.3-.5.6-1 1.6-.9 2.6.9.06 1.8-.5 2.5-1.2Z"/></svg>Продолжить с Apple</div>
+                  <div class="soc google"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.2c0-.7-.06-1.3-.2-2H12v3.8h5.4c-.2 1.2-.9 2.3-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3Z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.5l-3.2-2.5c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.7-5.6-4.1H3.1v2.6C4.7 19.9 8.1 22 12 22Z"/><path fill="#FBBC05" d="M6.4 13.8c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V7.6H3.1C2.4 8.9 2 10.4 2 12s.4 3.1 1.1 4.4l3.3-2.6Z"/><path fill="#EA4335" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.8-2.8C16.9 2.9 14.7 2 12 2 8.1 2 4.7 4.1 3.1 7.6l3.3 2.6C7.2 7.6 9.4 5.9 12 5.9Z"/></svg>Продолжить с Google</div>
+                  <div class="soc mail"><svg width="19" height="19" style="color:var(--secondary)"><use href="#ic-mail"/></svg>Продолжить с почтой</div>
+                </div>
+                <div class="notice" style="margin-top:22px"><svg width="16" height="16"><use href="#ic-lock"/></svg><span>Продолжая, ты соглашаешься с правилами сообщества. Профиль виден только участникам ваших общих активностей.</span></div>
+              </div>
+            </div>
+            <div style="position:absolute;bottom:0;left:0;right:0;padding:16px 24px 30px;text-align:center;font-size:15px;color:var(--secondary)">Уже есть аккаунт? <span style="color:var(--coral);font-weight:600">Войти</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- C · CLAIM SLOT (Занять место) -->
+      <div class="frame">
+        <div class="caption"><span class="num">C</span><span class="cap-name">Занять место</span><span class="cap-tag">pull · кор-момент</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="stack-top"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div><div class="stack-title big">Занять место</div></div>
+              <div class="pad">
+                <div class="rowcard" style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+                  <img src="activity-football.jpg" style="width:52px;height:52px;border-radius:12px;object-fit:cover" />
+                  <div style="flex:1"><div style="font-size:15.5px;font-weight:600">Футбол 5×5</div><div style="font-size:13px;color:var(--secondary);margin-top:2px">Сегодня 19:00 · Приморский</div></div>
+                  <div class="badge">3 места</div>
+                </div>
+
+                <div class="label">Кого берёшь с собой?</div>
+                <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+                  <div class="radio-row sel"><div class="rdot"></div><div><div class="rt1">Иду один</div><div class="rt2">Займёт один слот</div></div></div>
+                  <div class="radio-row"><div class="rdot"></div><div><div class="rt1">Иду с +1</div><div class="rt2">Друг придёт вместе с тобой</div></div></div>
+                </div>
+
+                <div class="label">Пару слов организатору <span style="font-weight:400;color:var(--muted)">(необязательно)</span></div>
+                <div class="textarea">Впервые в этом кругу, но форма есть 🙂 Играю справа.</div>
+
+                <div class="notice" style="margin-top:20px"><svg width="16" height="16"><use href="#ic-pin"/></svg><span>Точное место встречи откроется сразу после подтверждения. Твои данные видит только организатор и участники активности.</span></div>
+              </div>
+            </div>
+            <div class="stack-cta"><div class="btn"><svg width="18" height="18" style="color:#fff"><use href="#ic-check"/></svg>Подтвердить — занять место</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================= -->
+    <!--  SAFETY · ACCESS · BELONGING — продуктово-обязательные        -->
+    <!-- ============================================================= -->
+    <div class="sheet-sub">
+      <h2>Безопасность, доступ и принадлежность<span class="tag-new">NEW</span></h2>
+      <p>Экраны, без которых MVP не поедет, но которых нет ни у нас, ни в референсе. Копирайт — из реальных экранов в apps/mobile. Все формулировки неунизительные (Инв. 11–12), без DM и каталога людей (Инв. 2, 13).</p>
+    </div>
+
+    <div class="grid">
+
+      <!-- D · FOREIGN PROFILE -->
+      <div class="frame">
+        <div class="caption"><span class="num">D</span><span class="cap-name">Профиль участника</span><span class="cap-tag">safe · без DM</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="stack-top" style="justify-content:space-between"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div><div class="iconbtn"><svg width="18" height="18"><use href="#ic-flag"/></svg></div></div>
+              <div class="prof-top">
+                <div class="prof-av" style="background:#c7b7a2"></div>
+                <div class="prof-name">Аня</div>
+                <div class="prof-sub">Санкт-Петербург · Приморский</div>
+                <div class="badge-wrap">
+                  <div class="badge"><svg width="13" height="13" style="color:var(--green)"><use href="#ic-shield"/></svg>Проверен</div>
+                  <div class="badge"><svg width="13" height="13" style="color:var(--green)"><use href="#ic-check"/></svg>Надёжный участник</div>
+                  <div class="badge"><svg width="13" height="13" style="color:var(--green)"><use href="#ic-users"/></svg>Проводил встречи</div>
+                </div>
+              </div>
+              <div class="pad" style="margin-top:24px">
+                <div class="label">Общий контекст</div>
+                <div class="rowcard" style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+                  <div class="ic-tile"><svg width="22" height="22"><use href="#ic-users"/></svg></div>
+                  <div style="font-size:14px;line-height:20px">Вы были вместе на <b>2 активностях</b><br /><span style="color:var(--secondary)">в кругу «Четверговый футбол»</span></div>
+                </div>
+                <div class="label">О себе</div>
+                <div class="rowcard" style="font-size:14px;line-height:20px;color:var(--secondary)">Организую футбол по четвергам уже год. Всем рада 🙂</div>
+                <div class="listrow" style="margin-top:18px;opacity:0.75;background:var(--field)"><div class="ic-tile" style="background:#ece6da;color:var(--muted)"><svg width="20" height="20"><use href="#ic-lock"/></svg></div><div class="txt"><div class="t1" style="color:var(--secondary)">Написать</div><div class="t2">Будет доступно после общей встречи</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- E · REPORT + BLOCK -->
+      <div class="frame">
+        <div class="caption"><span class="num">E</span><span class="cap-name">Пожаловаться</span><span class="cap-tag">модерация · audit</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="stack-top"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div><div class="stack-title big">Пожаловаться</div></div>
+              <div class="pad">
+                <div class="sub" style="margin-top:0;margin-bottom:18px">Что случилось? Разберёмся тихо и по-человечески.</div>
+                <div class="label">Причина</div>
+                <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+                  <div class="radio-row sel"><div class="rdot"></div><div class="rt1">Небезопасное поведение</div></div>
+                  <div class="radio-row"><div class="rdot"></div><div class="rt1">Спам или реклама</div></div>
+                  <div class="radio-row"><div class="rdot"></div><div class="rt1">Оскорбления</div></div>
+                  <div class="radio-row"><div class="rdot"></div><div class="rt1">Не тот человек / фейк</div></div>
+                  <div class="radio-row"><div class="rdot"></div><div class="rt1">Другое</div></div>
+                </div>
+                <div class="label">Подробнее <span style="font-weight:400;color:var(--muted)">(необязательно)</span></div>
+                <div class="textarea">Опишите, что произошло…</div>
+                <div class="listrow" style="margin-top:16px"><div class="checkbox on"><svg width="14" height="14" style="color:#fff"><use href="#ic-check"/></svg></div><div class="txt"><div class="t1">Также заблокировать</div><div class="t2">Не увидит тебя, твои активности и сообщения</div></div></div>
+              </div>
+            </div>
+            <div class="stack-cta"><div class="btn coral">Отправить жалобу</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- F · PAUSE / LEAVE (bottom sheet) -->
+      <div class="frame">
+        <div class="caption"><span class="num">F</span><span class="cap-name">Пауза / выйти из круга</span><span class="cap-tag">Инв. 11–12</span></div>
+        <div class="phone">
+          <div class="statusbar light"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <!-- faint circle-home behind -->
+            <div class="body-scroll" style="padding-top:0">
+              <div style="position:relative;height:190px"><img src="activity-run.jpg" style="width:100%;height:100%;object-fit:cover" /><div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(21,19,15,0.3),rgba(21,19,15,0) 60%,rgba(247,245,239,1))"></div></div>
+              <div class="pad" style="margin-top:-30px"><div class="h-hero" style="font-size:27px">Четверговый футбол</div><div style="font-size:13.5px;color:var(--secondary);margin-top:10px">12 участников · Приморский</div></div>
+            </div>
+            <div class="dim"></div>
+            <div class="sheet-modal">
+              <div class="grabber"></div>
+              <div style="font-family:'Playfair Display',serif;font-weight:600;font-size:21px;padding:0 2px">Участие в круге</div>
+              <div style="font-size:13.5px;color:var(--secondary);padding:4px 2px 6px">«Четверговый футбол»</div>
+              <div class="opt-row"><div class="ic-tile" style="background:var(--field);color:var(--secondary)"><svg width="22" height="22"><use href="#ic-clock"/></svg></div><div style="flex:1"><div class="ot1">Поставить участие на паузу</div><div class="ot2">Вернёшься, когда удобно. Место в круге сохранится.</div></div></div>
+              <div class="opt-row"><div class="ic-tile" style="background:#f7ede9;color:var(--coral)"><svg width="22" height="22"><use href="#ic-out"/></svg></div><div style="flex:1"><div class="ot1" style="color:var(--coral)">Выйти из круга</div><div class="ot2">Круг пропадёт из «Мои круги».</div></div></div>
+              <div class="notice" style="margin:14px 2px 18px"><svg width="16" height="16"><use href="#ic-shield"/></svg><span>Другие увидят только «Состав круга обновился». Ни отказов, ни ярлыков.</span></div>
+              <div class="btn-ghost">Отмена</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- G · WAITLIST -->
+      <div class="frame">
+        <div class="caption"><span class="num">G</span><span class="cap-name">Лист ожидания</span><span class="cap-tag">beta-гейт</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="stack-top"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div></div>
+              <div class="pad" style="margin-top:14px">
+                <div class="brand-mini"><span>A</span><span>N</span><span>T</span><span class="i">I<span class="idot"></span></span><span>D</span><span>O</span><span>T</span></div>
+                <div class="h-hero" style="margin-top:22px">Лист ожидания</div>
+                <div class="sub">Antidot пока в закрытой бете. Оставь почту — позовём, как откроем твой район.</div>
+                <div style="margin-top:28px">
+                  <div class="label">Email</div>
+                  <div class="field"><svg width="19" height="19" style="color:var(--muted)"><use href="#ic-mail"/></svg><span>you@example.com</span></div>
+                </div>
+                <div style="margin-top:16px">
+                  <div class="label">Имя <span style="font-weight:400;color:var(--muted)">(необязательно)</span></div>
+                  <div class="field"><span class="ph">Как тебя звать</span></div>
+                </div>
+                <div style="margin-top:16px">
+                  <div class="label">Город или район <span style="font-weight:400;color:var(--muted)">(необязательно)</span></div>
+                  <div class="field"><svg width="19" height="19" style="color:var(--muted)"><use href="#ic-pin"/></svg><span class="ph">Санкт-Петербург · Приморский</span></div>
+                </div>
+                <div class="btn" style="margin-top:26px">Встать в лист ожидания</div>
+                <div style="text-align:center;margin-top:18px;font-size:15px;color:var(--secondary)">У меня есть <span style="color:var(--coral);font-weight:600">инвайт-код</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- H · INVITE CODE -->
+      <div class="frame">
+        <div class="caption"><span class="num">H</span><span class="cap-name">Инвайт-код</span><span class="cap-tag">beta-гейт</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="stack-top"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div></div>
+              <div class="pad" style="margin-top:14px">
+                <div class="brand-mini"><span>A</span><span>N</span><span>T</span><span class="i">I<span class="idot"></span></span><span>D</span><span>O</span><span>T</span></div>
+                <div class="h-hero" style="margin-top:22px">Доступ по<br />приглашению</div>
+                <div class="sub">Введи код из приглашения — и попадёшь внутрь. Круги растут через доверие.</div>
+                <div style="margin-top:30px">
+                  <div class="label">Инвайт-код</div>
+                  <div class="field" style="justify-content:center;font-size:22px;font-weight:600;letter-spacing:5px;padding:20px"><span>ABC-123</span></div>
+                </div>
+                <div class="btn" style="margin-top:26px">Продолжить</div>
+                <div style="text-align:center;margin-top:18px;font-size:15px;color:var(--secondary)">Нет кода? <span style="color:var(--coral);font-weight:600">Встать в лист ожидания</span></div>
+                <div class="notice" style="margin-top:28px;justify-content:center"><svg width="16" height="16"><use href="#ic-lock"/></svg><span>По одному приглашению заходит один человек.</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- I · RESTRICTED / BAN GATE -->
+      <div class="frame">
+        <div class="caption"><span class="num">I</span><span class="cap-name">Доступ ограничен</span><span class="cap-tag">без стыда</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll" style="display:flex;flex-direction:column">
+              <div class="gate-center">
+                <div class="gate-ic" style="background:#f1ece2;color:var(--secondary)"><svg width="36" height="36"><use href="#ic-lock"/></svg></div>
+                <div class="h-hero" style="font-size:28px">Доступ ограничен</div>
+                <div class="sub" style="margin-top:14px;font-size:15.5px">Сейчас вход в приложение недоступен для этого аккаунта.</div>
+                <div class="sub" style="margin-top:12px;color:var(--muted);font-size:14px">Если это ошибка — напиши нам, спокойно разберёмся.</div>
+                <div class="btn-ghost" style="margin-top:28px;width:100%"><svg width="18" height="18"><use href="#ic-mail"/></svg>Написать в поддержку</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- J · CREATE CIRCLE -->
+      <div class="frame">
+        <div class="caption"><span class="num">J</span><span class="cap-name">Новый круг</span><span class="cap-tag">≠ активность</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="stack-top"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div><div class="stack-title big">Новый круг</div></div>
+              <div class="pad">
+                <div class="sub" style="margin-top:0;margin-bottom:20px">Круг — это постоянная компания вокруг общего занятия.</div>
+                <div class="label">Название</div>
+                <div class="field" style="margin-bottom:16px"><span>Четверговый футбол</span></div>
+                <div class="label">Район</div>
+                <div class="field" style="margin-bottom:16px"><svg width="18" height="18" style="color:var(--muted)"><use href="#ic-pin"/></svg><span>Приморский</span></div>
+                <div class="label">О чём круг</div>
+                <div class="textarea" style="margin-bottom:18px">Играем в футбол по четвергам. Свои и друзья друзей.</div>
+                <div class="label">Ритм</div>
+                <div class="filters" style="flex-wrap:wrap;padding:0;gap:8px">
+                  <div class="chip sm active">Еженедельно</div><div class="chip sm">Раз в 2 недели</div><div class="chip sm">Ежемесячно</div><div class="chip sm">По случаю</div>
+                </div>
+              </div>
+            </div>
+            <div class="stack-cta"><div class="btn">Создать круг</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- K · EMPTY STATE -->
+      <div class="frame">
+        <div class="caption"><span class="num">K</span><span class="cap-name">Пусто · лента</span><span class="cap-tag">empty state</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll" style="display:flex;flex-direction:column">
+              <div class="ctx-header">
+                <div class="context"><svg width="16" height="16"><use href="#ic-pin"/></svg>Санкт-Петербург · Приморский</div>
+                <div class="filters"><div class="chip active">Все</div><div class="chip">Спорт</div><div class="chip">Настолки</div><div class="chip">Прогулки</div></div>
+              </div>
+              <div class="empty-center">
+                <div class="gate-ic"><svg width="36" height="36"><use href="#ic-foryou"/></svg></div>
+                <div class="h-hero" style="font-size:26px">Пока тихо</div>
+                <div class="sub" style="margin-top:12px;font-size:15px">В твоём районе ещё нет открытых активностей. Загляни позже — или собери свою и открой места городу.</div>
+                <div class="btn" style="margin-top:26px;width:100%"><svg width="18" height="18" style="color:#fff"><use href="#ic-plus"/></svg>Создать активность</div>
+              </div>
+            </div>
+            <nav class="tabbar">
+              <div class="tab active"><svg width="24" height="24"><use href="#ic-foryou"/></svg><span>Для тебя</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-circles"/></svg><span>Мои круги</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-rhythm"/></svg><span>Ритм</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-bell"/></svg><span>Уведомления</span></div>
+              <div class="tab"><svg width="24" height="24"><use href="#ic-profile"/></svg><span>Профиль</span></div>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================= -->
+    <!--  CHAT · HOST-CONFIRM · SUCCESS — закрываем дизайн             -->
+    <!-- ============================================================= -->
+    <div class="sheet-sub">
+      <h2>Чат, приём в круг и подтверждения<span class="tag-new">NEW</span></h2>
+      <p>Финальные экраны кор-лупа: чат круга (P1-концепт), host-confirm (гость → участник) с отметкой посещаемости (T5), и success-состояния — включая раскрытие точного места (Инв. 1 — payoff «Занять место»).</p>
+    </div>
+
+    <div class="grid">
+
+      <!-- L · CIRCLE CHAT -->
+      <div class="frame">
+        <div class="caption"><span class="num">L</span><span class="cap-name">Чат круга</span><span class="cap-tag">P1 · member-only</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll" style="display:flex;flex-direction:column;padding-bottom:0">
+              <div class="ctx-header">
+                <div class="stack-top" style="padding-bottom:12px"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div><div style="flex:1"><div class="stack-title">Четверговый футбол</div><div style="font-size:12.5px;color:var(--secondary);margin-top:1px">Чат круга · 12 участников</div></div></div>
+              </div>
+              <div class="pinned"><svg width="18" height="18" style="color:var(--green)"><use href="#ic-clock"/></svg><div><div class="pt1">Встреча сегодня, 19:00</div><div class="pt2">Приморский · ул. Савушкина, поле №2</div></div></div>
+              <div class="chat-wrap">
+                <div class="sys">Аня открыла места городу</div>
+                <div class="msg"><div class="ava" style="background:#C9B9A2"></div><div class="bubble"><div class="who">Аня</div><div class="tx">Всем привет! Сегодня как обычно, приходим к 18:50 размяться 🙌</div></div></div>
+                <div class="msg"><div class="ava" style="background:#B7C2AE"></div><div class="bubble"><div class="who">Кирилл</div><div class="tx">Буду. Мяч свой брать?</div></div></div>
+                <div class="msg me"><div class="bubble"><div class="tx">Я в деле, форма есть 👟</div></div></div>
+                <div class="sys">Состав круга обновился</div>
+              </div>
+            </div>
+            <div class="chat-input"><div class="box">Сообщение…</div><div class="send"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 12l16-7-7 16-2.5-6.5L4 12Z" stroke="#fffdf9" stroke-width="1.7" stroke-linejoin="round"/></svg></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- M · HOST-CONFIRM + ATTENDANCE -->
+      <div class="frame">
+        <div class="caption"><span class="num">M</span><span class="cap-name">Приём в круг · хост</span><span class="cap-tag">host-confirm · T5</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll">
+              <div class="stack-top"><div class="iconbtn"><svg width="20" height="20"><use href="#ic-back"/></svg></div><div style="flex:1"><div class="stack-title big">Футбол 5×5</div><div style="font-size:12.5px;color:var(--secondary);margin-top:1px">Сегодня 19:00 · управление</div></div></div>
+              <div class="pad">
+                <div class="divider-lbl" style="margin-top:4px">Заняли слот из ленты · overflow</div>
+                <div class="listrow" style="margin-bottom:10px"><div class="av-lg" style="background:#cdbba6"></div><div class="txt"><div class="t1">Новый гость</div><div class="t2">Занял слот сам · «Играю справа»</div></div><div class="att-chip on">Принять</div></div>
+                <div class="listrow"><div class="av-lg" style="background:#c1b39f"></div><div class="txt"><div class="t1">Новый гость</div><div class="t2">Занял слот сам · +1 друг</div></div><div class="att-chip on">Принять</div></div>
+                <div class="notice" style="margin:12px 2px 4px"><svg width="16" height="16"><use href="#ic-check"/></svg><span>Приняв гостя, ты добавляешь его в круг. Ему придёт «Участие подтверждено».</span></div>
+
+                <div class="divider-lbl">Кто пришёл</div>
+                <div class="listrow" style="margin-bottom:10px"><div class="av-lg" style="background:#C9B9A2"></div><div class="txt"><div class="t1">Кирилл</div><div class="t2">Участник круга</div></div><div style="display:flex;gap:6px"><div class="att-chip on">Пришёл</div><div class="att-chip off">Нет</div></div></div>
+                <div class="listrow"><div class="av-lg" style="background:#B7C2AE"></div><div class="txt"><div class="t1">Марина</div><div class="t2">Участник круга</div></div><div style="display:flex;gap:6px"><div class="att-chip off">Пришёл</div><div class="att-chip off">Нет</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- N · SUCCESS: место за тобой (reveal) -->
+      <div class="frame">
+        <div class="caption"><span class="num">N</span><span class="cap-name">Место за тобой</span><span class="cap-tag">success · Инв. 1</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll" style="display:flex;flex-direction:column">
+              <div class="succ-center">
+                <div class="succ-ic"><svg width="44" height="44"><use href="#ic-check"/></svg></div>
+                <div class="h-hero" style="font-size:28px">Место за тобой</div>
+                <div class="sub" style="margin-top:12px;font-size:15px">Футбол 5×5 · сегодня в 19:00</div>
+                <div class="rowcard" style="width:100%;margin-top:24px;text-align:left;background:#eef3ec;border-color:#d6e2d0">
+                  <div style="display:flex;align-items:center;gap:8px;color:var(--green)"><svg width="17" height="17"><use href="#ic-pin"/></svg><span style="font-size:13px;font-weight:600;letter-spacing:0.3px;text-transform:uppercase">Место встречи</span></div>
+                  <div style="font-size:17px;font-weight:600;margin-top:8px">ул. Савушкина, 12 · поле №2</div>
+                  <div style="font-size:12.5px;color:#4a5c50;margin-top:6px">Виден только участникам этой активности.</div>
+                </div>
+                <div class="btn-ghost" style="width:100%;margin-top:14px"><svg width="18" height="18"><use href="#ic-cal"/></svg>Добавить в календарь</div>
+              </div>
+            </div>
+            <div class="stack-cta"><div class="btn">К активности</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- O · SUCCESS: жалоба отправлена -->
+      <div class="frame">
+        <div class="caption"><span class="num">O</span><span class="cap-name">Жалоба отправлена</span><span class="cap-tag">success</span></div>
+        <div class="phone">
+          <div class="statusbar"><span class="time">9:41</span><span class="sig"><svg width="18" height="13"><use href="#ic-wifi"/></svg><svg width="22" height="13" viewBox="0 0 24 13"><rect x="1" y="2" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="4" width="14" height="5" rx="1" fill="currentColor"/><rect x="21" y="5" width="2" height="3" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="screen">
+            <div class="body-scroll" style="display:flex;flex-direction:column">
+              <div class="succ-center">
+                <div class="succ-ic"><svg width="42" height="42"><use href="#ic-shield"/></svg></div>
+                <div class="h-hero" style="font-size:28px">Жалоба отправлена</div>
+                <div class="sub" style="margin-top:14px;font-size:15.5px">Спасибо. Разберёмся тихо и по-человечески.</div>
+                <div class="notice" style="margin-top:20px;justify-content:center"><svg width="16" height="16"><use href="#ic-lock"/></svg><span>Мы не показываем, кто пожаловался. Никаких публичных ярлыков.</span></div>
+              </div>
+            </div>
+            <div class="stack-cta"><div class="btn">Готово</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </body>
+</html>
