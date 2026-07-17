@@ -55,7 +55,22 @@ export type GateDecision =
  * Beta check is enforced before onboarding check everywhere — no path can
  * reach /start or /home without beta access.
  */
+// DEV-ONLY preview shim. Lets the design/preview build reach authenticated
+// screens (feed, circles, …) with the in-memory mock repo so they can be
+// pixel-checked against the mockups without a real login. DOUBLE-GUARDED:
+//   1. __DEV__ — false in any production build, so this is compiled out / inert.
+//   2. EXPO_PUBLIC_PREVIEW === '1' — must be explicitly set on the dev server.
+// It can NEVER weaken the gate for real users. Run the preview server in mock
+// mode (empty EXPO_PUBLIC_SUPABASE_* so isSupabaseConfigured=false) — there is
+// no real session or data behind it.
+const PREVIEW_UNLOCK =
+  typeof __DEV__ !== 'undefined' && __DEV__ && process.env.EXPO_PUBLIC_PREVIEW === '1';
+
 export function decideRouteAccess(group: GroupKind, input: GateInput): GateDecision {
+  if (PREVIEW_UNLOCK) {
+    return { kind: 'allow' };
+  }
+
   if (input.isLoading) {
     return { kind: 'loading' };
   }

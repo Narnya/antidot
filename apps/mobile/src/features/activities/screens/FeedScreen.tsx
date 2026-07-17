@@ -1,12 +1,15 @@
 // ACT-003 / DS v2 — Feed «Для тебя»: open overflow slots across the city (product
 // decision 2026-07: city-wide), as photo "invitation" cards grouped by day, with
 // kind filters. The feed lists ACTIVITIES, never people (aggregate only).
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, radius, spacing, typography } from '@social-events/ui';
+import { colors, INTER_SEMIBOLD, radius, spacing, typography } from '@social-events/ui';
+
+import { IconChevronDown } from '../../../components/NavIcons';
 
 import { ActivityCard } from '../components/ActivityCard';
 import type { ActivityView } from '../data/repository';
@@ -53,7 +56,13 @@ export function FeedScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <Text style={styles.title}>Для тебя</Text>
+      {/* Location context (mockup header) — the feed is city-wide; this is the
+          area lens. Placeholder copy until the area picker is wired. */}
+      <View style={styles.context}>
+        <Ionicons name="location-outline" size={16} color={colors.text.primary} />
+        <Text style={styles.contextText}>Санкт-Петербург · Приморский</Text>
+        <IconChevronDown size={14} color={colors.text.muted} />
+      </View>
 
       <ScrollView
         horizontal
@@ -107,29 +116,37 @@ export function FeedScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.default },
-  title: {
-    ...typography.title,
-    color: colors.text.primary,
+  context: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
     paddingHorizontal: spacing[6],
-    paddingTop: spacing[4],
-    paddingBottom: spacing[3],
+    paddingTop: spacing[1],
+    paddingBottom: 14,
   },
+  contextText: { fontFamily: INTER_SEMIBOLD, fontSize: 16, letterSpacing: -0.1, color: colors.text.primary },
   filtersRow: { flexGrow: 0 },
-  filters: { paddingHorizontal: spacing[6], gap: spacing[2], paddingBottom: spacing[3] },
+  filters: { paddingHorizontal: spacing[6], gap: spacing[2], paddingBottom: 14 },
   chip: {
     backgroundColor: colors.surface.default,
     borderWidth: 1,
     borderColor: colors.border.default,
     borderRadius: radius.full,
     paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
+    paddingVertical: 9,
   },
   chipActive: { backgroundColor: colors.action.primary, borderColor: colors.action.primary },
-  chipText: { ...typography.bodyMedium, color: colors.text.secondary },
+  chipText: { ...typography.bodyMedium, fontSize: 15, lineHeight: 18, color: colors.text.secondary },
   chipTextActive: { color: colors.action.primaryText },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
   empty: { ...typography.body, color: colors.text.muted, textAlign: 'center' },
-  list: { padding: spacing[6], paddingTop: spacing[1] },
-  group: { gap: spacing[3], marginBottom: spacing[5] },
-  dayLabel: { ...typography.bodyMedium, color: colors.text.secondary },
+  list: { paddingHorizontal: spacing[6], paddingTop: spacing[4], paddingBottom: spacing[6] },
+  group: { gap: spacing[3], marginBottom: 14 },
+  dayLabel: {
+    fontFamily: INTER_SEMIBOLD,
+    fontSize: 13,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: colors.text.secondary,
+  },
 });
