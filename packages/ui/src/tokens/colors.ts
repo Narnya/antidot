@@ -14,6 +14,7 @@ export const colors = {
   surface: {
     default: '#FFFDF9', // cards
     elevated: '#FFFDF9',
+    field: '#FBF8F1', // warm sunken fill — text inputs, inner rowcards (mockup --field)
   },
   text: {
     primary: '#15130F',
