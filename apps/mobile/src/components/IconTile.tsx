@@ -11,12 +11,20 @@ type Props = {
   /** Fill colour — defaults to the soft trust-green (mockup default). */
   bg?: string;
   size?: number;
+  /** Full-circle tile (mockup `.av-lg`) instead of the rounded square (`.ic-tile`). */
+  round?: boolean;
   style?: ViewStyle;
 };
 
-export function IconTile({ children, bg = colors.trust.verifiedBg, size = 42, style }: Props) {
+export function IconTile({ children, bg = colors.trust.verifiedBg, size = 42, round, style }: Props) {
   return (
-    <View style={[styles.tile, { width: size, height: size, backgroundColor: bg }, style]}>
+    <View
+      style={[
+        styles.tile,
+        { width: size, height: size, borderRadius: round ? radius.full : radius.md, backgroundColor: bg },
+        style,
+      ]}
+    >
       {children}
     </View>
   );

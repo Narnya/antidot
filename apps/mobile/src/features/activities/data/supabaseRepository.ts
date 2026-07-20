@@ -16,6 +16,7 @@ import type {
   CreateCircleInput,
   CreateReportInput,
   MemberCandidate,
+  MyCircle,
   Profile,
   PullMetrics,
   UpsertProfileInput,
@@ -127,6 +128,26 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       .map((row) => row.group)
       .filter((g): g is GroupRow => g != null)
       .map(mapGroup);
+  }
+
+  async listMyCircles(userId: Id): Promise<MyCircle[]> {
+    const mine = await this.listMyGroups(userId);
+    if (mine.length === 0) return [];
+    // Aggregate member counts for the user's circles in one query (no people list).
+    const { data: rows, error } = await supabase
+      .from('group_memberships')
+      .select('group_id')
+      .in(
+        'group_id',
+        mine.map((g) => g.id),
+      )
+      .eq('status', 'active');
+    if (error) throw new Error(error.message);
+    const countBy = new Map<string, number>();
+    for (const r of (rows ?? []) as { group_id: string }[]) {
+      countBy.set(r.group_id, (countBy.get(r.group_id) ?? 0) + 1);
+    }
+    return mine.map((group) => ({ group, memberCount: countBy.get(group.id) ?? 0 }));
   }
 
   async createCircle(input: CreateCircleInput): Promise<Group> {

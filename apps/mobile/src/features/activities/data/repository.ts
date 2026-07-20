@@ -62,6 +62,12 @@ export interface CircleView {
   nextActivity: ActivityView | null;
 }
 
+/** A "My Circles" list item — the circle + its aggregate member count. */
+export interface MyCircle {
+  group: Group;
+  memberCount: number;
+}
+
 /** An overflow guest who can be confirmed into the circle (host-confirm — §4.1 A). */
 export interface MemberCandidate {
   userId: Id;
@@ -122,8 +128,11 @@ export interface UpsertProfileInput {
 }
 
 export interface ActivitiesRepository {
-  /** Groups the user belongs to — the "My Circles" home (belonging surface). */
+  /** Groups the user belongs to — plain list (used by circle pickers, etc.). */
   listMyGroups(userId: Id): Promise<Group[]>;
+  /** "My Circles" home (belonging surface): each circle + its aggregate member
+   *  count (no people list — Inv. 13). */
+  listMyCircles(userId: Id): Promise<MyCircle[]>;
   /** Create a new circle; the creator becomes its owner-member. */
   createCircle(input: CreateCircleInput): Promise<Group>;
   /** A circle's home view — aggregate composition + next activity. */

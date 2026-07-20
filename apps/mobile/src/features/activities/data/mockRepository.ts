@@ -13,6 +13,7 @@ import type {
   CreateCircleInput,
   CreateReportInput,
   MemberCandidate,
+  MyCircle,
   Profile,
   PullMetrics,
   UpsertProfileInput,
@@ -249,6 +250,16 @@ function toView(activity: Activity, userId: Id): ActivityView {
 export class MockActivitiesRepository implements ActivitiesRepository {
   async listMyGroups(userId: Id): Promise<Group[]> {
     return groups.filter((g) => isMemberOf(g.id, userId));
+  }
+
+  async listMyCircles(userId: Id): Promise<MyCircle[]> {
+    return groups
+      .filter((g) => isMemberOf(g.id, userId))
+      .map((group) => ({
+        group,
+        memberCount: memberships.filter((m) => m.groupId === group.id && m.status === 'active')
+          .length,
+      }));
   }
 
   async createCircle(input: CreateCircleInput): Promise<Group> {

@@ -1,36 +1,59 @@
 // ACT-006 — My Circles (belonging home). The second centre: the user's circles
-// and their upcoming activities — the retention surface («круг = дом»). Mock
-// repository; prototype only.
+// and their next meeting — the retention surface («круг = дом»). Pixel-matched to
+// mockups/all-screens.html frame 07: a «+» header action, per-circle cards (tinted
+// circle tile + name + aggregate «N участников · район» + next-meeting strip), and
+// the belonging notice. Composition stays aggregate — no people list (Inv. 13).
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, radius, spacing, typography } from '@social-events/ui';
+import { colors, INTER_SEMIBOLD, radius, shadows, spacing, typography } from '@social-events/ui';
 
-import type { ActivityView } from '../data/repository';
+import { IconButton, IconCircles, IconTile, ScreenHeader } from '../../../components';
+import type { ActivityView, MyCircle } from '../data/repository';
 import { formatWhen } from '../lib/format';
-import type { Group } from '../lib/model';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
-import { KindIcon } from '../components/KindIcon';
+
+// Decorative per-circle tile tints (warm, not tied to identity).
+const TINTS = [
+  { bg: '#CDDAC4', ic: colors.action.primary },
+  { bg: '#E0CDBB', ic: '#8A5A3A' },
+  { bg: '#D6C3B0', ic: '#6B4E3A' },
+];
+
+// RU plural for «участник»: 1 → участник, 2–4 → участника, 0 / 5+ → участников.
+function membersWord(n: number): string {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return 'участник';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'участника';
+  return 'участников';
+}
+function spotsWord(n: number): string {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return 'место';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'места';
+  return 'мест';
+}
 
 export function MyCirclesScreen() {
   const router = useRouter();
   const { repo, userId } = useActivitiesRepo();
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [circles, setCircles] = useState<MyCircle[]>([]);
   const [byGroup, setByGroup] = useState<Record<string, ActivityView[]>>({});
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [gs, acts] = await Promise.all([
-      repo.listMyGroups(userId),
-      repo.listMyActivities(userId),
-    ]);
+    const [cs, acts] = await Promise.all([repo.listMyCircles(userId), repo.listMyActivities(userId)]);
     const grouped: Record<string, ActivityView[]> = {};
-    for (const v of acts) {
-      (grouped[v.activity.groupId] ??= []).push(v);
+    for (const v of acts) (grouped[v.activity.groupId] ??= []).push(v);
+    for (const id of Object.keys(grouped)) {
+      grouped[id].sort((a, b) => a.activity.startsAt.localeCompare(b.activity.startsAt));
     }
-    setGroups(gs);
+    setCircles(cs);
     setByGroup(grouped);
     setLoading(false);
   }, [repo, userId]);
@@ -40,20 +63,15 @@ export function MyCirclesScreen() {
   }, [load]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Text style={styles.title}>Мои круги</Text>
-          <Pressable
-            onPress={() => router.push('/profile')}
-            accessibilityRole="button"
-            testID="circles-profile"
-          >
-            <Text style={styles.profileLink}>Профиль</Text>
-          </Pressable>
-        </View>
-        <Text style={styles.subtitle}>Твои круги и их ближайшие встречи</Text>
-      </View>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScreenHeader
+        title="Мои круги"
+        right={
+          <IconButton onPress={() => router.push('/circle/create')} label="Новый круг" testID="circles-new">
+            <Ionicons name="add" size={22} color={colors.text.primary} />
+          </IconButton>
+        }
+      />
 
       {loading ? (
         <View style={styles.center}>
@@ -61,83 +79,59 @@ export function MyCirclesScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-          <View style={styles.navRow}>
-            <Pressable
-              onPress={() => router.push('/feed')}
-              style={styles.navBtn}
-              accessibilityRole="button"
-              testID="circles-open-feed"
-            >
-              <Text style={styles.navBtnText}>Активности рядом →</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push('/create')}
-              style={[styles.navBtn, styles.navBtnPrimary]}
-              accessibilityRole="button"
-              testID="circles-create"
-            >
-              <Text style={[styles.navBtnText, styles.navBtnTextPrimary]}>+ Создать</Text>
-            </Pressable>
-          </View>
-
-          {groups.map((g) => {
-            const acts = byGroup[g.id] ?? [];
+          {circles.map(({ group, memberCount }, i) => {
+            const next = byGroup[group.id]?.[0] ?? null;
+            const tint = TINTS[i % TINTS.length];
+            const open = next && next.spotsRemaining > 0 ? next.spotsRemaining : 0;
             return (
-              <View key={g.id} style={styles.group}>
-                <Pressable
-                  style={styles.groupHead}
-                  onPress={() => router.push(`/circle/${g.id}`)}
-                  accessibilityRole="button"
-                  testID={`open-circle-${g.id}`}
-                >
-                  <Text style={styles.groupName} numberOfLines={1}>
-                    {g.name}
-                  </Text>
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>✓ Проверен</Text>
+              <Pressable
+                key={group.id}
+                onPress={() => router.push(`/circle/${group.id}`)}
+                style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+                accessibilityRole="button"
+                testID={`open-circle-${group.id}`}
+              >
+                <View style={styles.cardRow}>
+                  <IconTile size={46} round bg={tint.bg}>
+                    <IconCircles color={tint.ic} size={24} />
+                  </IconTile>
+                  <View style={styles.cardMain}>
+                    <Text style={styles.circleName} numberOfLines={1}>
+                      {group.name}
+                    </Text>
+                    <Text style={styles.circleMeta} numberOfLines={1}>
+                      {memberCount} {membersWord(memberCount)} · {group.area}
+                    </Text>
                   </View>
-                </Pressable>
+                </View>
 
-                {acts.length === 0 ? (
-                  <Text style={styles.emptyRow}>Пока нет активностей</Text>
-                ) : (
-                  acts.map((v) => {
-                    const remaining = v.spotsRemaining;
-                    const taken = v.spotsTaken;
-                    return (
-                      <Pressable
-                        key={v.activity.id}
-                        onPress={() => router.push(`/activity/${v.activity.id}`)}
-                        style={({ pressed }) => [styles.actRow, pressed && styles.pressed]}
-                        accessibilityRole="button"
-                        testID={`circle-act-${v.activity.id}`}
-                      >
-                        <KindIcon kind={v.activity.kind} size={20} color={colors.action.primary} />
-                        <View style={styles.actMain}>
-                          <Text style={styles.actTitle} numberOfLines={1}>
-                            {v.activity.title}
-                          </Text>
-                          <Text style={styles.actMeta}>{formatWhen(v.activity.startsAt)}</Text>
-                        </View>
-                        <Text style={styles.actSpots}>
-                          {remaining > 0 ? `нужно +${remaining}` : `идут ${taken}`}
-                        </Text>
-                      </Pressable>
-                    );
-                  })
-                )}
-              </View>
+                <View style={styles.strip}>
+                  <Ionicons
+                    name="time-outline"
+                    size={18}
+                    color={next ? colors.action.primary : colors.text.muted}
+                  />
+                  <Text style={[styles.stripText, !next && styles.stripMuted]} numberOfLines={1}>
+                    {next ? `Ближайшая: ${formatWhen(next.activity.startsAt)}` : 'Пока нет ближайших встреч'}
+                  </Text>
+                  {open > 0 ? (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {open} {spotsWord(open)}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              </Pressable>
             );
           })}
 
-          <Pressable
-            onPress={() => router.push('/circle/create')}
-            style={({ pressed }) => [styles.newCircle, pressed && styles.pressed]}
-            accessibilityRole="button"
-            testID="circles-new-circle"
-          >
-            <Text style={styles.newCircleText}>+ Новый круг</Text>
-          </Pressable>
+          <View style={styles.notice}>
+            <Ionicons name="checkmark" size={16} color={colors.text.muted} />
+            <Text style={styles.noticeText}>
+              Нашёл свои круги — это и есть цель. Мы не подгоняем искать новые.
+            </Text>
+          </View>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -146,62 +140,43 @@ export function MyCirclesScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.default },
-  header: {
-    paddingHorizontal: spacing[6],
-    paddingTop: spacing[4],
-    paddingBottom: spacing[3],
-    gap: spacing[1],
-  },
-  title: { ...typography.title, color: colors.text.primary },
-  subtitle: { ...typography.body, color: colors.text.secondary },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  profileLink: { ...typography.button, color: colors.status.info },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
-  body: { padding: spacing[6], paddingTop: spacing[2], gap: spacing[5] },
-  navRow: { flexDirection: 'row', gap: spacing[3] },
-  navBtn: {
-    flex: 1,
-    backgroundColor: colors.action.secondary,
-    borderRadius: radius.md,
-    paddingVertical: spacing[3],
-    alignItems: 'center',
-  },
-  navBtnPrimary: { backgroundColor: colors.action.primary },
-  navBtnText: { ...typography.button, color: colors.text.primary },
-  navBtnTextPrimary: { color: colors.action.primaryText },
-  group: { gap: spacing[2] },
-  groupHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  groupName: { ...typography.heading, color: colors.text.primary, flex: 1 },
-  badge: {
-    backgroundColor: colors.trust.verifiedBg,
-    paddingHorizontal: spacing[2],
-    paddingVertical: 2,
-    borderRadius: radius.full,
-  },
-  badgeText: { ...typography.badge, color: colors.trust.verifiedText },
-  emptyRow: { ...typography.body, color: colors.text.muted, paddingVertical: spacing[2] },
-  actRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
+  body: { paddingHorizontal: spacing[6], paddingTop: spacing[2], paddingBottom: spacing[6] },
+  card: {
     backgroundColor: colors.surface.default,
     borderWidth: 1,
     borderColor: colors.border.default,
-    borderRadius: radius.md,
-    padding: spacing[3],
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 14,
+    ...shadows.card,
   },
-  actMain: { flex: 1, gap: 2 },
-  actTitle: { ...typography.bodyMedium, color: colors.text.primary },
-  actMeta: { ...typography.caption, color: colors.text.secondary },
-  actSpots: { ...typography.caption, color: colors.text.muted },
-  pressed: { opacity: 0.85 },
-  newCircle: {
+  pressed: { opacity: 0.92 },
+  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cardMain: { flex: 1 },
+  circleName: { fontFamily: INTER_SEMIBOLD, fontSize: 17, color: colors.text.primary },
+  circleMeta: { ...typography.body, fontSize: 14.5, lineHeight: 20, color: colors.text.secondary, marginTop: 1 },
+  strip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 14,
+    backgroundColor: colors.surface.field,
     borderWidth: 1,
     borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingVertical: spacing[3],
-    alignItems: 'center',
-    marginTop: spacing[2],
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  newCircleText: { ...typography.button, color: colors.text.primary },
+  stripText: { flex: 1, fontFamily: INTER_SEMIBOLD, fontSize: 13.5, color: colors.text.primary },
+  stripMuted: { fontFamily: undefined, fontWeight: '400', color: colors.text.secondary },
+  badge: {
+    backgroundColor: colors.trust.verifiedBg,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+  },
+  badgeText: { ...typography.badge, fontSize: 12.5, color: colors.trust.verifiedText },
+  notice: { flexDirection: 'row', gap: 8, marginTop: 6, marginHorizontal: 4 },
+  noticeText: { ...typography.caption, color: colors.text.muted, flex: 1, lineHeight: 18 },
 });
