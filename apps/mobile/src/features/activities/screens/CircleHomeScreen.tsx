@@ -1,26 +1,33 @@
-// ACT-009 / T2 — Circle Home. Per-circle hub (belonging surface): aggregate
-// composition (no people list — Inv.), theme/rhythm, next activity, actions, and
-// — for the host — overflow guests to confirm as members (host-confirm, §4.1 A).
-// Mirrors docs/32 §T1–T2 and the Figma Circle Home screen.
+// ACT-009 / T2 — Circle Home. Per-circle hub (belonging surface), pixel-matched to
+// mockups/all-screens.html frame 08: full-bleed hero → green title + aggregate
+// avatar row → «Ближайшая активность» card → circle-chat row. Aggregate composition
+// only, no people list (Inv. 13). Host extras (confirm overflow guests — §4.1 A —,
+// create activity, pause, report) live below, styled from the shared DS kit.
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, radius, spacing, typography } from '@social-events/ui';
+import { colors, INTER_SEMIBOLD, radius, shadows, spacing, typography } from '@social-events/ui';
 
+import { Button, HeroTitle, IconButton, IconTile, SectionLabel } from '../../../components';
 import type { CircleView, MemberCandidate } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { formatWhen } from '../lib/format';
-import type { CircleRhythm } from '../lib/model';
-import { KindIcon } from '../components/KindIcon';
+import { kindImage } from '../lib/kindImage';
 
-const RHYTHM_LABEL: Record<CircleRhythm, string> = {
-  weekly: 'раз в неделю',
-  biweekly: 'раз в 2 недели',
-  monthly: 'раз в месяц',
-  adhoc: 'по случаю',
-};
+const AVATAR_TINTS = ['#D9CBB8', '#C9B9A2', '#B7C2AE', '#D6C3B0'];
+
+// RU plural for «участник».
+function membersWord(n: number): string {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return 'участник';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'участника';
+  return 'участников';
+}
 
 type Props = { circleId: string };
 
@@ -31,6 +38,7 @@ export function CircleHomeScreen({ circleId }: Props) {
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {
     const next = await repo.getCircle(circleId, userId);
@@ -57,16 +65,7 @@ export function CircleHomeScreen({ circleId }: Props) {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <Pressable
-        onPress={() => router.back()}
-        style={styles.back}
-        accessibilityRole="button"
-        testID="ch-back"
-      >
-        <Text style={styles.backText}>‹ Назад</Text>
-      </Pressable>
-
+    <View style={styles.root}>
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.text.muted} />
@@ -83,7 +82,13 @@ export function CircleHomeScreen({ circleId }: Props) {
           onConfirm={handleConfirm}
         />
       )}
-    </SafeAreaView>
+
+      <View style={[styles.floatBack, { top: insets.top + spacing[2] }]} pointerEvents="box-none">
+        <IconButton onPress={() => router.back()} label="Назад" testID="ch-back">
+          <Ionicons name="chevron-back" size={22} color={colors.text.primary} />
+        </IconButton>
+      </View>
+    </View>
   );
 }
 
@@ -99,204 +104,254 @@ function Body({
   onConfirm: (candidateId: string) => void;
 }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { group, memberCount, nextActivity, isMember, isOwner } = view;
+  const avatarCount = Math.min(memberCount, 4);
+  const heroKind = nextActivity?.activity.kind ?? 'other';
+
   return (
-    <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-      <View style={styles.head}>
-        <Text style={styles.name} numberOfLines={2}>
-          {group.name}
-        </Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>✓ Проверен</Text>
-        </View>
-      </View>
-      <Text style={styles.meta}>
-        {group.area} · {RHYTHM_LABEL[group.rhythm]}
-      </Text>
-      {group.theme ? <Text style={styles.theme}>{group.theme}</Text> : null}
-
-      <View style={styles.card}>
-        <Row label="Участников" value={String(memberCount)} />
-        <Row label="Состав" value="открытый" />
+    <ScrollView
+      contentContainerStyle={{ paddingBottom: insets.bottom + spacing[8] }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.hero}>
+        <Image source={kindImage(heroKind)} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <LinearGradient
+          colors={['rgba(21,19,15,0.34)', 'rgba(21,19,15,0)', colors.background.default]}
+          locations={[0, 0.3, 0.62]}
+          style={StyleSheet.absoluteFill}
+        />
       </View>
 
-      <Text style={styles.sectionLabel}>Ближайшая встреча</Text>
-      {nextActivity ? (
-        <Pressable
-          onPress={() => router.push(`/activity/${nextActivity.activity.id}`)}
-          style={({ pressed }) => [styles.actRow, pressed && styles.pressed]}
-          accessibilityRole="button"
-          testID="ch-next"
-        >
-          <KindIcon kind={nextActivity.activity.kind} size={20} color={colors.action.primary} />
-          <View style={styles.actMain}>
-            <Text style={styles.actTitle} numberOfLines={1}>
-              {nextActivity.activity.title}
-            </Text>
-            <Text style={styles.actMeta}>{formatWhen(nextActivity.activity.startsAt)}</Text>
-          </View>
-          <Text style={styles.actSpots}>
-            {nextActivity.spotsRemaining > 0
-              ? `нужно +${nextActivity.spotsRemaining}`
-              : `идут ${nextActivity.spotsTaken}`}
-          </Text>
-        </Pressable>
-      ) : (
-        <Text style={styles.emptyRow}>Пока нет запланированных встреч</Text>
-      )}
+      <View style={styles.content}>
+        <HeroTitle style={styles.title}>{group.name}</HeroTitle>
 
-      {isOwner && candidates.length > 0 ? (
-        <View style={styles.candBlock}>
-          <Text style={styles.sectionLabel}>Гости, которых можно принять</Text>
-          {candidates.map((c) => (
-            <View key={c.userId} style={styles.candRow}>
-              <Pressable
-                style={styles.candMain}
-                onPress={() => router.push(`/profile/${c.userId}`)}
-                accessibilityRole="button"
-                testID={`cand-profile-${c.userId}`}
-              >
-                <Text style={styles.candName}>Новый гость</Text>
-                <Text style={styles.candMeta} numberOfLines={1}>
-                  С встречи «{c.throughActivityTitle}»
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => onConfirm(c.userId)}
-                disabled={confirmingId === c.userId}
-                style={({ pressed }) => [
-                  styles.confirmBtn,
-                  confirmingId === c.userId && styles.pressed,
-                  pressed && styles.pressed,
+        <View style={styles.aggRow}>
+          <View style={styles.avatars}>
+            {Array.from({ length: avatarCount }).map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.avatar,
+                  { backgroundColor: AVATAR_TINTS[i % AVATAR_TINTS.length], marginLeft: i === 0 ? 0 : -8 },
                 ]}
-                accessibilityRole="button"
-                testID={`confirm-${c.userId}`}
-              >
-                <Text style={styles.confirmText}>
-                  {confirmingId === c.userId ? '…' : 'Принять'}
-                </Text>
-              </Pressable>
-            </View>
-          ))}
+              />
+            ))}
+          </View>
+          <Text style={styles.aggText}>
+            {memberCount} {membersWord(memberCount)} · {group.area}
+          </Text>
         </View>
-      ) : null}
 
-      <Pressable
-        onPress={() => router.push('/create')}
-        style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
-        accessibilityRole="button"
-        testID="ch-create-activity"
-      >
-        <Text style={styles.primaryText}>Создать активность</Text>
-      </Pressable>
-      {isMember && !isOwner ? (
-        <Text style={styles.pauseLink}>Поставить участие на паузу</Text>
-      ) : null}
-      <Pressable
-        onPress={() => router.push(`/report?type=circle&id=${group.id}`)}
-        accessibilityRole="button"
-        testID="ch-report"
-      >
-        <Text style={styles.reportLink}>Пожаловаться на круг</Text>
-      </Pressable>
+        <SectionLabel>Ближайшая активность</SectionLabel>
+        {nextActivity ? (
+          <Pressable
+            onPress={() => router.push(`/activity/${nextActivity.activity.id}`)}
+            style={({ pressed }) => [styles.actCard, pressed && styles.pressed]}
+            accessibilityRole="button"
+            testID="ch-next"
+          >
+            <View style={styles.actHero}>
+              <Image
+                source={kindImage(nextActivity.activity.kind)}
+                style={styles.actHeroImg}
+                resizeMode="cover"
+              />
+              <LinearGradient
+                colors={['rgba(21,19,15,0.28)', 'rgba(21,19,15,0)']}
+                locations={[0, 0.5]}
+                style={styles.actScrim}
+                pointerEvents="none"
+              />
+              <View style={styles.timeChip}>
+                <Ionicons name="time-outline" size={13} color={colors.text.inverse} />
+                <Text style={styles.timeChipText}>{formatWhen(nextActivity.activity.startsAt)}</Text>
+              </View>
+            </View>
+            <View style={styles.actBody}>
+              <Text style={styles.actTitle} numberOfLines={1}>
+                {nextActivity.activity.title}
+              </Text>
+              <Text style={styles.actMeta}>
+                {nextActivity.spotsTaken}/{nextActivity.activity.totalSpots} занято
+                {isMember ? ' · ты в составе' : ''}
+              </Text>
+            </View>
+          </Pressable>
+        ) : (
+          <Text style={styles.emptyRow}>Пока нет запланированных встреч</Text>
+        )}
+
+        {isMember ? (
+          <Pressable
+            onPress={() => router.push('/placeholder')}
+            style={({ pressed }) => [styles.listrow, pressed && styles.pressed]}
+            accessibilityRole="button"
+            testID="ch-chat"
+          >
+            <IconTile size={42}>
+              <Ionicons name="chatbubble-outline" size={20} color={colors.action.primary} />
+            </IconTile>
+            <View style={styles.rowTxt}>
+              <Text style={styles.t1}>Чат круга</Text>
+              <Text style={styles.t2}>Только для участников</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.text.muted} />
+          </Pressable>
+        ) : null}
+
+        {isOwner && candidates.length > 0 ? (
+          <>
+            <SectionLabel>Гости, которых можно принять</SectionLabel>
+            {candidates.map((c) => (
+              <View key={c.userId} style={styles.candRow}>
+                <Pressable
+                  style={styles.candMain}
+                  onPress={() => router.push(`/profile/${c.userId}`)}
+                  accessibilityRole="button"
+                  testID={`cand-profile-${c.userId}`}
+                >
+                  <Text style={styles.t1}>Новый гость</Text>
+                  <Text style={styles.t2} numberOfLines={1}>
+                    Занял слот сам · «{c.throughActivityTitle}»
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => onConfirm(c.userId)}
+                  disabled={confirmingId === c.userId}
+                  style={({ pressed }) => [styles.confirmBtn, pressed && styles.pressed]}
+                  accessibilityRole="button"
+                  testID={`confirm-${c.userId}`}
+                >
+                  <Text style={styles.confirmText}>
+                    {confirmingId === c.userId ? '…' : 'Принять'}
+                  </Text>
+                </Pressable>
+              </View>
+            ))}
+          </>
+        ) : null}
+
+        <View style={styles.actions}>
+          <Button label="Создать активность" onPress={() => router.push('/create')} />
+        </View>
+
+        {isMember && !isOwner ? (
+          <Pressable
+            onPress={() =>
+              router.push({ pathname: '/circle-membership', params: { id: group.id, name: group.name } })
+            }
+            accessibilityRole="button"
+            testID="ch-pause"
+          >
+            <Text style={styles.subtleLink}>Поставить участие на паузу</Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          onPress={() => router.push(`/report?type=circle&id=${group.id}`)}
+          accessibilityRole="button"
+          testID="ch-report"
+        >
+          <Text style={styles.subtleLink}>Пожаловаться на круг</Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background.default },
-  back: { paddingHorizontal: spacing[5], paddingVertical: spacing[3] },
-  backText: { ...typography.body, color: colors.text.secondary },
+  root: { flex: 1, backgroundColor: colors.background.default },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
   empty: { ...typography.body, color: colors.text.muted },
-  body: { padding: spacing[6], paddingTop: spacing[2], gap: spacing[4] },
-  head: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  name: { ...typography.title, color: colors.text.primary, flex: 1 },
-  badge: {
-    backgroundColor: colors.trust.verifiedBg,
-    paddingHorizontal: spacing[2],
-    paddingVertical: 2,
-    borderRadius: radius.full,
+  floatBack: { position: 'absolute', left: spacing[5], zIndex: 10 },
+
+  hero: { width: '100%', height: 190 },
+  content: {
+    paddingHorizontal: spacing[6],
+    paddingTop: spacing[3],
+    marginTop: -28,
+    backgroundColor: colors.background.default,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
   },
-  badgeText: { ...typography.badge, color: colors.trust.verifiedText },
-  meta: { ...typography.body, color: colors.text.secondary },
-  theme: { ...typography.body, color: colors.text.muted },
-  card: {
+  title: { fontSize: 27, lineHeight: 32 },
+
+  aggRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+  avatars: { flexDirection: 'row', alignItems: 'center' },
+  avatar: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.full,
+    borderWidth: 2,
+    borderColor: colors.background.default,
+  },
+  aggText: { fontSize: 13.5, color: colors.text.secondary },
+
+  actCard: {
     backgroundColor: colors.surface.default,
-    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border.default,
-    padding: spacing[4],
-    gap: spacing[3],
+    borderRadius: 20,
+    overflow: 'hidden',
+    ...shadows.card,
   },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowLabel: { ...typography.body, color: colors.text.muted },
-  rowValue: { ...typography.bodyMedium, color: colors.text.primary },
-  sectionLabel: { ...typography.bodyMedium, color: colors.text.secondary },
-  actRow: {
+  actHero: { height: 120, width: '100%' },
+  actHeroImg: { width: '100%', height: 120 },
+  actScrim: { position: 'absolute', top: 0, left: 0, right: 0, height: 120 },
+  timeChip: {
+    position: 'absolute',
+    top: spacing[3],
+    left: spacing[3],
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[3],
+    gap: 5,
+    backgroundColor: 'rgba(21,19,15,0.55)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.full,
+  },
+  timeChipText: { ...typography.badge, color: colors.text.inverse },
+  actBody: { padding: spacing[4], gap: 3 },
+  actTitle: { ...typography.section, fontSize: 16, color: colors.text.primary },
+  actMeta: { ...typography.body, fontSize: 14.5, lineHeight: 20, color: colors.text.secondary },
+  emptyRow: { ...typography.body, color: colors.text.muted, paddingVertical: spacing[2] },
+
+  listrow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+    marginTop: 14,
     backgroundColor: colors.surface.default,
     borderWidth: 1,
     borderColor: colors.border.default,
-    borderRadius: radius.md,
-    padding: spacing[3],
+    borderRadius: 16,
+    padding: 15,
   },
-  actMain: { flex: 1, gap: 2 },
-  actTitle: { ...typography.bodyMedium, color: colors.text.primary },
-  actMeta: { ...typography.caption, color: colors.text.secondary },
-  actSpots: { ...typography.caption, color: colors.text.muted },
-  emptyRow: { ...typography.body, color: colors.text.muted, paddingVertical: spacing[2] },
-  candBlock: { gap: spacing[2] },
+  rowTxt: { flex: 1 },
+  t1: { fontFamily: INTER_SEMIBOLD, fontSize: 15.5, color: colors.text.primary },
+  t2: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
+
   candRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[3],
+    gap: 12,
+    marginBottom: 10,
     backgroundColor: colors.surface.default,
     borderWidth: 1,
     borderColor: colors.border.default,
-    borderRadius: radius.md,
-    padding: spacing[3],
+    borderRadius: 16,
+    padding: 15,
   },
-  candMain: { flex: 1, gap: 2 },
-  candName: { ...typography.bodyMedium, color: colors.text.primary },
-  candMeta: { ...typography.caption, color: colors.text.secondary },
+  candMain: { flex: 1 },
   confirmBtn: {
     backgroundColor: colors.action.primary,
-    borderRadius: radius.md,
+    borderRadius: radius.full,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[2],
   },
-  confirmText: { ...typography.button, color: colors.action.primaryText },
-  primary: {
-    backgroundColor: colors.action.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing[4],
-    alignItems: 'center',
-    marginTop: spacing[2],
-  },
-  primaryText: { ...typography.button, color: colors.action.primaryText },
-  pauseLink: {
-    ...typography.body,
-    color: colors.text.muted,
-    textAlign: 'center',
-    paddingVertical: spacing[2],
-  },
-  reportLink: {
-    ...typography.body,
-    color: colors.text.muted,
-    textAlign: 'center',
-    paddingVertical: spacing[2],
-  },
-  pressed: { opacity: 0.85 },
+  confirmText: { ...typography.badge, color: colors.action.primaryText },
+
+  actions: { marginTop: 22 },
+  subtleLink: { ...typography.body, color: colors.text.muted, textAlign: 'center', paddingVertical: spacing[3] },
+  pressed: { opacity: 0.9 },
 });

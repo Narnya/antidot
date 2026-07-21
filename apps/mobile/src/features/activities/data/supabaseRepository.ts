@@ -271,6 +271,24 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
     if (error) throw new Error(error.message);
   }
 
+  async pauseMembership(circleId: Id, userId: Id): Promise<void> {
+    const { error } = await supabase
+      .from('group_memberships')
+      .update({ status: 'paused' })
+      .eq('group_id', circleId)
+      .eq('user_id', userId);
+    if (error) throw new Error(error.message);
+  }
+
+  async leaveCircle(circleId: Id, userId: Id): Promise<void> {
+    const { error } = await supabase
+      .from('group_memberships')
+      .update({ status: 'left' })
+      .eq('group_id', circleId)
+      .eq('user_id', userId);
+    if (error) throw new Error(error.message);
+  }
+
   async createReport(input: CreateReportInput): Promise<void> {
     const { error } = await supabase.from('reports').insert({
       reporter_id: input.reporterId,

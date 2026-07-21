@@ -30,5 +30,12 @@ export default function AppLayout() {
   if (decision.kind === 'loading') return <SessionLoadingScreen />;
   if (decision.kind === 'redirect') return <Redirect href={decision.to} />;
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen
+        name="circle-membership"
+        options={{ presentation: 'transparentModal', animation: 'fade' }}
+      />
+    </Stack>
+  );
 }

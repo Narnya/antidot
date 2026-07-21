@@ -141,6 +141,10 @@ export interface ActivitiesRepository {
   listMemberCandidates(circleId: Id): Promise<MemberCandidate[]>;
   /** Host confirms a guest into the circle as an active member (§4.1 A). */
   confirmMember(circleId: Id, userId: Id): Promise<void>;
+  /** Step back from a circle privately — no public signal to others (Inv. 11–12). */
+  pauseMembership(circleId: Id, userId: Id): Promise<void>;
+  /** Leave a circle privately — the user simply disappears from the roster (Inv. 12). */
+  leaveCircle(circleId: Id, userId: Id): Promise<void>;
   /** File a report on any subject (Inv. 6). */
   createReport(input: CreateReportInput): Promise<void>;
   /** Block a user — blocked users cannot interact (Inv. 6). */

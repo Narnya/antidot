@@ -333,6 +333,23 @@ export class MockActivitiesRepository implements ActivitiesRepository {
     });
   }
 
+  async pauseMembership(circleId: Id, userId: Id): Promise<void> {
+    const m = memberships.find(
+      (x) => x.groupId === circleId && x.userId === userId && x.status === 'active',
+    );
+    if (m) m.status = 'paused';
+  }
+
+  async leaveCircle(circleId: Id, userId: Id): Promise<void> {
+    const m = memberships.find(
+      (x) =>
+        x.groupId === circleId &&
+        x.userId === userId &&
+        (x.status === 'active' || x.status === 'paused'),
+    );
+    if (m) m.status = 'left';
+  }
+
   async createReport(input: CreateReportInput): Promise<void> {
     reports.push(input);
   }
