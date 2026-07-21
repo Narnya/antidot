@@ -1,13 +1,14 @@
-// ACT-009 — Create Circle (host makes a circle). Name / area / theme / rhythm;
-// the creator becomes its owner-member. Mirrors docs/32 §T1 and the Figma Create
-// Circle screen. Live repo via the selector.
+// ACT-009 — Create Circle (host makes a circle). Name / area / theme / rhythm; the
+// creator becomes its owner-member. Pixel-matched to mockups/all-screens.html frame
+// J «Новый круг» — DS ScreenHeader, warm fields, rhythm chips, fixed CtaBar.
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, radius, spacing, typography } from '@social-events/ui';
+import { colors, INTER_MEDIUM, radius, spacing, typography } from '@social-events/ui';
 
+import { Button, CtaBar, Field, FieldLabel, ScreenHeader } from '../../../components';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import type { CircleRhythm } from '../lib/model';
 
@@ -55,58 +56,48 @@ export function CreateCircleScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <Pressable
-        onPress={() => router.back()}
-        style={styles.back}
-        accessibilityRole="button"
-        testID="cc-back"
-      >
-        <Text style={styles.backText}>‹ Назад</Text>
-      </Pressable>
+    <View style={styles.root}>
+      <ScreenHeader title="Новый круг" onBack={() => router.back()} />
 
       <ScrollView
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Новый круг</Text>
-        <Text style={styles.subtitle}>
-          Собери своих — и открывай места соседним, когда не хватает.
-        </Text>
+        <Text style={styles.sub}>Круг — это постоянная компания вокруг общего занятия.</Text>
 
-        <Text style={styles.label}>Название</Text>
-        <TextInput
+        <FieldLabel>Название</FieldLabel>
+        <Field
           value={name}
           onChangeText={setName}
           placeholder="Четверговый футбол"
-          placeholderTextColor={colors.text.muted}
-          style={styles.input}
           testID="cc-name"
         />
 
-        <Text style={styles.label}>Район</Text>
-        <TextInput
+        <View style={styles.gap} />
+        <FieldLabel>Район</FieldLabel>
+        <Field
           value={area}
           onChangeText={setArea}
           placeholder="Приморский"
-          placeholderTextColor={colors.text.muted}
-          style={styles.input}
+          leftIcon={<Ionicons name="location-outline" size={18} color={colors.text.muted} />}
           testID="cc-area"
         />
 
-        <Text style={styles.label}>О чём круг</Text>
+        <View style={styles.gap} />
+        <FieldLabel>О чём круг</FieldLabel>
         <TextInput
           value={theme}
           onChangeText={setTheme}
           placeholder="Играем в футбол по четвергам. Свои и друзья друзей."
           placeholderTextColor={colors.text.muted}
-          style={[styles.input, styles.inputMultiline]}
+          style={styles.textarea}
           multiline
           testID="cc-theme"
         />
 
-        <Text style={styles.label}>Ритм</Text>
+        <View style={styles.gap} />
+        <FieldLabel>Ритм</FieldLabel>
         <View style={styles.chips}>
           {RHYTHMS.map((r) => {
             const active = r.v === rhythm;
@@ -116,6 +107,7 @@ export function CreateCircleScreen() {
                 onPress={() => setRhythm(r.v)}
                 style={[styles.chip, active && styles.chipActive]}
                 accessibilityRole="button"
+                accessibilityState={{ selected: active }}
               >
                 <Text style={[styles.chipText, active && styles.chipTextActive]}>{r.label}</Text>
               </Pressable>
@@ -123,71 +115,53 @@ export function CreateCircleScreen() {
           })}
         </View>
 
-        {error && (
+        {error ? (
           <Text style={styles.error} accessibilityRole="alert">
             {error}
           </Text>
-        )}
-
-        <Pressable
-          onPress={handleSubmit}
-          disabled={submitting}
-          style={({ pressed }) => [
-            styles.submit,
-            submitting && styles.submitDisabled,
-            pressed && !submitting && styles.pressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: submitting, busy: submitting }}
-          testID="cc-submit"
-        >
-          <Text style={styles.submitText}>{submitting ? 'Создаём…' : 'Создать круг'}</Text>
-        </Pressable>
+        ) : null}
       </ScrollView>
-    </SafeAreaView>
+
+      <CtaBar>
+        <Button
+          label={submitting ? 'Создаём…' : 'Создать круг'}
+          disabled={submitting}
+          onPress={handleSubmit}
+        />
+      </CtaBar>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background.default },
-  back: { paddingHorizontal: spacing[5], paddingVertical: spacing[3] },
-  backText: { ...typography.body, color: colors.text.secondary },
-  body: { padding: spacing[6], paddingTop: spacing[2], gap: spacing[3] },
-  title: { ...typography.title, color: colors.text.primary },
-  subtitle: { ...typography.body, color: colors.text.secondary, marginBottom: spacing[2] },
-  label: { ...typography.bodyMedium, color: colors.text.secondary, marginTop: spacing[2] },
-  input: {
-    backgroundColor: colors.surface.default,
+  root: { flex: 1, backgroundColor: colors.background.default },
+  body: { paddingHorizontal: spacing[6], paddingTop: spacing[1], paddingBottom: 120 },
+  sub: { ...typography.body, fontSize: 15, color: colors.text.secondary, marginBottom: 20 },
+  gap: { height: 16 },
+  textarea: {
+    backgroundColor: colors.surface.field,
     borderWidth: 1,
     borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    fontSize: 16,
+    borderRadius: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    lineHeight: 21,
     color: colors.text.primary,
+    minHeight: 84,
+    textAlignVertical: 'top',
   },
-  inputMultiline: { minHeight: 88, textAlignVertical: 'top' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     backgroundColor: colors.surface.default,
     borderWidth: 1,
     borderColor: colors.border.default,
     borderRadius: radius.full,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
+    paddingHorizontal: 13,
+    paddingVertical: 8,
   },
   chipActive: { backgroundColor: colors.action.primary, borderColor: colors.action.primary },
-  chipText: { ...typography.body, color: colors.text.primary },
+  chipText: { fontFamily: INTER_MEDIUM, fontSize: 13.5, color: colors.text.secondary },
   chipTextActive: { color: colors.action.primaryText },
-  error: { ...typography.body, color: colors.status.danger },
-  submit: {
-    backgroundColor: colors.action.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing[4],
-    alignItems: 'center',
-    marginTop: spacing[4],
-  },
-  submitDisabled: { opacity: 0.6 },
-  pressed: { opacity: 0.85 },
-  submitText: { ...typography.button, color: colors.action.primaryText },
+  error: { ...typography.body, fontSize: 14, color: colors.status.danger, marginTop: 14 },
 });
