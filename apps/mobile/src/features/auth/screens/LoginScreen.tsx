@@ -1,193 +1,144 @@
-// AUTH-002 — Login screen (minimal infrastructure UI, not final Figma v2).
-//
-// Behavior:
-//   - validates non-empty email/password client-side;
-//   - calls supabase.auth.signInWithPassword via signInWithEmail wrapper;
-//   - shows loading / error / success states in-place;
-//   - does NOT auto-navigate into the app shell (invite/onboarding gates do not
-//     exist yet — AUTH-007, BETA-001…003, ONB-014 will handle routing later).
-import { Link } from 'expo-router';
+// AUTH — Login (passwordless email OTP), pixel-matched to mockups/all-screens.html
+// frame 02 «Вход»: back button, ANTIDOT wordmark, «С возвращением», e-mail + code
+// fields, «Продолжить» / «Отправить код заново», and a privacy notice. On verify the
+// SDK sets the session and the route gate takes over.
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '@social-events/ui';
 
-import { signInWithEmail } from '../actions/emailAuth';
-import { AuthTextInput } from '../components/AuthTextInput';
-import { isNonEmptyPassword, isValidEmail } from '../lib/auth';
-
-type UiState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'success' };
+import { BrandMini, Button, Field, FieldLabel, HeroTitle, ScreenHeader } from '../../../components';
+import { sendEmailCode, verifyEmailCode } from '../actions/otpAuth';
+import { isValidEmail } from '../lib/auth';
 
 export function LoginScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [uiState, setUiState] = useState<UiState>({ status: 'idle' });
+  const [code, setCode] = useState('');
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const isLoading = uiState.status === 'loading';
-  const isSuccess = uiState.status === 'success';
-
-  const handleSubmit = async () => {
+  const send = async () => {
     if (!isValidEmail(email)) {
-      setUiState({ status: 'error', message: 'Введите email.' });
+      setError('Введите корректный e-mail.');
       return;
     }
-    if (!isNonEmptyPassword(password)) {
-      setUiState({ status: 'error', message: 'Введите пароль.' });
-      return;
-    }
+    setError(null);
+    setLoading(true);
+    const r = await sendEmailCode(email);
+    setLoading(false);
+    if (r.ok) setSent(true);
+    else setError(r.error.message);
+  };
 
-    setUiState({ status: 'loading' });
-    const result = await signInWithEmail({ email, password });
-    if (result.ok) {
-      setUiState({ status: 'success' });
-    } else {
-      setUiState({ status: 'error', message: result.error.message });
+  const handleContinue = async () => {
+    if (!sent) return send();
+    if (code.trim().length === 0) {
+      setError('Введите код из письма.');
+      return;
     }
+    setError(null);
+    setLoading(true);
+    const r = await verifyEmailCode(email, code);
+    setLoading(false);
+    if (!r.ok) setError(r.error.message);
+    // On success the session updates and the (public) gate redirects forward.
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <View style={styles.root}>
+      <ScreenHeader onBack={() => router.back()} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.container}
+          contentContainerStyle={styles.body}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>Войти</Text>
-          <Text style={styles.subtitle}>
-            Доступ к приложению пока по приглашению. После входа мы проверим доступ к закрытой бете.
-          </Text>
+          <BrandMini />
+          <HeroTitle style={styles.title}>С возвращением</HeroTitle>
+          <Text style={styles.sub}>Войди по e-mail — пришлём код для входа. Без паролей.</Text>
 
-          <View style={styles.form}>
-            <AuthTextInput
-              label="Email"
+          <View style={styles.field}>
+            <FieldLabel>E-mail</FieldLabel>
+            <Field
               value={email}
-              onChangeText={(next) => {
-                setEmail(next);
-                if (uiState.status === 'error') setUiState({ status: 'idle' });
+              onChangeText={(t) => {
+                setEmail(t);
+                if (error) setError(null);
               }}
               placeholder="you@example.com"
               keyboardType="email-address"
+              autoCapitalize="none"
               autoComplete="email"
-              textContentType="emailAddress"
-              editable={!isLoading && !isSuccess}
+              editable={!loading}
+              leftIcon={<Ionicons name="mail-outline" size={19} color={colors.text.muted} />}
               testID="login-email"
             />
-            <AuthTextInput
-              label="Пароль"
-              value={password}
-              onChangeText={(next) => {
-                setPassword(next);
-                if (uiState.status === 'error') setUiState({ status: 'idle' });
+          </View>
+
+          <View style={styles.field}>
+            <FieldLabel>Код из письма</FieldLabel>
+            <Field
+              value={code}
+              onChangeText={(t) => {
+                setCode(t);
+                if (error) setError(null);
               }}
-              secureTextEntry
-              autoComplete="password"
-              textContentType="password"
-              editable={!isLoading && !isSuccess}
-              testID="login-password"
+              placeholder="— — — —"
+              keyboardType="number-pad"
+              editable={!loading}
+              testID="login-code"
             />
+            {sent ? <Text style={styles.hint}>Код отправлен на {email.trim()}</Text> : null}
+          </View>
 
-            {uiState.status === 'error' && (
-              <Text style={styles.errorText} accessibilityRole="alert">
-                {uiState.message}
-              </Text>
-            )}
-            {isSuccess && (
-              <Text style={styles.successText} accessibilityRole="alert">
-                Вы вошли. Дальнейшие шаги (приглашение и onboarding) появятся позже.
-              </Text>
-            )}
+          {error ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {error}
+            </Text>
+          ) : null}
 
-            <Pressable
-              onPress={handleSubmit}
-              disabled={isLoading || isSuccess}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                (isLoading || isSuccess) && styles.buttonDisabled,
-                pressed && !isLoading && !isSuccess && styles.buttonPressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: isLoading || isSuccess, busy: isLoading }}
-              testID="login-submit"
-            >
-              <Text style={styles.primaryButtonText}>{isLoading ? 'Входим…' : 'Войти'}</Text>
-            </Pressable>
+          <View style={styles.cta}>
+            <Button
+              label={loading ? 'Секунду…' : 'Продолжить'}
+              disabled={loading}
+              onPress={handleContinue}
+            />
+          </View>
+          <View style={styles.ctaGhost}>
+            <Button label="Отправить код заново" variant="ghost" disabled={loading} onPress={send} />
+          </View>
 
-            <Link href="/signup" style={styles.linkText}>
-              Нет аккаунта? Создать
-            </Link>
+          <View style={styles.notice}>
+            <Ionicons name="lock-closed-outline" size={16} color={colors.text.muted} />
+            <Text style={styles.noticeText}>
+              Твой e-mail и активность не видны другим участникам. Точное место встречи открывается
+              только когда ты занял слот.
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background.default },
+  root: { flex: 1, backgroundColor: colors.background.default },
   flex: { flex: 1 },
-  container: {
-    flexGrow: 1,
-    padding: spacing[6],
-    gap: spacing[4],
-  },
-  title: {
-    ...typography.title,
-    color: colors.text.primary,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.text.secondary,
-  },
-  form: {
-    gap: spacing[4],
-    marginTop: spacing[4],
-  },
-  primaryButton: {
-    backgroundColor: colors.action.primary,
-    borderRadius: 12,
-    paddingVertical: spacing[4],
-    alignItems: 'center',
-    marginTop: spacing[2],
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonPressed: {
-    opacity: 0.85,
-  },
-  primaryButtonText: {
-    ...typography.button,
-    color: colors.action.primaryText,
-  },
-  linkText: {
-    ...typography.body,
-    color: colors.status.info,
-    textAlign: 'center',
-    marginTop: spacing[2],
-  },
-  errorText: {
-    ...typography.body,
-    color: colors.status.danger,
-  },
-  successText: {
-    ...typography.body,
-    color: colors.safety.noticeText,
-  },
+  body: { paddingHorizontal: spacing[6], paddingTop: 14, paddingBottom: spacing[8] },
+  title: { marginTop: 22 },
+  sub: { ...typography.body, fontSize: 15, lineHeight: 22, color: colors.text.secondary, marginTop: 10 },
+  field: { marginTop: 16 },
+  hint: { ...typography.caption, color: colors.text.muted, marginTop: 8, marginHorizontal: 2 },
+  error: { ...typography.body, fontSize: 14, color: colors.status.danger, marginTop: 14 },
+  cta: { marginTop: 26 },
+  ctaGhost: { marginTop: 12 },
+  notice: { flexDirection: 'row', gap: 8, marginTop: 26, paddingHorizontal: 2 },
+  noticeText: { ...typography.caption, color: colors.text.muted, flex: 1, lineHeight: 18 },
 });
