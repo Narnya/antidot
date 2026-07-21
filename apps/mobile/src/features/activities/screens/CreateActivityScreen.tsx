@@ -1,23 +1,28 @@
-// ACT-005 — Create Activity (supply side). An organizer posts an activity with
-// open slots inside one of their circles («круг = дом, создаёшь внутри круга»).
-// Mock repository; prototype only.
+// ACT-005 — Create Activity (supply side). An organizer posts an activity with open
+// slots inside one of their circles. Pixel-matched to mockups/all-screens.html frame
+// 06: DS ScreenHeader, «Чем займётесь» emoji chips, warm fields (Когда | Слотов in a
+// 2-col row, Район, Круг), an «Открыть места городу» overflow rowcard, fixed CtaBar.
+// Exact meeting location is NOT set here — the host adds it later on the activity
+// (revealed only to claimants, Inv. 1).
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { colors, radius, spacing, typography } from '@social-events/ui';
+import { colors, INTER_MEDIUM, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
 
-import type { ActivityKind, Group } from '../lib/model';
+import { Button, CtaBar, Field, FieldLabel, IconCircles, IconTile, ScreenHeader } from '../../../components';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
+import { formatWhen } from '../lib/format';
+import type { ActivityKind, Group } from '../lib/model';
 
 const KIND_OPTIONS: { kind: ActivityKind; label: string }[] = [
-  { kind: 'football', label: 'Футбол' },
-  { kind: 'walk', label: 'Прогулка' },
-  { kind: 'boardgames', label: 'Настолки' },
-  { kind: 'coffee', label: 'Кофе' },
-  { kind: 'run', label: 'Бег' },
-  { kind: 'other', label: 'Другое' },
+  { kind: 'football', label: '⚽ Футбол' },
+  { kind: 'walk', label: '🚶 Прогулка' },
+  { kind: 'boardgames', label: '🎲 Настолки' },
+  { kind: 'coffee', label: '☕ Кофе' },
+  { kind: 'run', label: '🏃 Бег' },
+  { kind: 'other', label: '✨ Другое' },
 ];
 
 function buildWhenPresets(): { label: string; iso: string }[] {
@@ -39,13 +44,12 @@ export function CreateActivityScreen() {
   const { repo, userId } = useActivitiesRepo();
   const [presets] = useState(buildWhenPresets);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [groupId, setGroupId] = useState<string | null>(null);
+  const [groupIdx, setGroupIdx] = useState(0);
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState<ActivityKind>('football');
   const [area, setArea] = useState('');
-  const [exactLocation, setExactLocation] = useState('');
   const [spots, setSpots] = useState(10);
-  const [whenIso, setWhenIso] = useState(() => presets[0]?.iso ?? '');
+  const [whenIdx, setWhenIdx] = useState(0);
   const [overflow, setOverflow] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -54,41 +58,45 @@ export function CreateActivityScreen() {
     void (async () => {
       const gs = await repo.listMyGroups(userId);
       setGroups(gs);
-      const first = gs[0];
-      if (first) {
-        setGroupId(first.id);
-        setArea(first.area);
-      }
+      if (gs[0]) setArea(gs[0].area);
     })();
   }, [repo, userId]);
 
-  const selectGroup = (g: Group) => {
-    setGroupId(g.id);
-    setArea(g.area);
+  const group = groups[groupIdx] ?? null;
+  const cycleGroup = () => {
+    if (groups.length < 2) return;
+    const next = (groupIdx + 1) % groups.length;
+    setGroupIdx(next);
+    setArea(groups[next].area);
   };
+  const cycleWhen = () => setWhenIdx((i) => (i + 1) % presets.length);
 
   const handleSubmit = async () => {
-    if (!groupId) {
-      setError('Выберите круг.');
+    if (!group) {
+      setError('Сначала создайте круг.');
       return;
     }
     if (title.trim().length === 0) {
       setError('Введите название активности.');
       return;
     }
+    if (spots < 2) {
+      setError('Нужно хотя бы 2 места.');
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
       const created = await repo.createActivity({
-        groupId,
+        groupId: group.id,
         createdBy: userId,
         title: title.trim(),
         kind,
         area: area.trim(),
-        startsAt: whenIso,
+        startsAt: presets[whenIdx].iso,
         totalSpots: spots,
         overflow,
-        exactLocation: exactLocation.trim().length > 0 ? exactLocation.trim() : null,
+        exactLocation: null,
       });
       router.replace(`/activity/${created.id}`);
     } catch {
@@ -98,51 +106,15 @@ export function CreateActivityScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <Pressable
-        onPress={() => router.back()}
-        style={styles.back}
-        accessibilityRole="button"
-        testID="create-back"
-      >
-        <Text style={styles.backText}>‹ Назад</Text>
-      </Pressable>
+    <View style={styles.root}>
+      <ScreenHeader title="Новая активность" onBack={() => router.back()} />
 
       <ScrollView
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Новая активность</Text>
-
-        <Text style={styles.label}>Круг</Text>
-        <View style={styles.chips}>
-          {groups.map((g) => {
-            const active = g.id === groupId;
-            return (
-              <Pressable
-                key={g.id}
-                onPress={() => selectGroup(g)}
-                style={[styles.chip, active && styles.chipActive]}
-                accessibilityRole="button"
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{g.name}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <Text style={styles.label}>Название</Text>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Футбол 5×5"
-          placeholderTextColor={colors.text.muted}
-          style={styles.input}
-          testID="create-title"
-        />
-
-        <Text style={styles.label}>Тип</Text>
+        <FieldLabel>Чем займётесь</FieldLabel>
         <View style={styles.chips}>
           {KIND_OPTIONS.map((k) => {
             const active = k.kind === kind;
@@ -152,6 +124,7 @@ export function CreateActivityScreen() {
                 onPress={() => setKind(k.kind)}
                 style={[styles.chip, active && styles.chipActive]}
                 accessibilityRole="button"
+                accessibilityState={{ selected: active }}
               >
                 <Text style={[styles.chipText, active && styles.chipTextActive]}>{k.label}</Text>
               </Pressable>
@@ -159,167 +132,134 @@ export function CreateActivityScreen() {
           })}
         </View>
 
-        <Text style={styles.label}>Когда</Text>
-        <View style={styles.chips}>
-          {presets.map((p) => {
-            const active = p.iso === whenIso;
-            return (
-              <Pressable
-                key={p.label}
-                onPress={() => setWhenIso(p.iso)}
-                style={[styles.chip, active && styles.chipActive]}
-                accessibilityRole="button"
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{p.label}</Text>
-              </Pressable>
-            );
-          })}
+        <View style={styles.gap} />
+        <FieldLabel>Название</FieldLabel>
+        <Field value={title} onChangeText={setTitle} placeholder="Футбол 5×5" testID="create-title" />
+
+        <View style={styles.gap} />
+        <View style={styles.row2}>
+          <View style={styles.rowWhen}>
+            <FieldLabel>Когда</FieldLabel>
+            <Pressable style={styles.pick} onPress={cycleWhen} testID="create-when">
+              <Ionicons name="calendar-outline" size={18} color={colors.text.muted} />
+              <Text style={styles.pickValue} numberOfLines={1}>
+                {formatWhen(presets[whenIdx].iso)}
+              </Text>
+            </Pressable>
+          </View>
+          <View style={styles.rowSlots}>
+            <FieldLabel>Слотов</FieldLabel>
+            <Field
+              value={spots ? String(spots) : ''}
+              onChangeText={(t) => setSpots(Math.min(30, Number(t.replace(/\D/g, '')) || 0))}
+              keyboardType="number-pad"
+              testID="create-spots"
+            />
+          </View>
         </View>
 
-        <Text style={styles.label}>Район</Text>
-        <TextInput
+        <View style={styles.gap} />
+        <FieldLabel>Район</FieldLabel>
+        <Field
           value={area}
           onChangeText={setArea}
           placeholder="Приморский"
-          placeholderTextColor={colors.text.muted}
-          style={styles.input}
+          leftIcon={<Ionicons name="location-outline" size={18} color={colors.text.muted} />}
           testID="create-area"
         />
 
-        <Text style={styles.label}>Точное место</Text>
-        <TextInput
-          value={exactLocation}
-          onChangeText={setExactLocation}
-          placeholder="Стадион «Волна», у входа"
-          placeholderTextColor={colors.text.muted}
-          style={styles.input}
-          testID="create-location"
-        />
-        <Text style={styles.fieldHint}>
-          Видно только тем, кто занял место. Можно добавить позже.
-        </Text>
+        <View style={styles.gap} />
+        <FieldLabel>Круг</FieldLabel>
+        <Pressable style={styles.pick} onPress={cycleGroup} testID="create-group">
+          <IconCircles color={colors.text.muted} size={18} />
+          <Text style={styles.pickValue} numberOfLines={1}>
+            {group ? group.name : 'Нет кругов'}
+          </Text>
+        </Pressable>
 
-        <Text style={styles.label}>Сколько всего мест</Text>
-        <View style={styles.stepper}>
-          <Pressable
-            onPress={() => setSpots((s) => Math.max(2, s - 1))}
-            style={styles.stepBtn}
-            accessibilityRole="button"
-            testID="create-spots-minus"
-          >
-            <Text style={styles.stepBtnText}>−</Text>
-          </Pressable>
-          <Text style={styles.stepValue}>{spots}</Text>
-          <Pressable
-            onPress={() => setSpots((s) => Math.min(30, s + 1))}
-            style={styles.stepBtn}
-            accessibilityRole="button"
-            testID="create-spots-plus"
-          >
-            <Text style={styles.stepBtnText}>+</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.switchRow}>
-          <View style={styles.switchTextWrap}>
-            <Text style={styles.switchLabel}>Открыть места соседним</Text>
-            <Text style={styles.switchHint}>Пока — всем кругам города. Иначе только своим.</Text>
+        <View style={styles.overflowCard}>
+          <IconTile>
+            <Ionicons name="globe-outline" size={22} color={colors.action.primary} />
+          </IconTile>
+          <View style={styles.ovText}>
+            <Text style={styles.ovTitle}>Открыть места городу</Text>
+            <Text style={styles.ovSub}>Свободные слоты займут чужие (overflow)</Text>
           </View>
-          <Switch value={overflow} onValueChange={setOverflow} testID="create-overflow" />
+          <Switch
+            value={overflow}
+            onValueChange={setOverflow}
+            trackColor={{ true: colors.action.primary, false: colors.border.strong }}
+            thumbColor={colors.surface.default}
+            testID="create-overflow"
+          />
         </View>
 
-        {error && (
+        {error ? (
           <Text style={styles.error} accessibilityRole="alert">
             {error}
           </Text>
-        )}
-
-        <Pressable
-          onPress={handleSubmit}
-          disabled={submitting}
-          style={({ pressed }) => [
-            styles.submit,
-            submitting && styles.submitDisabled,
-            pressed && !submitting && styles.pressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: submitting, busy: submitting }}
-          testID="create-submit"
-        >
-          <Text style={styles.submitText}>{submitting ? 'Создаём…' : 'Создать активность'}</Text>
-        </Pressable>
+        ) : null}
       </ScrollView>
-    </SafeAreaView>
+
+      <CtaBar>
+        <Button
+          label={submitting ? 'Публикуем…' : 'Опубликовать активность'}
+          disabled={submitting}
+          onPress={handleSubmit}
+        />
+      </CtaBar>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background.default },
-  back: { paddingHorizontal: spacing[5], paddingVertical: spacing[3] },
-  backText: { ...typography.body, color: colors.text.secondary },
-  body: { padding: spacing[6], paddingTop: spacing[2], gap: spacing[3] },
-  title: { ...typography.title, color: colors.text.primary, marginBottom: spacing[2] },
-  label: { ...typography.bodyMedium, color: colors.text.secondary, marginTop: spacing[2] },
-  fieldHint: { ...typography.caption, color: colors.text.muted },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
+  root: { flex: 1, backgroundColor: colors.background.default },
+  body: { paddingHorizontal: spacing[6], paddingTop: spacing[1], paddingBottom: 120 },
+  gap: { height: 16 },
+
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     backgroundColor: colors.surface.default,
     borderWidth: 1,
     borderColor: colors.border.default,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
+    borderRadius: 999,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
   },
   chipActive: { backgroundColor: colors.action.primary, borderColor: colors.action.primary },
-  chipText: { ...typography.body, color: colors.text.primary },
+  chipText: { fontFamily: INTER_MEDIUM, fontSize: 13.5, color: colors.text.secondary },
   chipTextActive: { color: colors.action.primaryText },
-  input: {
-    backgroundColor: colors.surface.default,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    fontSize: 16,
-    color: colors.text.primary,
-  },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  stepBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    backgroundColor: colors.surface.default,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepBtnText: { fontSize: 24, color: colors.text.primary },
-  stepValue: {
-    ...typography.heading,
-    color: colors.text.primary,
-    minWidth: 40,
-    textAlign: 'center',
-  },
-  switchRow: {
+
+  row2: { flexDirection: 'row', gap: 12 },
+  rowWhen: { flex: 1 },
+  rowSlots: { width: 110 },
+  pick: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing[3],
-    marginTop: spacing[2],
+    gap: 10,
+    backgroundColor: colors.surface.field,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    borderRadius: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  switchTextWrap: { flex: 1, gap: 2 },
-  switchLabel: { ...typography.bodyMedium, color: colors.text.primary },
-  switchHint: { ...typography.caption, color: colors.text.muted },
-  error: { ...typography.body, color: colors.status.danger },
-  submit: {
-    backgroundColor: colors.action.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing[4],
+  pickValue: { flex: 1, fontSize: 15.5, color: colors.text.primary },
+
+  overflowCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing[4],
+    gap: 12,
+    marginTop: 22,
+    backgroundColor: colors.surface.default,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
   },
-  submitDisabled: { opacity: 0.6 },
-  pressed: { opacity: 0.85 },
-  submitText: { ...typography.button, color: colors.action.primaryText },
+  ovText: { flex: 1 },
+  ovTitle: { fontFamily: INTER_SEMIBOLD, fontSize: 14.5, color: colors.text.primary },
+  ovSub: { ...typography.caption, fontSize: 12.5, color: colors.text.secondary, marginTop: 2 },
+  error: { ...typography.body, fontSize: 14, color: colors.status.danger, marginTop: 14 },
 });
