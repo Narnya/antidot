@@ -1,28 +1,15 @@
-// BETA-002 — Waitlist signup screen (minimal infrastructure UI, not final Figma v2).
-//
-// Behavior:
-//   - validates via pure `validateWaitlistInput` (trim + permissive email check);
-//   - calls placeholder async submit; ALWAYS returns ok in this skeleton phase;
-//   - shows success in-place — does NOT grant beta access, does NOT navigate;
-//   - submission state is component-local only and clears on unmount;
-//   - "У меня есть инвайт-код" links back to /invite for the bidirectional flow.
-import { Link } from 'expo-router';
+// BETA-002 — Waitlist signup, pixel-matched to mockups/all-screens.html frame G
+// «Лист ожидания»: ANTIDOT wordmark, hero title, e-mail + optional name / area
+// fields, «Встать в лист ожидания», and an «У меня есть инвайт-код» link. Validation
+// + placeholder submit unchanged.
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '@social-events/ui';
 
-import { AuthTextInput } from '../../auth/components/AuthTextInput';
-import { useAuthSession } from '../../auth';
+import { BrandMini, Button, Field, FieldLabel, HeroTitle, ScreenHeader } from '../../../components';
 import { submitWaitlistPlaceholder } from '../lib/waitlistPlaceholder';
 import { validateWaitlistInput } from '../lib/waitlistValidation';
 
@@ -33,44 +20,38 @@ type UiState =
   | { status: 'success' };
 
 export function WaitlistScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
   const [uiState, setUiState] = useState<UiState>({ status: 'idle' });
-  const { isSigningOut, signOut } = useAuthSession();
 
   const isLoading = uiState.status === 'loading';
   const isSuccess = uiState.status === 'success';
-
-  const clearErrorOnEdit = () => {
-    if (uiState.status === 'error') {
-      setUiState({ status: 'idle' });
-    }
+  const clearErr = () => {
+    if (uiState.status === 'error') setUiState({ status: 'idle' });
   };
 
   const handleSubmit = async () => {
     const result = validateWaitlistInput({ email, name, city });
     switch (result.kind) {
       case 'empty_email':
-        setUiState({ status: 'error', message: 'Введите email.' });
+        setUiState({ status: 'error', message: 'Введите e-mail.' });
         return;
       case 'invalid_email':
-        setUiState({ status: 'error', message: 'Проверьте формат email.' });
+        setUiState({ status: 'error', message: 'Проверьте формат e-mail.' });
         return;
       case 'valid': {
         setUiState({ status: 'loading' });
         try {
           const submission = await submitWaitlistPlaceholder(result.values);
-          if (submission.ok) {
-            setUiState({ status: 'success' });
-          } else {
-            setUiState({ status: 'error', message: submission.message });
-          }
+          setUiState(
+            submission.ok
+              ? { status: 'success' }
+              : { status: 'error', message: submission.message },
+          );
         } catch {
-          setUiState({
-            status: 'error',
-            message: 'Не удалось отправить заявку. Попробуйте ещё раз.',
-          });
+          setUiState({ status: 'error', message: 'Не удалось отправить. Попробуйте ещё раз.' });
         }
         return;
       }
@@ -78,196 +59,128 @@ export function WaitlistScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+    <View style={styles.root}>
+      <ScreenHeader onBack={() => router.back()} />
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={styles.container}
+          contentContainerStyle={styles.body}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.body}>
-            <Text style={styles.title}>Лист ожидания</Text>
-            <Text style={styles.subtitle}>
-              Оставьте email, и мы сообщим, когда появится доступ к закрытой бете.
-            </Text>
+          <BrandMini />
+          <HeroTitle style={styles.title}>Лист ожидания</HeroTitle>
+          <Text style={styles.sub}>
+            Antidot пока в закрытой бете. Оставь почту — позовём, как откроем твой район.
+          </Text>
 
-            {isSuccess ? (
-              <View style={styles.successBlock} accessibilityRole="alert">
-                <Text style={styles.successTitle}>Вы в листе ожидания</Text>
-                <Text style={styles.successBody}>
-                  Спасибо. Мы сообщим вам, когда появится доступ.
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.form}>
-                <AuthTextInput
-                  label="Email"
+          {isSuccess ? (
+            <View style={styles.successBlock} accessibilityRole="alert">
+              <Text style={styles.successTitle}>Вы в листе ожидания</Text>
+              <Text style={styles.successBody}>Спасибо. Позовём, как только откроем доступ.</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.field}>
+                <FieldLabel>E-mail</FieldLabel>
+                <Field
                   value={email}
-                  onChangeText={(next) => {
-                    setEmail(next);
-                    clearErrorOnEdit();
+                  onChangeText={(t) => {
+                    setEmail(t);
+                    clearErr();
                   }}
                   placeholder="you@example.com"
                   keyboardType="email-address"
+                  autoCapitalize="none"
                   autoComplete="email"
-                  textContentType="emailAddress"
                   editable={!isLoading}
+                  leftIcon={<Ionicons name="mail-outline" size={19} color={colors.text.muted} />}
                   testID="waitlist-email"
                 />
-                <AuthTextInput
-                  label="Имя (необязательно)"
+              </View>
+              <View style={styles.field}>
+                <FieldLabel>
+                  Имя <Text style={styles.optional}>(необязательно)</Text>
+                </FieldLabel>
+                <Field
                   value={name}
-                  onChangeText={(next) => {
-                    setName(next);
-                    clearErrorOnEdit();
+                  onChangeText={(t) => {
+                    setName(t);
+                    clearErr();
                   }}
-                  autoCapitalize="sentences"
-                  autoComplete="off"
-                  textContentType="none"
+                  placeholder="Как тебя звать"
                   editable={!isLoading}
                   testID="waitlist-name"
                 />
-                <AuthTextInput
-                  label="Город или район (необязательно)"
+              </View>
+              <View style={styles.field}>
+                <FieldLabel>
+                  Город или район <Text style={styles.optional}>(необязательно)</Text>
+                </FieldLabel>
+                <Field
                   value={city}
-                  onChangeText={(next) => {
-                    setCity(next);
-                    clearErrorOnEdit();
+                  onChangeText={(t) => {
+                    setCity(t);
+                    clearErr();
                   }}
-                  autoCapitalize="sentences"
-                  autoComplete="off"
-                  textContentType="none"
+                  placeholder="Санкт-Петербург · Приморский"
                   editable={!isLoading}
+                  leftIcon={<Ionicons name="location-outline" size={19} color={colors.text.muted} />}
                   testID="waitlist-city"
                 />
-
-                {uiState.status === 'error' && (
-                  <Text style={styles.errorText} accessibilityRole="alert">
-                    {uiState.message}
-                  </Text>
-                )}
-
-                <Pressable
-                  onPress={handleSubmit}
-                  disabled={isLoading}
-                  style={({ pressed }) => [
-                    styles.primaryButton,
-                    isLoading && styles.buttonDisabled,
-                    pressed && !isLoading && styles.buttonPressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: isLoading, busy: isLoading }}
-                  testID="waitlist-submit"
-                >
-                  <Text style={styles.primaryButtonText}>
-                    {isLoading ? 'Отправляем…' : 'Встать в лист ожидания'}
-                  </Text>
-                </Pressable>
               </View>
-            )}
 
-            <Link href="/invite" style={styles.secondaryLink} testID="waitlist-invite-link">
-              У меня есть инвайт-код
-            </Link>
-          </View>
+              {uiState.status === 'error' ? (
+                <Text style={styles.error} accessibilityRole="alert">
+                  {uiState.message}
+                </Text>
+              ) : null}
 
-          <View style={styles.footer}>
-            <Pressable
-              onPress={signOut}
-              disabled={isSigningOut}
-              style={({ pressed }) => [
-                styles.tertiaryButton,
-                isSigningOut && styles.buttonDisabled,
-                pressed && !isSigningOut && styles.buttonPressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: isSigningOut, busy: isSigningOut }}
-              testID="waitlist-signout"
-            >
-              <Text style={styles.tertiaryButtonText}>
-                {isSigningOut ? 'Выход…' : 'Войти под другим аккаунтом'}
-              </Text>
-            </Pressable>
-          </View>
+              <View style={styles.cta}>
+                <Button
+                  label={isLoading ? 'Отправляем…' : 'Встать в лист ожидания'}
+                  disabled={isLoading}
+                  onPress={handleSubmit}
+                />
+              </View>
+            </>
+          )}
+
+          <Pressable
+            onPress={() => router.push('/invite')}
+            style={styles.link}
+            accessibilityRole="button"
+            testID="waitlist-invite-link"
+          >
+            <Text style={styles.linkText}>
+              У меня есть <Text style={styles.linkAccent}>инвайт-код</Text>
+            </Text>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background.default },
+  root: { flex: 1, backgroundColor: colors.background.default },
   flex: { flex: 1 },
-  container: {
-    flexGrow: 1,
-    padding: spacing[6],
-    justifyContent: 'space-between',
-  },
-  body: {
-    gap: spacing[4],
-  },
-  title: {
-    ...typography.title,
-    color: colors.text.primary,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.text.secondary,
-  },
-  form: {
-    gap: spacing[4],
-    marginTop: spacing[4],
-  },
+  body: { paddingHorizontal: spacing[6], paddingTop: 14, paddingBottom: spacing[8] },
+  title: { marginTop: 22 },
+  sub: { ...typography.body, fontSize: 15, lineHeight: 22, color: colors.text.secondary, marginTop: 10 },
+  field: { marginTop: 16 },
+  optional: { fontWeight: '400', color: colors.text.muted },
+  error: { ...typography.body, fontSize: 14, color: colors.status.danger, marginTop: 14 },
+  cta: { marginTop: 26 },
+  link: { alignItems: 'center', paddingVertical: 18 },
+  linkText: { ...typography.body, fontSize: 15, color: colors.text.secondary },
+  linkAccent: { fontWeight: '600', color: colors.accent.coral },
   successBlock: {
-    gap: spacing[2],
-    marginTop: spacing[4],
+    gap: 4,
+    marginTop: 24,
     padding: spacing[4],
     backgroundColor: colors.safety.noticeBg,
-    borderRadius: 12,
+    borderRadius: 16,
   },
-  successTitle: {
-    ...typography.section,
-    color: colors.safety.noticeText,
-  },
-  successBody: {
-    ...typography.body,
-    color: colors.safety.noticeText,
-  },
-  primaryButton: {
-    backgroundColor: colors.action.primary,
-    borderRadius: 12,
-    paddingVertical: spacing[4],
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    ...typography.button,
-    color: colors.action.primaryText,
-  },
-  secondaryLink: {
-    ...typography.body,
-    color: colors.status.info,
-    textAlign: 'center',
-    paddingVertical: spacing[3],
-    marginTop: spacing[2],
-  },
-  errorText: {
-    ...typography.body,
-    color: colors.status.danger,
-  },
-  tertiaryButton: {
-    paddingVertical: spacing[3],
-    alignItems: 'center',
-  },
-  tertiaryButtonText: {
-    ...typography.body,
-    color: colors.text.muted,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonPressed: { opacity: 0.85 },
-  footer: {
-    marginBottom: spacing[3],
-  },
+  successTitle: { ...typography.section, color: colors.safety.noticeText },
+  successBody: { ...typography.body, fontSize: 14.5, color: colors.safety.noticeText },
 });
