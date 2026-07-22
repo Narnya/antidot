@@ -420,11 +420,13 @@ export class MockActivitiesRepository implements ActivitiesRepository {
     if (existing) {
       existing.displayName = input.displayName;
       existing.area = input.area;
+      if (input.interests) existing.interests = input.interests;
     } else {
       profiles.push({
         userId: input.userId,
         displayName: input.displayName,
         area: input.area,
+        interests: input.interests,
       });
     }
   }

@@ -1,45 +1,64 @@
-// (onboarding) → start. Minimal REAL onboarding (activity-first): display name +
-// city/area + safety-principles accept. On submit it WRITES the user's `profiles`
-// row (the durable source of truth) and then flips the in-memory nav flag so the
-// (onboarding) gate advances to the app.
+// (onboarding) → start. Activity-first onboarding, ported to the mockups:
+//   steps 0–2 → value slides A1–A3 (анти-дейтинг framing: активность, не свидание;
+//   группа, не 1:1; принадлежность), each a full-bleed hero fading to ivory.
+//   step 3   → profile form (frame 03): имя / город+район / interest chips, a
+//   progress bar and a fixed «Далее» CTA. On submit it WRITES the `profiles` row
+//   (durable source of truth) and flips the in-memory gate flag.
 //
-// Durability: on mount we check for an existing profile; returning users (who
-// already onboarded) auto-advance without re-filling the form. The nav flag
-// itself is still in-memory (dev) — the fully durable gate-from-profiles is the
-// larger ONB-014 step; this closes the "onboarding must write the profiles row"
-// follow-up (docs/33 §5). Photo / vibe / rhythm are deferred (docs/32 §4.3).
+// Per product decision (2026-07-22) the onboarding follows the mockup exactly —
+// no safety-rules card / mandatory accept checkbox. The safety promise is carried
+// by the value slides. A subtle «Выйти» escape is kept (this is a post-auth screen).
+//
+// Durability: on mount we check for an existing profile; returning users skip the
+// flow. The gate flag is still in-memory (dev); the durable gate-from-profiles is
+// the larger ONB-014 step. Interests persist on mock; the live schema stores имя+
+// район until the profiles table gains the column (docs/32 §4.3).
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, radius, spacing, typography } from '@social-events/ui';
 
+import { Button, CtaBar, Field, FieldLabel, HeroTitle, IconPin, ScreenHeader } from '../../src/components';
+import { kindImage } from '../../src/features/activities/lib/kindImage';
 import { useActivitiesRepo } from '../../src/features/activities/hooks/useActivitiesRepo';
 import { useAuthSession, useOnboardingPlaceholder } from '../../src/features/auth';
 
-const SAFETY_POINTS = [
-  'Уважение к каждому участнику. Никаких оскорблений и давления.',
-  'Точное место встречи видно только тем, кто занял слот.',
-  'О любой небезопасной ситуации можно сообщить — и заблокировать.',
+const SLIDES = [
+  {
+    kind: 'football' as const,
+    title: 'Сначала\nобщее занятие',
+    sub: 'Ты приходишь на активность, а не на свидание.',
+    cta: 'Далее',
+  },
+  {
+    kind: 'coffee' as const,
+    title: 'Знакомства\nпроисходят сами',
+    sub: 'Ты общаешься в группе, а не один на один.',
+    cta: 'Далее',
+  },
+  {
+    kind: 'walk' as const,
+    title: 'Круги делают\nлюдей ближе',
+    sub: 'Ты становишься частью постоянного круга.',
+    cta: 'Начать',
+  },
 ];
 
+const INTERESTS = ['Спорт', 'Настолки', 'Прогулки', 'Кофе', 'Бег', 'Музыка'];
+
 export default function OnboardingStart() {
+  const insets = useSafeAreaInsets();
   const { repo, userId } = useActivitiesRepo();
   const { isSigningOut, signOut } = useAuthSession();
   const { markOnboardedPlaceholder } = useOnboardingPlaceholder();
 
   const [checking, setChecking] = useState(true);
+  const [step, setStep] = useState(0); // 0–2 value slides · 3 profile form
   const [name, setName] = useState('');
   const [area, setArea] = useState('');
-  const [accepted, setAccepted] = useState(false);
+  const [interests, setInterests] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +74,7 @@ export default function OnboardingStart() {
           return;
         }
       } catch {
-        // Fall through to the form if the check fails (offline / transient).
+        // Fall through to the flow if the check fails (offline / transient).
       }
       if (active) setChecking(false);
     })();
@@ -64,15 +83,13 @@ export default function OnboardingStart() {
     };
   }, [repo, userId, markOnboardedPlaceholder]);
 
-  const canSubmit = name.trim().length > 0 && accepted && !submitting;
+  const toggleInterest = useCallback((tag: string) => {
+    setInterests((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     if (name.trim().length === 0) {
       setError('Введите имя.');
-      return;
-    }
-    if (!accepted) {
-      setError('Примите правила общения, чтобы продолжить.');
       return;
     }
     setError(null);
@@ -82,13 +99,14 @@ export default function OnboardingStart() {
         userId,
         displayName: name.trim(),
         area: area.trim().length > 0 ? area.trim() : null,
+        interests,
       });
       markOnboardedPlaceholder();
     } catch {
       setError('Не удалось сохранить профиль. Попробуйте ещё раз.');
       setSubmitting(false);
     }
-  }, [name, area, accepted, repo, userId, markOnboardedPlaceholder]);
+  }, [name, area, interests, repo, userId, markOnboardedPlaceholder]);
 
   if (checking) {
     return (
@@ -100,160 +118,190 @@ export default function OnboardingStart() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.body}>
-          <Text style={styles.title}>Давайте познакомимся</Text>
-          <Text style={styles.subtitle}>Пара штрихов — и можно заходить в круги и активности.</Text>
+  // ─── Value slides (A1–A3) ────────────────────────────────────────────────
+  if (step < 3) {
+    const slide = SLIDES[step];
+    return (
+      <View style={styles.slideRoot}>
+        <Image source={kindImage(slide.kind)} style={styles.hero} resizeMode="cover" />
+        <LinearGradient
+          colors={['rgba(21,19,15,0.16)', 'rgba(247,245,239,0)', 'rgba(247,245,239,1)']}
+          locations={[0, 0.4, 0.92]}
+          style={styles.heroFade}
+          pointerEvents="none"
+        />
+        <Pressable
+          onPress={() => setStep(3)}
+          style={[styles.skip, { top: insets.top + 14 }]}
+          accessibilityRole="button"
+          testID="onb-skip"
+        >
+          <Text style={styles.skipText}>Пропустить</Text>
+        </Pressable>
 
-          <Text style={styles.label}>Как вас зовут</Text>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Имя"
-            placeholderTextColor={colors.text.muted}
-            style={styles.input}
-            testID="onb-name"
-          />
-
-          <Text style={styles.label}>Город и район</Text>
-          <TextInput
-            value={area}
-            onChangeText={setArea}
-            placeholder="Приморский, СПб"
-            placeholderTextColor={colors.text.muted}
-            style={styles.input}
-            testID="onb-area"
-          />
-          <Text style={styles.hint}>Показываем только район — точный адрес никогда.</Text>
-
-          <View style={styles.safetyCard}>
-            <Text style={styles.safetyTitle}>Правила общения</Text>
-            {SAFETY_POINTS.map((p) => (
-              <Text key={p} style={styles.safetyPoint}>
-                • {p}
-              </Text>
+        <View style={[styles.obContent, { paddingBottom: insets.bottom + 40 }]}>
+          <HeroTitle style={styles.slideTitle}>{slide.title}</HeroTitle>
+          <Text style={styles.slideSub}>{slide.sub}</Text>
+          <View style={styles.dots}>
+            {SLIDES.map((s, i) => (
+              <View key={s.kind} style={[styles.dot, i === step && styles.dotOn]} />
             ))}
           </View>
+          <View style={styles.slideCta}>
+            <Button label={slide.cta} onPress={() => setStep((s) => s + 1)} />
+          </View>
+        </View>
+      </View>
+    );
+  }
 
-          <Pressable
-            onPress={() => setAccepted((v) => !v)}
-            style={styles.acceptRow}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: accepted }}
-            testID="onb-accept"
-          >
-            <View style={[styles.checkbox, accepted && styles.checkboxOn]}>
-              {accepted ? <Text style={styles.checkmark}>✓</Text> : null}
+  // ─── Profile form (frame 03) ─────────────────────────────────────────────
+  const canSubmit = name.trim().length > 0 && !submitting;
+  return (
+    <View style={styles.safe}>
+      <SafeAreaView style={styles.formSafe} edges={['top']}>
+        <ScreenHeader onBack={() => setStep(2)} />
+        <View style={styles.progress}>
+          <View style={[styles.seg, styles.segOn]} />
+          <View style={[styles.seg, styles.segOn]} />
+          <View style={styles.seg} />
+        </View>
+
+        <ScrollView
+          contentContainerStyle={styles.formBody}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <HeroTitle>{'Немного\nо тебе'}</HeroTitle>
+          <Text style={styles.formSub}>
+            Это увидят участники круга, когда вы окажетесь на одной активности.
+          </Text>
+
+          <View style={styles.fieldBlock}>
+            <FieldLabel>Как тебя зовут</FieldLabel>
+            <Field
+              value={name}
+              onChangeText={setName}
+              placeholder="Имя"
+              autoCapitalize="words"
+              testID="onb-name"
+            />
+          </View>
+
+          <View style={styles.fieldBlock}>
+            <FieldLabel>Город и район</FieldLabel>
+            <Field
+              value={area}
+              onChangeText={setArea}
+              placeholder="Санкт-Петербург · Приморский"
+              leftIcon={<IconPin color={colors.text.muted} size={20} />}
+              testID="onb-area"
+            />
+          </View>
+
+          <View style={styles.fieldBlock}>
+            <FieldLabel>Что тебе интересно</FieldLabel>
+            <View style={styles.chips}>
+              {INTERESTS.map((tag) => {
+                const on = interests.includes(tag);
+                return (
+                  <Pressable
+                    key={tag}
+                    onPress={() => toggleInterest(tag)}
+                    style={[styles.chip, on && styles.chipOn]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    testID={`onb-interest-${tag}`}
+                  >
+                    <Text style={[styles.chipText, on && styles.chipTextOn]}>{tag}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
-            <Text style={styles.acceptText}>Принимаю правила общения</Text>
-          </Pressable>
+          </View>
 
           {error ? (
             <Text style={styles.error} accessibilityRole="alert">
               {error}
             </Text>
           ) : null}
-        </View>
-
-        <View style={styles.actions}>
-          <Pressable
-            onPress={handleSubmit}
-            disabled={!canSubmit}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              !canSubmit && styles.buttonDisabled,
-              pressed && canSubmit && styles.buttonPressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canSubmit, busy: submitting }}
-            testID="onb-submit"
-          >
-            <Text style={styles.primaryButtonText}>{submitting ? 'Сохраняем…' : 'Продолжить'}</Text>
-          </Pressable>
 
           <Pressable
             onPress={signOut}
             disabled={isSigningOut}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              isSigningOut && styles.buttonDisabled,
-              pressed && !isSigningOut && styles.buttonPressed,
-            ]}
+            style={styles.signout}
             accessibilityRole="button"
-            accessibilityState={{ disabled: isSigningOut, busy: isSigningOut }}
             testID="onboarding-signout"
           >
-            <Text style={styles.secondaryButtonText}>{isSigningOut ? 'Выход…' : 'Выйти'}</Text>
+            <Text style={styles.signoutText}>{isSigningOut ? 'Выход…' : 'Выйти из аккаунта'}</Text>
           </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+
+      <CtaBar>
+        <Button label={submitting ? 'Сохраняем…' : 'Далее'} onPress={handleSubmit} disabled={!canSubmit} />
+      </CtaBar>
+    </View>
   );
 }
+
+const HERO_HEIGHT = 430;
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.default },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  container: { flexGrow: 1, padding: spacing[6], justifyContent: 'space-between' },
-  body: { marginTop: spacing[8], gap: spacing[3] },
-  title: { ...typography.title, color: colors.text.primary },
-  subtitle: { ...typography.body, color: colors.text.secondary },
-  label: { ...typography.bodyMedium, color: colors.text.secondary, marginTop: spacing[2] },
-  input: {
+
+  // value slides
+  slideRoot: { flex: 1, backgroundColor: colors.background.default },
+  hero: { position: 'absolute', top: 0, left: 0, right: 0, height: HERO_HEIGHT },
+  heroFade: { position: 'absolute', top: 0, left: 0, right: 0, height: HERO_HEIGHT },
+  skip: { position: 'absolute', right: spacing[6], zIndex: 25 },
+  skipText: {
+    fontFamily: typography.badge.fontFamily,
+    fontSize: 14,
+    color: colors.text.inverse,
+    opacity: 0.95,
+    textShadowColor: 'rgba(21,19,15,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  obContent: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: 0,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 30,
+  },
+  slideTitle: { fontSize: 33, lineHeight: 39 },
+  slideSub: { fontSize: 16, lineHeight: 23, color: colors.text.secondary, marginTop: 14 },
+  dots: { flexDirection: 'row', gap: 7, marginTop: 30 },
+  dot: { width: 7, height: 7, borderRadius: radius.full, backgroundColor: colors.border.default },
+  dotOn: { width: 22, backgroundColor: colors.action.primary },
+  slideCta: { marginTop: 22 },
+
+  // profile form
+  formSafe: { flex: 1 },
+  progress: { flexDirection: 'row', gap: 6, paddingHorizontal: spacing[6], paddingTop: 6 },
+  seg: { flex: 1, height: 4, borderRadius: radius.full, backgroundColor: colors.border.default },
+  segOn: { backgroundColor: colors.action.primary },
+  formBody: { paddingHorizontal: spacing[6], paddingTop: 20, paddingBottom: 150 },
+  formSub: { ...typography.body, fontSize: 15, lineHeight: 22, color: colors.text.secondary, marginTop: 10 },
+  fieldBlock: { marginTop: 18 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
+  chip: {
     backgroundColor: colors.surface.default,
     borderWidth: 1,
     borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    fontSize: 16,
-    color: colors.text.primary,
+    borderRadius: radius.full,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
   },
-  hint: { ...typography.caption, color: colors.text.muted },
-  safetyCard: {
-    backgroundColor: colors.safety.noticeBg,
-    borderRadius: radius.lg,
-    padding: spacing[4],
-    gap: spacing[2],
-    marginTop: spacing[2],
-  },
-  safetyTitle: { ...typography.bodyMedium, color: colors.safety.noticeText },
-  safetyPoint: { ...typography.caption, color: colors.text.secondary },
-  acceptRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginTop: spacing[1] },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxOn: { backgroundColor: colors.action.primary, borderColor: colors.action.primary },
-  checkmark: { ...typography.caption, color: colors.action.primaryText },
-  acceptText: { ...typography.body, color: colors.text.primary, flex: 1 },
-  error: { ...typography.body, color: colors.status.danger },
-  actions: { gap: spacing[3], marginTop: spacing[6], marginBottom: spacing[6] },
-  primaryButton: {
-    backgroundColor: colors.action.primary,
-    borderRadius: 12,
-    paddingVertical: spacing[4],
-    alignItems: 'center',
-  },
-  primaryButtonText: { ...typography.button, color: colors.action.primaryText },
-  secondaryButton: {
-    backgroundColor: colors.action.secondary,
-    borderRadius: 12,
-    paddingVertical: spacing[3],
-    alignItems: 'center',
-  },
-  secondaryButtonText: { ...typography.button, color: colors.text.primary },
-  buttonDisabled: { opacity: 0.6 },
-  buttonPressed: { opacity: 0.85 },
+  chipOn: { backgroundColor: colors.action.primary, borderColor: colors.action.primary },
+  chipText: { fontSize: 13.5, lineHeight: 16, color: colors.text.primary, fontFamily: typography.caption.fontFamily },
+  chipTextOn: { color: colors.action.primaryText },
+  error: { ...typography.body, color: colors.status.danger, marginTop: spacing[4] },
+  signout: { alignSelf: 'center', paddingVertical: spacing[3], marginTop: spacing[6] },
+  signoutText: { ...typography.caption, color: colors.text.muted },
 });

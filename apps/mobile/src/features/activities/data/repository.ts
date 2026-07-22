@@ -136,6 +136,9 @@ export interface UpsertProfileInput {
   userId: Id;
   displayName: string;
   area: string | null;
+  /** Interest chips picked in onboarding (optional safe field). Persisted only
+   *  where the profiles table has the column; ignored on the minimal live schema. */
+  interests?: string[];
 }
 
 /** Activity-scoped notification kinds (mockup frame 10). Each maps to a tile glyph
