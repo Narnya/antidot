@@ -119,6 +119,17 @@ export interface Profile {
   userId: Id;
   displayName: string;
   area: string | null;
+  /** Free-text «О себе» (optional safe field; absent on minimal/legacy rows). */
+  bio?: string | null;
+  /** Interest chips (safe tags — not a searchable people catalog, Inv. 13). */
+  interests?: string[] | null;
+  /** Neutral participation counts for the profile header. NOT a trust score and
+   *  NOT a public rating (Inv. 3) — just круга / встреч / недель ритма. */
+  stats?: { circles: number; meetings: number; rhythmWeeks: number } | null;
+  /** Viewer-relative shared context on a FOREIGN profile (co-attended activities +
+   *  the circle where it happened). Populated only when the viewer and this user
+   *  share history; drives the «Общий контекст» card. Preview/mock for now. */
+  sharedContext?: { activities: number; circleName: string } | null;
 }
 
 export interface UpsertProfileInput {

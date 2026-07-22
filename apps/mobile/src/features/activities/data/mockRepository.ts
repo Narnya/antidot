@@ -194,8 +194,21 @@ const blocks: { blockerId: Id; blockedId: Id }[] = [];
 
 // T4 — in-memory profiles (mock).
 const profiles: Profile[] = [
-  { userId: 'me', displayName: 'Рафаэль', area: 'Приморский, СПб' },
-  { userId: 'u3', displayName: 'Аня', area: 'Центр' },
+  {
+    userId: 'me',
+    displayName: 'Рафаэль',
+    area: 'Санкт-Петербург · Приморский',
+    bio: 'Играю по четвергам, люблю настолки и утренний бег вдоль залива.',
+    interests: ['Спорт', 'Настолки', 'Бег'],
+    stats: { circles: 2, meetings: 14, rhythmWeeks: 6 },
+  },
+  {
+    userId: 'u3',
+    displayName: 'Аня',
+    area: 'Санкт-Петербург · Приморский',
+    bio: 'Организую футбол по четвергам уже год. Всем рада 🙂',
+    sharedContext: { activities: 2, circleName: 'Четверговый футбол' },
+  },
   { userId: 'guest1', displayName: 'Новый гость', area: null },
 ];
 

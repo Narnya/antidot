@@ -19,3 +19,15 @@ export {
   IconChevronDown,
   type NavIconProps,
 } from './NavIcons';
+export {
+  IconShield,
+  IconCheck,
+  IconUsers,
+  IconGear,
+  IconFlag,
+  IconLock,
+  IconPin,
+  IconClock,
+  IconChat,
+  type GlyphProps,
+} from './Glyphs';

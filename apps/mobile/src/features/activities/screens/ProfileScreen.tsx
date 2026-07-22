@@ -1,27 +1,41 @@
-// ACT / T4 — Profile. One screen, two modes:
-//   - self  → My Profile: safe fields (name, area), soft non-numeric badges, edit.
-//   - other → Public Safe Profile: safe view + Report / Block, NO message CTA
-//             (Inv. 2 — no cold DM before shared context).
-// Mirrors the Figma My Profile / Public Safe Profile screens.
+// ACT / T4 — Profile. One screen, two modes (mockup frames 11 · self, D · foreign):
+//   - self  → My Profile (TAB): avatar + name + area, soft NON-numeric badges,
+//             participation stats (круга/встреч/недель — NOT a trust score, Inv. 3),
+//             «О себе» + interest chips. Gear top-right → Settings (no inline edit —
+//             editing lives in the onboarding/settings flow, matching the mockup).
+//   - other → Public Safe Profile (STACK): back + flag(report), badges, «Общий
+//             контекст», «О себе», and a LOCKED «Написать» row — no cold DM before a
+//             shared activity (Inv. 2). Block is reachable via the report flow.
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, radius, spacing, typography } from '@social-events/ui';
+import { colors, PLAYFAIR_FAMILY, radius, shadows, spacing, typography } from '@social-events/ui';
 
+import {
+  IconButton,
+  IconCheck,
+  IconGear,
+  IconFlag,
+  IconLock,
+  IconShield,
+  IconTile,
+  IconUsers,
+  ScreenHeader,
+} from '../../../components';
 import type { Profile } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
+const GREEN = colors.action.primary;
+
 type Props = { profileUserId?: string };
+
+const BADGES = [
+  { key: 'verified', label: 'Проверен', Icon: IconShield },
+  { key: 'reliable', label: 'Надёжный участник', Icon: IconCheck },
+  { key: 'hosted', label: 'Проводил встречи', Icon: IconUsers },
+] as const;
 
 export function ProfileScreen({ profileUserId }: Props) {
   const router = useRouter();
@@ -31,17 +45,9 @@ export function ProfileScreen({ profileUserId }: Props) {
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState('');
-  const [area, setArea] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [blocking, setBlocking] = useState(false);
 
   const load = useCallback(async () => {
-    const p = await repo.getProfile(targetId);
-    setProfile(p);
-    setName(p?.displayName ?? '');
-    setArea(p?.area ?? '');
+    setProfile(await repo.getProfile(targetId));
     setLoading(false);
   }, [repo, targetId]);
 
@@ -49,40 +55,60 @@ export function ProfileScreen({ profileUserId }: Props) {
     void load();
   }, [load]);
 
-  const handleSave = async () => {
-    if (name.trim().length === 0) return;
-    setSaving(true);
-    try {
-      await repo.upsertProfile({ userId, displayName: name.trim(), area: area.trim() || null });
-      setEditing(false);
-      await load();
-    } finally {
-      setSaving(false);
-    }
-  };
+  const name = profile?.displayName ?? 'Без имени';
+  const initial = name.trim().charAt(0).toUpperCase() || '·';
 
-  const handleBlock = async () => {
-    setBlocking(true);
-    try {
-      await repo.blockUser(userId, targetId);
-      router.back();
-    } finally {
-      setBlocking(false);
-    }
-  };
+  const badges = (
+    <View style={styles.badgeWrap}>
+      {BADGES.map(({ key, label, Icon }) => (
+        <View key={key} style={styles.badge}>
+          <Icon color={GREEN} size={13} />
+          <Text style={styles.badgeText}>{label}</Text>
+        </View>
+      ))}
+    </View>
+  );
 
-  const initial = (profile?.displayName ?? '·').trim().charAt(0).toUpperCase() || '·';
+  const profTop = (
+    <View style={styles.profTop}>
+      <View style={styles.avatar}>
+        <Text style={styles.avatarText}>{initial}</Text>
+      </View>
+      <Text style={styles.profName}>{name}</Text>
+      {profile?.area ? <Text style={styles.profSub}>{profile.area}</Text> : null}
+      {badges}
+      {isSelf && profile?.stats ? (
+        <View style={styles.statRow}>
+          <Stat n={profile.stats.circles} l="круга" />
+          <Stat n={profile.stats.meetings} l="встреч" />
+          <Stat n={profile.stats.rhythmWeeks} l="недель ритм" />
+        </View>
+      ) : null}
+    </View>
+  );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <Pressable
-        onPress={() => router.back()}
-        style={styles.back}
-        accessibilityRole="button"
-        testID="pf-back"
-      >
-        <Text style={styles.backText}>‹ Назад</Text>
-      </Pressable>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      {isSelf ? (
+        <View style={styles.selfHeader}>
+          <IconButton onPress={() => router.push('/settings')} label="Настройки" testID="pf-settings">
+            <IconGear color={colors.text.primary} size={20} />
+          </IconButton>
+        </View>
+      ) : (
+        <ScreenHeader
+          onBack={() => router.back()}
+          right={
+            <IconButton
+              onPress={() => router.push(`/report?type=user&id=${targetId}`)}
+              label="Пожаловаться"
+              testID="pf-report"
+            >
+              <IconFlag color={colors.text.primary} size={18} />
+            </IconButton>
+          }
+        />
+      )}
 
       {loading ? (
         <View style={styles.center}>
@@ -91,182 +117,218 @@ export function ProfileScreen({ profileUserId }: Props) {
       ) : (
         <ScrollView
           contentContainerStyle={styles.body}
-          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
-          </View>
+          {profTop}
 
-          {isSelf && editing ? (
-            <>
-              <Text style={styles.label}>Имя</Text>
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                placeholder="Имя"
-                placeholderTextColor={colors.text.muted}
-                style={styles.input}
-                testID="pf-name"
-              />
-              <Text style={styles.label}>Город и район</Text>
-              <TextInput
-                value={area}
-                onChangeText={setArea}
-                placeholder="Приморский, СПб"
-                placeholderTextColor={colors.text.muted}
-                style={styles.input}
-                testID="pf-area"
-              />
-              <Pressable
-                onPress={handleSave}
-                disabled={saving}
-                style={({ pressed }) => [
-                  styles.primary,
-                  saving && styles.disabled,
-                  pressed && styles.pressed,
-                ]}
-                accessibilityRole="button"
-                testID="pf-save"
-              >
-                <Text style={styles.primaryText}>{saving ? 'Сохраняем…' : 'Сохранить'}</Text>
-              </Pressable>
-            </>
-          ) : (
-            <>
-              <Text style={styles.name}>{profile?.displayName ?? 'Без имени'}</Text>
-              <View style={styles.pills}>
-                <View style={[styles.pill, styles.trustPill]}>
-                  <Text style={[styles.pillText, styles.trustText]}>✓ Проверен</Text>
-                </View>
-                <View style={styles.pill}>
-                  <Text style={styles.pillText}>
-                    {isSelf ? 'Участвовал во встречах' : 'Надёжный участник'}
+          {!isSelf && profile?.sharedContext ? (
+            <View style={styles.section}>
+              <Text style={styles.label}>Общий контекст</Text>
+              <View style={styles.contextCard}>
+                <IconTile>
+                  <IconUsers color={GREEN} size={22} />
+                </IconTile>
+                <Text style={styles.contextText}>
+                  Вы были вместе на{' '}
+                  <Text style={styles.contextStrong}>
+                    {profile.sharedContext.activities}{' '}
+                    {plural(profile.sharedContext.activities, 'активности', 'активностях', 'активностях')}
                   </Text>
-                </View>
+                  {'\n'}
+                  <Text style={styles.contextMuted}>в кругу «{profile.sharedContext.circleName}»</Text>
+                </Text>
               </View>
-              {profile?.area ? <Text style={styles.area}>{profile.area}</Text> : null}
+            </View>
+          ) : null}
 
-              {isSelf ? (
-                <>
-                  <Pressable
-                    onPress={() => setEditing(true)}
-                    style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
-                    accessibilityRole="button"
-                    testID="pf-edit"
-                  >
-                    <Text style={styles.secondaryText}>Редактировать профиль</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => router.push('/settings')}
-                    style={styles.settingsLink}
-                    accessibilityRole="button"
-                    testID="pf-settings"
-                  >
-                    <Text style={styles.settingsLinkText}>Настройки</Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.note}>Написать можно будет после общей встречи.</Text>
-                  <View style={styles.actions}>
-                    <Pressable
-                      onPress={() => router.push(`/report?type=user&id=${targetId}`)}
-                      style={({ pressed }) => [styles.actBtn, pressed && styles.pressed]}
-                      accessibilityRole="button"
-                      testID="pf-report"
-                    >
-                      <Text style={styles.actText}>Пожаловаться</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={handleBlock}
-                      disabled={blocking}
-                      style={({ pressed }) => [styles.actBtn, pressed && styles.pressed]}
-                      accessibilityRole="button"
-                      testID="pf-block"
-                    >
-                      <Text style={[styles.actText, styles.dangerText]}>
-                        {blocking ? '…' : 'Заблокировать'}
-                      </Text>
-                    </Pressable>
-                  </View>
-                </>
-              )}
-            </>
-          )}
+          {profile?.bio ? (
+            <View style={styles.section}>
+              <Text style={styles.label}>О себе</Text>
+              <View style={styles.bioCard}>
+                <Text style={styles.bioText}>{profile.bio}</Text>
+              </View>
+              {isSelf && profile.interests && profile.interests.length > 0 ? (
+                <View style={styles.chips}>
+                  {profile.interests.map((tag) => (
+                    <View key={tag} style={styles.chip}>
+                      <Text style={styles.chipText}>{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
+          {!isSelf ? (
+            <View style={styles.lockRow}>
+              <IconTile bg={colors.background.subtle}>
+                <IconLock color={colors.text.muted} size={20} />
+              </IconTile>
+              <View style={styles.lockText}>
+                <Text style={styles.lockT1}>Написать</Text>
+                <Text style={styles.lockT2}>Будет доступно после общей встречи</Text>
+              </View>
+            </View>
+          ) : null}
         </ScrollView>
       )}
     </SafeAreaView>
   );
 }
 
+function Stat({ n, l }: { n: number; l: string }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statN}>{n}</Text>
+      <Text style={styles.statL}>{l}</Text>
+    </View>
+  );
+}
+
+function plural(n: number, one: string, few: string, many: string) {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+  return many;
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.default },
-  back: { paddingHorizontal: spacing[5], paddingVertical: spacing[3] },
-  backText: { ...typography.body, color: colors.text.secondary },
+  selfHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: spacing[6],
+    paddingTop: spacing[2],
+    paddingBottom: spacing[1],
+  },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
-  body: { padding: spacing[6], paddingTop: spacing[2], gap: spacing[3] },
+  body: { paddingBottom: spacing[10] },
+
+  // prof-top
+  profTop: { alignItems: 'center', paddingHorizontal: spacing[6], paddingTop: spacing[2] },
   avatar: {
-    width: 80,
-    height: 80,
+    width: 92,
+    height: 92,
     borderRadius: radius.full,
-    backgroundColor: colors.action.secondary,
+    backgroundColor: '#CDBBA6',
+    borderWidth: 3,
+    borderColor: colors.surface.default,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadows.elevated,
   },
-  avatarText: { ...typography.title, color: colors.text.primary },
-  name: { ...typography.title, color: colors.text.primary },
-  area: { ...typography.body, color: colors.text.secondary },
-  label: { ...typography.bodyMedium, color: colors.text.secondary, marginTop: spacing[2] },
-  input: {
+  avatarText: { fontFamily: PLAYFAIR_FAMILY, fontSize: 34, color: 'rgba(21,19,15,0.32)' },
+  profName: {
+    fontFamily: PLAYFAIR_FAMILY,
+    fontSize: 26,
+    letterSpacing: -0.3,
+    color: colors.text.primary,
+    marginTop: 14,
+  },
+  profSub: { ...typography.body, fontSize: 14, color: colors.text.secondary, marginTop: 4 },
+
+  // badges
+  badgeWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+    justifyContent: 'center',
+    marginTop: 14,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.trust.verifiedBg,
+    paddingLeft: 7,
+    paddingRight: 9,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+  },
+  badgeText: {
+    fontFamily: typography.badge.fontFamily,
+    fontSize: 12.5,
+    color: colors.trust.verifiedText,
+  },
+
+  // stat row
+  statRow: { flexDirection: 'row', gap: spacing[3], marginTop: 20, alignSelf: 'stretch' },
+  stat: {
+    flex: 1,
     backgroundColor: colors.surface.default,
     borderWidth: 1,
     borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    fontSize: 16,
-    color: colors.text.primary,
+    borderRadius: radius.lg,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    alignItems: 'center',
   },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
-  pill: {
-    backgroundColor: colors.action.secondary,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[1],
+  statN: { fontFamily: PLAYFAIR_FAMILY, fontSize: 24, color: GREEN },
+  statL: { fontSize: 12, color: colors.text.secondary, marginTop: 3, fontFamily: typography.caption.fontFamily },
+
+  // sections
+  section: { paddingHorizontal: spacing[6], marginTop: 22 },
+  label: {
+    fontFamily: typography.badge.fontFamily,
+    fontSize: 13,
+    color: colors.text.secondary,
+    marginBottom: 8,
+    marginHorizontal: 2,
+  },
+
+  // context card (foreign)
+  contextCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    backgroundColor: colors.surface.default,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    borderRadius: 18,
+    padding: 15,
+  },
+  contextText: { flex: 1, fontSize: 14, lineHeight: 20, color: colors.text.primary },
+  contextStrong: { fontFamily: typography.badge.fontFamily, color: colors.text.primary },
+  contextMuted: { color: colors.text.secondary },
+
+  // bio card
+  bioCard: {
+    backgroundColor: colors.surface.default,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    borderRadius: 18,
+    padding: 15,
+  },
+  bioText: { fontSize: 14, lineHeight: 20, color: colors.text.secondary },
+
+  // interest chips
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], paddingTop: 14 },
+  chip: {
+    backgroundColor: colors.surface.default,
+    borderWidth: 1,
+    borderColor: colors.border.default,
     borderRadius: radius.full,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
   },
-  pillText: { ...typography.caption, color: colors.text.primary },
-  trustPill: { backgroundColor: colors.trust.verifiedBg },
-  trustText: { color: colors.trust.verifiedText },
-  note: { ...typography.caption, color: colors.text.muted, marginTop: spacing[2] },
-  primary: {
-    backgroundColor: colors.action.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing[4],
+  chipText: { fontSize: 13.5, lineHeight: 16, color: colors.text.primary, fontFamily: typography.caption.fontFamily },
+
+  // locked write row (foreign — Inv. 2)
+  lockRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing[4],
+    gap: spacing[3],
+    marginHorizontal: spacing[6],
+    marginTop: 18,
+    backgroundColor: colors.surface.field,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    borderRadius: 16,
+    padding: 15,
+    opacity: 0.85,
   },
-  primaryText: { ...typography.button, color: colors.action.primaryText },
-  secondary: {
-    backgroundColor: colors.action.secondary,
-    borderRadius: radius.md,
-    paddingVertical: spacing[4],
-    alignItems: 'center',
-    marginTop: spacing[4],
-  },
-  secondaryText: { ...typography.button, color: colors.text.primary },
-  settingsLink: { paddingVertical: spacing[3], alignItems: 'center', marginTop: spacing[1] },
-  settingsLinkText: { ...typography.body, color: colors.text.secondary },
-  actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[2] },
-  actBtn: {
-    flex: 1,
-    backgroundColor: colors.action.secondary,
-    borderRadius: radius.md,
-    paddingVertical: spacing[3],
-    alignItems: 'center',
-  },
-  actText: { ...typography.button, color: colors.text.primary },
-  dangerText: { color: colors.status.danger },
-  disabled: { opacity: 0.6 },
-  pressed: { opacity: 0.85 },
+  lockText: { flex: 1 },
+  lockT1: { fontFamily: typography.badge.fontFamily, fontSize: 15.5, color: colors.text.secondary },
+  lockT2: { fontSize: 13, color: colors.text.secondary, marginTop: 2, fontFamily: typography.caption.fontFamily },
 });
