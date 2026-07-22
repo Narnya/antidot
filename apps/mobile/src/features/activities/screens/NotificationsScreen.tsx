@@ -1,27 +1,49 @@
-// ACT / DS v2 (docs/35 §7) — Уведомления. Activity-scoped events only. This first
-// cut derives reminders from the user's own upcoming activities; richer events
-// (a guest claimed your slot, host confirmed you) are a follow-up. It must NEVER
-// surface another user's membership transitions ("X ушёл / removed") — Инв. 11/12.
+// ACT / DS v2 (docs/35 §7) — Уведомления (mockup frame 10). Activity-scoped events
+// only, each an `ic-tile` (rounded-square) glyph + t1/t2. It must NEVER surface
+// another user's membership transitions beyond the neutral «Состав круга обновился»
+// (Инв. 11/12). Data comes from repo.listNotifications (mock = the illustrative set;
+// live = reminders derived from upcoming activities).
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, radius, spacing, typography } from '@social-events/ui';
+import { colors, PLAYFAIR_FAMILY, radius, spacing, typography } from '@social-events/ui';
 
-import type { ActivityView } from '../data/repository';
+import {
+  IconChat,
+  IconCheck,
+  IconClock,
+  IconPin,
+  IconTile,
+  IconUsers,
+} from '../../../components';
+import type { NotificationItem, NotificationKind } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
-import { formatWhen } from '../lib/format';
+
+const GREEN = colors.action.primary;
+const CORAL = colors.accent.coral;
+
+// Per-kind tile glyph + colours, mapped to the mockup's ic-tile variants.
+const TILE: Record<
+  NotificationKind,
+  { Icon: (p: { color: string; size?: number }) => JSX.Element; bg: string; fg: string; dim?: boolean }
+> = {
+  member_confirmed: { Icon: IconCheck, bg: colors.trust.verifiedBg, fg: GREEN },
+  location_open: { Icon: IconPin, bg: colors.trust.verifiedBg, fg: GREEN },
+  reminder: { Icon: IconClock, bg: '#F7DED6', fg: CORAL },
+  chat: { Icon: IconChat, bg: colors.trust.verifiedBg, fg: GREEN },
+  roster_updated: { Icon: IconUsers, bg: colors.background.subtle, fg: colors.text.secondary, dim: true },
+};
 
 export function NotificationsScreen() {
   const router = useRouter();
   const { repo, userId } = useActivitiesRepo();
-  const [upcoming, setUpcoming] = useState<ActivityView[]>([]);
+  const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    setUpcoming(await repo.listMyActivities(userId));
+    setItems(await repo.listNotifications(userId));
     setLoading(false);
   }, [repo, userId]);
 
@@ -36,32 +58,53 @@ export function NotificationsScreen() {
 
         {loading ? (
           <ActivityIndicator color={colors.text.muted} style={styles.loader} />
-        ) : upcoming.length === 0 ? (
+        ) : items.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="notifications-outline" size={28} color={colors.text.muted} />
+            <IconTile bg={colors.background.subtle}>
+              <IconClock color={colors.text.muted} size={22} />
+            </IconTile>
             <Text style={styles.emptyText}>Пока тихо. Здесь появятся напоминания о встречах.</Text>
           </View>
         ) : (
           <View style={styles.list}>
-            {upcoming.map((v) => (
-              <Pressable
-                key={v.activity.id}
-                onPress={() => router.push(`/activity/${v.activity.id}`)}
-                style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-                accessibilityRole="button"
-                testID={`noti-${v.activity.id}`}
-              >
-                <View style={styles.iconWrap}>
-                  <Ionicons name="calendar-outline" size={18} color={colors.action.primary} />
-                </View>
-                <View style={styles.rowMain}>
-                  <Text style={styles.rowTitle} numberOfLines={2}>
-                    Напоминание о встрече «{v.activity.title}»
-                  </Text>
-                  <Text style={styles.rowMeta}>{formatWhen(v.activity.startsAt)}</Text>
-                </View>
-              </Pressable>
-            ))}
+            {items.map((n) => {
+              const t = TILE[n.kind];
+              const Icon = t.Icon;
+              const content = (
+                <>
+                  <IconTile bg={t.bg}>
+                    <Icon color={t.fg} size={22} />
+                  </IconTile>
+                  <View style={styles.rowMain}>
+                    <Text style={styles.rowTitle} numberOfLines={2}>
+                      {n.title}
+                    </Text>
+                    <Text style={styles.rowMeta} numberOfLines={2}>
+                      {n.detail}
+                    </Text>
+                  </View>
+                </>
+              );
+              if (!n.href) {
+                return (
+                  <View key={n.id} style={[styles.row, t.dim && styles.rowDim]} testID={`noti-${n.id}`}>
+                    {content}
+                  </View>
+                );
+              }
+              const href = n.href;
+              return (
+                <Pressable
+                  key={n.id}
+                  onPress={() => router.push(href as never)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.row, t.dim && styles.rowDim, pressed && styles.pressed]}
+                  testID={`noti-${n.id}`}
+                >
+                  {content}
+                </Pressable>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -71,32 +114,32 @@ export function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.default },
-  body: { padding: spacing[6], gap: spacing[3] },
-  title: { ...typography.title, color: colors.text.primary, marginBottom: spacing[1] },
+  body: { padding: spacing[6], paddingTop: spacing[4] },
+  title: {
+    fontFamily: PLAYFAIR_FAMILY,
+    fontSize: 24,
+    letterSpacing: -0.3,
+    color: colors.text.primary,
+    marginBottom: spacing[4],
+  },
   loader: { alignSelf: 'flex-start' },
   empty: { alignItems: 'center', gap: spacing[3], paddingVertical: spacing[12] },
   emptyText: { ...typography.body, color: colors.text.muted, textAlign: 'center', maxWidth: 260 },
-  list: { gap: spacing[2] },
+  list: { gap: spacing[3] },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[3],
+    gap: 13,
     backgroundColor: colors.surface.default,
     borderWidth: 1,
     borderColor: colors.border.default,
-    borderRadius: radius.md,
-    padding: spacing[3],
+    borderRadius: radius.lg,
+    paddingVertical: 15,
+    paddingHorizontal: 16,
   },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: colors.safety.noticeBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowMain: { flex: 1, gap: 2 },
-  rowTitle: { ...typography.bodyMedium, color: colors.text.primary },
-  rowMeta: { ...typography.caption, color: colors.text.secondary },
+  rowDim: { opacity: 0.7 },
+  rowMain: { flex: 1, minWidth: 0 },
+  rowTitle: { fontFamily: typography.badge.fontFamily, fontSize: 15.5, color: colors.text.primary },
+  rowMeta: { fontSize: 13, color: colors.text.secondary, marginTop: 2, fontFamily: typography.caption.fontFamily },
   pressed: { opacity: 0.85 },
 });

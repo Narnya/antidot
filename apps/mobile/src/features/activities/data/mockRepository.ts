@@ -14,6 +14,7 @@ import type {
   CreateReportInput,
   MemberCandidate,
   MyCircle,
+  NotificationItem,
   Profile,
   PullMetrics,
   UpsertProfileInput,
@@ -433,6 +434,48 @@ export class MockActivitiesRepository implements ActivitiesRepository {
       .filter((a) => a.status === 'scheduled' && isMemberOf(a.groupId, userId))
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
       .map((a) => toView(a, userId));
+  }
+
+  async listNotifications(_userId: Id): Promise<NotificationItem[]> {
+    // Illustrative activity-scoped feed (mockup frame 10). Real events (a guest
+    // claimed your slot, host confirmed you) are a follow-up on the live path.
+    return [
+      {
+        id: 'n1',
+        kind: 'member_confirmed',
+        title: 'Тебя приняли в круг',
+        detail: '«Четверговый футбол» · участие подтверждено',
+        href: '/circle/g1',
+      },
+      {
+        id: 'n2',
+        kind: 'location_open',
+        title: 'Место встречи открыто',
+        detail: 'Футбол 5×5 · ты занял слот',
+        href: '/activity/a1',
+      },
+      {
+        id: 'n3',
+        kind: 'reminder',
+        title: 'Напоминание',
+        detail: 'Сегодня в 19:00 · Футбол 5×5',
+        href: '/activity/a1',
+      },
+      {
+        id: 'n4',
+        kind: 'chat',
+        title: 'Новое в чате круга',
+        detail: '«Настолки у Ани» · 3 сообщения',
+        href: '/circle/g3',
+      },
+      {
+        id: 'n5',
+        kind: 'roster_updated',
+        title: 'Состав круга обновился',
+        detail: '«Четверговый футбол»',
+        href: '/circle/g1',
+      },
+    ];
   }
 
   async listOpenInCity(userId: Id): Promise<ActivityView[]> {

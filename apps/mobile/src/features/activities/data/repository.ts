@@ -138,6 +138,25 @@ export interface UpsertProfileInput {
   area: string | null;
 }
 
+/** Activity-scoped notification kinds (mockup frame 10). Each maps to a tile glyph
+ *  + tint. `roster_updated` is the ONLY membership-transition signal we ever show,
+ *  and it stays neutral/aggregate — never "X ушёл / removed" (Инв. 11–12). */
+export type NotificationKind =
+  | 'member_confirmed' // check · тебя приняли в круг
+  | 'location_open' // pin · место встречи открыто
+  | 'reminder' // clock (coral) · напоминание о встрече
+  | 'chat' // chat · новое в чате круга
+  | 'roster_updated'; // users (muted) · состав круга обновился
+
+export interface NotificationItem {
+  id: Id;
+  kind: NotificationKind;
+  title: string; // t1
+  detail: string; // t2
+  /** Optional in-app route to open on tap (null = non-navigating system row). */
+  href?: string | null;
+}
+
 export interface ActivitiesRepository {
   /** Groups the user belongs to — plain list (used by circle pickers, etc.). */
   listMyGroups(userId: Id): Promise<Group[]>;
@@ -177,6 +196,10 @@ export interface ActivitiesRepository {
   upsertProfile(input: UpsertProfileInput): Promise<void>;
   /** Upcoming activities from the user's own groups. */
   listMyActivities(userId: Id): Promise<ActivityView[]>;
+  /** Activity-scoped notifications (mockup frame 10). Must never surface another
+   *  user's membership transitions beyond the neutral «Состав круга обновился»
+   *  (Инв. 11–12). */
+  listNotifications(userId: Id): Promise<NotificationItem[]>;
   /** Open slots across the city the user can claim — the feed / объявления. */
   listOpenInCity(userId: Id): Promise<ActivityView[]>;
   getActivity(activityId: Id, userId: Id): Promise<ActivityView | null>;

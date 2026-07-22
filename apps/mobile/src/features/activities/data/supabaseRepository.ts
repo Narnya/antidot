@@ -4,6 +4,7 @@
 // come from the security-definer RPCs (feed_open_activities / activity_spots_taken),
 // so raw claim rows are never needed for the feed (RLS would not return them).
 import { supabase } from '../../../lib/supabase/client';
+import { formatWhen } from '../lib/format';
 import type { Activity, Group, Id, SlotClaim } from '../lib/model';
 import { spotsRemaining, spotsTaken } from '../lib/slots';
 import type {
@@ -17,6 +18,7 @@ import type {
   CreateReportInput,
   MemberCandidate,
   MyCircle,
+  NotificationItem,
   Profile,
   PullMetrics,
   UpsertProfileInput,
@@ -403,6 +405,19 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       views.push(buildMemberView(activity, group, (row.slot_claims ?? []).map(mapClaim), userId));
     }
     return views;
+  }
+
+  async listNotifications(userId: Id): Promise<NotificationItem[]> {
+    // First live cut: reminders derived from the user's own upcoming activities.
+    // Richer events (host confirmed you, a guest claimed your slot) land later.
+    const upcoming = await this.listMyActivities(userId);
+    return upcoming.map((v) => ({
+      id: `reminder-${v.activity.id}`,
+      kind: 'reminder' as const,
+      title: 'Напоминание о встрече',
+      detail: `${v.activity.title} · ${formatWhen(v.activity.startsAt)}`,
+      href: `/activity/${v.activity.id}`,
+    }));
   }
 
   async listOpenInCity(userId: Id): Promise<ActivityView[]> {
