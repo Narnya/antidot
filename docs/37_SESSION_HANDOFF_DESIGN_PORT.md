@@ -191,13 +191,21 @@ The core-loop **plus** the secondary frames K/C/N/M/O are now ported:
   editor stays in Detail (frame M has none). Net: `confirmMember` + `markAttendance`
   each live in exactly one place — no duplicated host UI.
 
-Still **not** ported: **L · Чат круга** (P1, member-only) — blocked until the chat
-product decision (CLAUDE.md §10); do not add DM/chat tables or routes without it.
+- **L · Чат круга** — new `CircleChatScreen` (`/chat/[id]`), UI-ported on mock.
+  **Clarification:** circle chat is **allowed** by Core §10 (the one sanctioned
+  messaging surface — only DMs/1:1/cold are forbidden, Инв. 2), so this was a scope
+  choice, not an invariant unblock. Member-gated; Circle Home's «Чат круга» row now
+  opens it (was `/placeholder`). Sending appends an ephemeral local bubble — **not
+  persisted**. **Every mockup frame is now ported.**
 
-Beyond the port: wire the new surfaces to **real data** on the live path
-(`listNotifications` richer events; `getRhythm` streak/attended once **attendance
-(T5)** is aggregated; persist `profiles.bio/interests` + slot_claims note/+1 once
-the columns exist).
+Beyond the port — real-data / backend follow-ups (each a proper feature task, not a
+pixel port):
+- **Circle chat store:** a member-only `circle_messages` table + RLS (positive+
+  negative on the live DB) + Supabase Realtime + a `sendCircleMessage` repo method;
+  the pinned meeting place must respect the reveal rule (Инв. 1).
+- `listNotifications` richer events; `getRhythm` streak/attended once **attendance
+  (T5)** is aggregated; persist `profiles.bio/interests` + slot_claims note/+1 once
+  the columns exist.
 
 **Workflow (unchanged):** commit each screen separately, typecheck green
 (`pnpm --filter @social-events/mobile typecheck`), verify on 8082, show an A/B /
