@@ -7,9 +7,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, INTER_SEMIBOLD, radius, spacing, typography } from '@social-events/ui';
+import { colors, INTER_SEMIBOLD, PLAYFAIR_FAMILY, radius, spacing, typography } from '@social-events/ui';
 
 import { IconChevronDown } from '../../../components/NavIcons';
+import { Button, IconForYou, IconPlus } from '../../../components';
 
 import { ActivityCard } from '../components/ActivityCard';
 import type { ActivityView } from '../data/repository';
@@ -91,8 +92,22 @@ export function FeedScreen() {
           <ActivityIndicator color={colors.text.muted} />
         </View>
       ) : groups.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.empty}>Пока нет открытых мест поблизости.</Text>
+        <View style={styles.emptyCenter}>
+          <View style={styles.gateIc}>
+            <IconForYou color={colors.action.primary} size={36} />
+          </View>
+          <Text style={styles.emptyTitle}>Пока тихо</Text>
+          <Text style={styles.emptySub}>
+            В твоём районе ещё нет открытых активностей. Загляни позже — или собери свою и
+            открой места городу.
+          </Text>
+          <View style={styles.emptyCta}>
+            <Button
+              label="Создать активность"
+              onPress={() => router.push('/create')}
+              icon={<IconPlus color={colors.action.primaryText} size={18} />}
+            />
+          </View>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
@@ -139,7 +154,30 @@ const styles = StyleSheet.create({
   chipText: { ...typography.bodyMedium, fontSize: 15, lineHeight: 18, color: colors.text.secondary },
   chipTextActive: { color: colors.action.primaryText },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
-  empty: { ...typography.body, color: colors.text.muted, textAlign: 'center' },
+  emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
+  gateIc: {
+    width: 78,
+    height: 78,
+    borderRadius: radius.xl,
+    backgroundColor: colors.trust.verifiedBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontFamily: PLAYFAIR_FAMILY,
+    fontSize: 26,
+    letterSpacing: -0.4,
+    color: colors.action.primary,
+  },
+  emptySub: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  emptyCta: { alignSelf: 'stretch', marginTop: 26 },
   list: { paddingHorizontal: spacing[6], paddingTop: spacing[4], paddingBottom: spacing[6] },
   group: { gap: spacing[3], marginBottom: 14 },
   dayLabel: {

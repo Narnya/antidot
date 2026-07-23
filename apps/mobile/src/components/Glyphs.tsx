@@ -138,3 +138,25 @@ export function IconChat({ color, size = 22 }: GlyphProps) {
     </Svg>
   );
 }
+
+export function IconPlus({ color, size = 18 }: GlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 5v14M5 12h14" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function IconCalendar({ color, size = 18 }: GlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={4.5} y={6} width={15} height={14} rx={2.5} stroke={color} strokeWidth={1.6} />
+      <Path
+        d="M4.5 10h15M8.5 4v3M15.5 4v3"
+        stroke={color}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}

@@ -29,5 +29,7 @@ export {
   IconPin,
   IconClock,
   IconChat,
+  IconPlus,
+  IconCalendar,
   type GlyphProps,
 } from './Glyphs';
