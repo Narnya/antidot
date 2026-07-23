@@ -16,6 +16,8 @@ import type {
   CreateActivityInput,
   CreateCircleInput,
   CreateReportInput,
+  ChatMessage,
+  CircleChatView,
   MemberCandidate,
   MyCircle,
   NotificationItem,
@@ -420,6 +422,15 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       views.push(buildMemberView(activity, group, (row.slot_claims ?? []).map(mapClaim), userId));
     }
     return views;
+  }
+
+  async getCircleChat(circleId: Id, userId: Id): Promise<CircleChatView | null> {
+    // UI is ported; the message store (a member-only `circle_messages` table with
+    // RLS + Realtime) is a follow-up. Until then we return the circle header and an
+    // empty thread — gated to members via getCircle's membership check.
+    const cv = await this.getCircle(circleId, userId);
+    if (!cv || !cv.isMember) return null;
+    return { name: cv.group.name, memberCount: cv.memberCount, pinned: null, messages: [] as ChatMessage[] };
   }
 
   async getRhythm(userId: Id): Promise<RhythmView> {

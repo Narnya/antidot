@@ -153,7 +153,7 @@ function Body({ view }: { view: CircleView }) {
 
         {isMember ? (
           <Pressable
-            onPress={() => router.push('/placeholder')}
+            onPress={() => router.push(`/chat/${group.id}`)}
             style={({ pressed }) => [styles.listrow, pressed && styles.pressed]}
             accessibilityRole="button"
             testID="ch-chat"

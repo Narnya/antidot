@@ -31,5 +31,6 @@ export {
   IconChat,
   IconPlus,
   IconCalendar,
+  IconSend,
   type GlyphProps,
 } from './Glyphs';

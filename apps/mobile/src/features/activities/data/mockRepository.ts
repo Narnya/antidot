@@ -12,6 +12,8 @@ import type {
   CreateActivityInput,
   CreateCircleInput,
   CreateReportInput,
+  ChatMessage,
+  CircleChatView,
   MemberCandidate,
   MyCircle,
   NotificationItem,
@@ -314,6 +316,34 @@ export class MockActivitiesRepository implements ActivitiesRepository {
       isMember: isMemberOf(circleId, userId),
       isOwner: group.ownerId === userId,
       nextActivity: first ? toView(first, userId) : null,
+    };
+  }
+
+  async getCircleChat(circleId: Id, userId: Id): Promise<CircleChatView | null> {
+    const group = groups.find((g) => g.id === circleId);
+    if (!group || !isMemberOf(circleId, userId)) return null;
+    const memberCount = memberships.filter(
+      (m) => m.groupId === circleId && m.status === 'active',
+    ).length;
+    // Illustrative thread (mockup frame L). «Состав круга обновился» is the only
+    // membership-transition signal we ever surface (Инв. 11–12).
+    const messages: ChatMessage[] = [
+      { id: 'm1', kind: 'system', text: 'Аня открыла места городу' },
+      {
+        id: 'm2',
+        kind: 'msg',
+        authorName: 'Аня',
+        text: 'Всем привет! Сегодня как обычно, приходим к 18:50 размяться 🙌',
+      },
+      { id: 'm3', kind: 'msg', authorName: 'Кирилл', text: 'Буду. Мяч свой брать?' },
+      { id: 'm4', kind: 'msg', mine: true, text: 'Я в деле, форма есть 👟' },
+      { id: 'm5', kind: 'system', text: 'Состав круга обновился' },
+    ];
+    return {
+      name: group.name,
+      memberCount,
+      pinned: { title: 'Встреча сегодня, 19:00', detail: 'Приморский · ул. Савушкина, поле №2' },
+      messages,
     };
   }
 

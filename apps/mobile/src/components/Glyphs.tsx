@@ -160,3 +160,16 @@ export function IconCalendar({ color, size = 18 }: GlyphProps) {
     </Svg>
   );
 }
+
+export function IconSend({ color, size = 20 }: GlyphProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 12l16-7-7 16-2.5-6.5L4 12Z"
+        stroke={color}
+        strokeWidth={1.7}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}

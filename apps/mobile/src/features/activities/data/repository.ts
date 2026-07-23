@@ -160,6 +160,27 @@ export interface NotificationItem {
   href?: string | null;
 }
 
+/** Circle chat (mockup frame L). Member-only group chat — the ONE sanctioned
+ *  messaging surface (Core §10); never open DMs / 1:1 / cold messages (Инв. 2). */
+export interface ChatMessage {
+  id: Id;
+  kind: 'msg' | 'system';
+  /** Author (msg only). */
+  authorName?: string | null;
+  /** True for the current user's own messages (right-aligned green bubble). */
+  mine?: boolean;
+  text: string;
+}
+
+export interface CircleChatView {
+  name: string;
+  memberCount: number;
+  /** Optional pinned meeting line. On the live path the exact place must respect
+   *  the reveal rule (Инв. 1); shown here for members with an upcoming meeting. */
+  pinned?: { title: string; detail: string } | null;
+  messages: ChatMessage[];
+}
+
 /** Per-day state in the «Эта неделя» rhythm grid (Mon..Sun). */
 export type RhythmDay = 'none' | 'planned' | 'attended';
 
@@ -221,6 +242,9 @@ export interface ActivitiesRepository {
   /** Personal rhythm surface (mockup frame 09) — streak weeks + this-week grid +
    *  recently-attended. Private / self-only, never a public counter (Инв. 10/14). */
   getRhythm(userId: Id): Promise<RhythmView>;
+  /** Member-only circle chat (mockup frame L). Returns null if the circle is not
+   *  found or the user is not a member (chat is gated to members — Core §10). */
+  getCircleChat(circleId: Id, userId: Id): Promise<CircleChatView | null>;
   /** Open slots across the city the user can claim — the feed / объявления. */
   listOpenInCity(userId: Id): Promise<ActivityView[]>;
   getActivity(activityId: Id, userId: Id): Promise<ActivityView | null>;
