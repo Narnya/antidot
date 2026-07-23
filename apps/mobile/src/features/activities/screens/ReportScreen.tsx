@@ -5,11 +5,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
 
-import { Button, CtaBar, FieldLabel, HeroTitle, ScreenHeader } from '../../../components';
+import { AppTextInput, Button, CtaBar, FieldLabel, HeroTitle, ScreenHeader } from '../../../components';
 import type { ReportReason, ReportSubjectType } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
@@ -108,11 +108,10 @@ export function ReportScreen({ subjectType, subjectId }: Props) {
         <FieldLabel>
           Подробнее <Text style={styles.optional}>(необязательно)</Text>
         </FieldLabel>
-        <TextInput
+        <AppTextInput
           value={note}
           onChangeText={setNote}
           placeholder="Опишите, что произошло…"
-          placeholderTextColor={colors.text.muted}
           style={styles.textarea}
           multiline
           testID="rp-note"

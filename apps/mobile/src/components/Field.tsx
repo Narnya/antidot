@@ -7,13 +7,24 @@ import { StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-na
 
 import { colors, INTER_SEMIBOLD, radius, spacing } from '@social-events/ui';
 
+import { useInputFocus, webNoOutline } from './inputStyle';
+
 type Props = TextInputProps & { leftIcon?: ReactNode };
 
-export function Field({ leftIcon, style, ...props }: Props) {
+export function Field({ leftIcon, style, onFocus, onBlur, ...props }: Props) {
+  // Web draws a focus ring inside the input; remove it and turn the wrapper's
+  // border brand-green while focused (a designed focus state, not the browser's).
+  const focus = useInputFocus(onFocus ?? undefined, onBlur ?? undefined);
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, focus.focused && styles.wrapFocused]}>
       {leftIcon}
-      <TextInput placeholderTextColor={colors.text.muted} style={[styles.input, style]} {...props} />
+      <TextInput
+        placeholderTextColor={colors.text.muted}
+        {...props}
+        onFocus={focus.onFocus}
+        onBlur={focus.onBlur}
+        style={[styles.input, webNoOutline, style]}
+      />
     </View>
   );
 }
@@ -35,6 +46,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
+  wrapFocused: { borderColor: colors.action.primary },
   input: { flex: 1, padding: 0, fontSize: 15.5, color: colors.text.primary },
   label: {
     fontFamily: INTER_SEMIBOLD,

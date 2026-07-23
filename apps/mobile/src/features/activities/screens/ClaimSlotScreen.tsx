@@ -9,11 +9,11 @@
 // for now the claim is recorded via the existing repo.claimSlot.
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, INTER_SEMIBOLD, radius, spacing, typography } from '@social-events/ui';
 
-import { Button, CtaBar, FieldLabel, IconCheck, IconPin, ScreenHeader } from '../../../components';
+import { AppTextInput, Button, CtaBar, FieldLabel, IconCheck, IconPin, ScreenHeader } from '../../../components';
 import type { ActivityView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { formatWhen } from '../lib/format';
@@ -118,11 +118,10 @@ export function ClaimSlotScreen({ activityId }: Props) {
             <FieldLabel>
               Пару слов организатору <Text style={styles.optional}>(необязательно)</Text>
             </FieldLabel>
-            <TextInput
+            <AppTextInput
               value={note}
               onChangeText={setNote}
               placeholder="Впервые в этом кругу, но форма есть 🙂"
-              placeholderTextColor={colors.text.muted}
               style={styles.textarea}
               multiline
               testID="claim-note"

@@ -9,20 +9,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, INTER_SEMIBOLD, radius, shadows, spacing, typography } from '@social-events/ui';
 
-import { IconClock, IconSend } from '../../../components';
+import { AppTextInput, IconClock, IconSend } from '../../../components';
 import type { ChatMessage, CircleChatView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
@@ -152,11 +144,10 @@ export function CircleChatScreen({ circleId }: Props) {
       </SafeAreaView>
 
       <View style={[styles.inputBar, { paddingBottom: insets.bottom + 14 }]}>
-        <TextInput
+        <AppTextInput
           value={draft}
           onChangeText={setDraft}
           placeholder="Сообщение…"
-          placeholderTextColor={colors.text.muted}
           style={styles.box}
           onSubmitEditing={send}
           returnKeyType="send"

@@ -13,7 +13,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +21,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, INTER_MEDIUM, INTER_SEMIBOLD, radius, shadows, spacing, typography } from '@social-events/ui';
 
 import { Ionicons } from '@expo/vector-icons';
+
+import { AppTextInput } from '../../../components';
 
 import type { ActivityView } from '../data/repository';
 import { formatWhen } from '../lib/format';
@@ -337,11 +338,10 @@ function LocationEditor({
   return (
     <View style={styles.hostCard}>
       <Text style={styles.hostLabel}>Точное место</Text>
-      <TextInput
+      <AppTextInput
         value={value}
         onChangeText={setValue}
         placeholder="Стадион «Волна», у входа"
-        placeholderTextColor={colors.text.muted}
         style={styles.hostInput}
         testID="detail-location-input"
       />

@@ -4,11 +4,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, INTER_MEDIUM, radius, spacing, typography } from '@social-events/ui';
 
-import { Button, CtaBar, Field, FieldLabel, ScreenHeader } from '../../../components';
+import { AppTextInput, Button, CtaBar, Field, FieldLabel, ScreenHeader } from '../../../components';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import type { CircleRhythm } from '../lib/model';
 
@@ -86,11 +86,10 @@ export function CreateCircleScreen() {
 
         <View style={styles.gap} />
         <FieldLabel>О чём круг</FieldLabel>
-        <TextInput
+        <AppTextInput
           value={theme}
           onChangeText={setTheme}
           placeholder="Играем в футбол по четвергам. Свои и друзья друзей."
-          placeholderTextColor={colors.text.muted}
           style={styles.textarea}
           multiline
           testID="cc-theme"

@@ -4,6 +4,8 @@
 export { ScreenHeader } from './ScreenHeader';
 export { IconButton } from './IconButton';
 export { Field, FieldLabel } from './Field';
+export { AppTextInput } from './AppTextInput';
+export { webNoOutline, useInputFocus } from './inputStyle';
 export { CtaBar } from './CtaBar';
 export { SectionLabel } from './SectionLabel';
 export { IconTile } from './IconTile';
