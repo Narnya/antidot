@@ -2,7 +2,15 @@
 
 > **Purpose:** let a fresh chat continue the design port with zero context loss.
 > **Branch:** `feat/activity-first-mvp` · working tree clean at handoff.
-> **Last commit:** `bd92bc9` (Waitlist/Invite/Restricted).
+> **Last commit:** `3ec44a0` (Rhythm) — **core-loop screen port COMPLETE (19/19).**
+>
+> **Session 2 update (2026-07-22):** the four remaining screens are ported +
+> verified — **Profile** (11/D), **Notifications** (10), **Onboarding** (A1–A3+03),
+> **Rhythm** (09). See §5 for the two product decisions taken. New DS: outline
+> **Glyphs** (`src/components/Glyphs.tsx`) matched 1:1 to the mockup SVG sprite
+> (shield/check/users/gear/flag/lock/pin/clock/chat). New repo methods:
+> `listNotifications`, `getRhythm`; `Profile` gained optional safe fields
+> (bio/interests/stats/sharedContext); `UpsertProfileInput` gained `interests`.
 
 ---
 
@@ -113,32 +121,38 @@ on native.
 real on configured Supabase). Deps added this session: `react-native-svg`,
 `expo-blur`, `@expo-google-fonts/inter`.
 
-## 5. Screens REMAINING (4) — next up
+## 5. Screens DONE this session (4) — port complete
 
-Audit findings are in the workflow output; per-screen mockup frames:
+All four are ported + verified on 8082. **Product decisions taken (2026-07-22):**
 
-1. **Профиль** (frame 11, route `/profile`; foreign profile frame D `/profile/[id]`)
-   — self mode is a TAB screen (keep tab bar). Needs: centered `prof-top` (92px round
-   avatar + name Playfair-26 + «город · район»), 3 soft badges WITH leading icons
-   (shield «Проверен» / check «Надёжный участник» / users «Проводил встречи» — never
-   a number, Inv. 3), a 3-card stat row (круга/встреч/недель), «О себе» card + interest
-   chips, gear IconButton top-right → /settings. Foreign (D): flag in header, «общий
-   контекст» card, disabled «Написать» row («после общей встречи»).
-2. **Уведомления** (frame 10, route `/notifications`, TAB) — currently one row type.
-   Mockup: 5 distinct rows, each an `IconTile` (rounded-square) + t1/t2:
-   check «Тебя приняли в круг», pin «Место встречи открыто», coral-clock «Напоминание»,
-   chat «Новое в чате круга», muted-users «Состав круга обновился». Title
-   `stack-title.big` (Playfair 24).
-3. **Онбординг** (frames A1–A3 value slides + frame 03 profile, route `/start`) —
-   currently a single form. Mockup: consider the 3 value slides (анти-дейтинг copy)
-   THEN the profile form (name / city+pin / interest chips) with a progress bar +
-   fixed CtaBar «Далее». Current screen also has a safety-rules card + accept checkbox
-   the mockup lacks — decide with product.
-4. **Ритм** (frame 09, route `/rhythm`, TAB) — **most divergent.** Mockup = streak
-   model («6 недель» hero card, «Эта неделя» 7-cell week grid with default/soft/on
-   states, «Недавно» PAST attended rows). App currently = upcoming activities + a
-   «Pull · закрытый тест» card. **This needs a product/data decision** (streak data
-   doesn't exist yet) — likely do LAST or confirm scope first.
+- **Онбординг:** follow the mockup **exactly** — the old safety-rules card + mandatory
+  accept checkbox are **dropped** (the анти-дейтинг value slides carry the safety
+  framing). A subtle «Выйти» escape is kept (post-auth screen).
+- **Ритм:** port the frame-09 **streak** model but with a **soft tone** — private/
+  self-only, no public counter/ranking, no discovery-nag, belonging as a success
+  state not a goal (Инв. 10/14). Hero says «N недель · в ритме круга» (softened from
+  the mockup's «подряд»); empty state degrades to «Всё впереди».
+
+| Screen | Mockup | Route | Notes |
+|---|---|---|---|
+| Профиль (self) | frame 11 | /profile (TAB) | prof-top, 3 icon-badges, stat row, «О себе» + chips, gear→/settings |
+| Профиль (foreign) | frame D | /profile/[id] | back + flag(report), «Общий контекст», locked «Написать» (Инв. 2) |
+| Уведомления | frame 10 | /notifications (TAB) | 5 ic-tile row types; users-row = only leave signal (Инв. 11–12) |
+| Онбординг | A1–A3 + 03 | /start | 3 value slides → profile form; progress bar + CtaBar |
+| Ритм | frame 09 | /rhythm (TAB) | soft streak hero + week grid + «Недавно» |
+
+**Data/DS changes made:** new `src/components/Glyphs.tsx` (outline icons matched
+1:1 to the sprite; exported from the barrel). New repo methods `listNotifications`
++ `getRhythm` (mock = illustrative frame data; supabase = graceful/derived).
+`Profile` gained optional safe fields `bio`/`interests`/`stats`/`sharedContext`;
+`UpsertProfileInput` gained `interests` (mock persists; live schema keeps имя+район
+until the columns exist). The old `getPullMetrics` infra stays but is no longer used
+by any screen.
+
+**Verification note:** to preview `/start` you must bypass the returning-user
+auto-advance (mock `me` already has a profile) — set the `step` initial state and
+short-circuit the effect temporarily, screenshot, then revert (done + reverted this
+session; typecheck green).
 
 ## 6. Gotchas / lessons (read before porting)
 
@@ -158,10 +172,25 @@ Audit findings are in the workflow output; per-screen mockup frames:
 - **Filter/rhythm chips:** set `chipText lineHeight` (RN default is too tall → chips look puffy).
 - **Verify at 560×1000** and take a SECOND screenshot after `--clear`.
 
-## 7. Suggested next order
+## 7. What's next (the core-loop port is done)
 
-Profile → Notifications → Onboarding → (confirm scope) Rhythm. Commit each screen
-separately (`feat(design): port <Screen> to mockup (frame N)`), typecheck green
-(`pnpm --filter @social-events/mobile typecheck`), verify on 8082 before moving on.
-Show the user an A/B / screenshot per screen — they review closely and catch subtle
-misses (tile shape, borders, spacing).
+The 19 core-loop frames are ported. Remaining mockup frames are secondary / P1 and
+were **not** ported yet:
+
+- **K · Пусто · лента** (empty feed state) — the feed currently has no dedicated
+  empty state matched to the mockup.
+- **L · Чат круга** (P1, member-only) — blocked until the chat product decision
+  (CLAUDE.md §10); do not add DM/chat tables or routes without it.
+- **C · Занять место** (pull success), **M · Приём в круг (host-confirm)**,
+  **N · Место за тобой** (reveal success), **O · Жалоба отправлена** — success/
+  confirmation states; some logic exists (claim/host-confirm/report) but the
+  polished success screens aren't matched to these frames.
+
+Beyond the port: wire the new surfaces to **real data** on the live path
+(`listNotifications` richer events; `getRhythm` streak/attended once **attendance
+(T5)** is aggregated; persist `profiles.bio/interests` once the columns exist).
+
+**Workflow (unchanged):** commit each screen separately, typecheck green
+(`pnpm --filter @social-events/mobile typecheck`), verify on 8082, show an A/B /
+screenshot — the user reviews closely and catches subtle misses (tile shape,
+borders, spacing, round-vs-square).
