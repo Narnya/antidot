@@ -160,6 +160,21 @@ export interface NotificationItem {
   href?: string | null;
 }
 
+/** Per-day state in the «Эта неделя» rhythm grid (Mon..Sun). */
+export type RhythmDay = 'none' | 'planned' | 'attended';
+
+/** Personal rhythm surface (mockup frame 09) — the RETURN/belonging axis. Private
+ *  and self-only: a gentle reflection of showing up, NOT a public counter, ranking,
+ *  or discovery-nag (Инв. 10 / 14). Soft tone by product decision (2026-07-22). */
+export interface RhythmView {
+  /** Consecutive weeks with at least one circle activity. 0 = no rhythm yet. */
+  streakWeeks: number;
+  /** Mon..Sun states for the current week (length 7). */
+  week: RhythmDay[];
+  /** Recently attended activities (past), most recent first. */
+  recent: { id: Id; title: string; when: string; icon: 'check' | 'users' }[];
+}
+
 export interface ActivitiesRepository {
   /** Groups the user belongs to — plain list (used by circle pickers, etc.). */
   listMyGroups(userId: Id): Promise<Group[]>;
@@ -203,6 +218,9 @@ export interface ActivitiesRepository {
    *  user's membership transitions beyond the neutral «Состав круга обновился»
    *  (Инв. 11–12). */
   listNotifications(userId: Id): Promise<NotificationItem[]>;
+  /** Personal rhythm surface (mockup frame 09) — streak weeks + this-week grid +
+   *  recently-attended. Private / self-only, never a public counter (Инв. 10/14). */
+  getRhythm(userId: Id): Promise<RhythmView>;
   /** Open slots across the city the user can claim — the feed / объявления. */
   listOpenInCity(userId: Id): Promise<ActivityView[]>;
   getActivity(activityId: Id, userId: Id): Promise<ActivityView | null>;

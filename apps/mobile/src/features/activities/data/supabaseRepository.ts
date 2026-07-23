@@ -21,6 +21,8 @@ import type {
   NotificationItem,
   Profile,
   PullMetrics,
+  RhythmDay,
+  RhythmView,
   UpsertProfileInput,
 } from './repository';
 
@@ -116,6 +118,19 @@ function buildMemberView(
     spotsRemaining: spotsRemaining(activity, claims),
     mine,
   };
+}
+
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/** Local midnight of Monday of the current week. */
+function mondayOfCurrentWeek(): Date {
+  const now = new Date();
+  const monOffset = (now.getDay() + 6) % 7; // 0 = Monday
+  const monday = startOfDay(now);
+  monday.setDate(monday.getDate() - monOffset);
+  return monday;
 }
 
 export class SupabaseActivitiesRepository implements ActivitiesRepository {
@@ -405,6 +420,26 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       views.push(buildMemberView(activity, group, (row.slot_claims ?? []).map(mapClaim), userId));
     }
     return views;
+  }
+
+  async getRhythm(userId: Id): Promise<RhythmView> {
+    // First live cut: mark days in the current week that have an upcoming activity
+    // as `planned`. Attendance-backed `attended` days, the streak count, and the
+    // recently-attended list need the attendance data (T5) wired up — until then
+    // they degrade to empty (no fabricated streak; soft-tone product decision).
+    const week: RhythmDay[] = ['none', 'none', 'none', 'none', 'none', 'none', 'none'];
+    try {
+      const upcoming = await this.listMyActivities(userId);
+      const monday = mondayOfCurrentWeek();
+      for (const v of upcoming) {
+        const d = new Date(v.activity.startsAt);
+        const idx = Math.floor((startOfDay(d).getTime() - monday.getTime()) / 86_400_000);
+        if (idx >= 0 && idx < 7) week[idx] = 'planned';
+      }
+    } catch {
+      // leave the week empty on a transient failure
+    }
+    return { streakWeeks: 0, week, recent: [] };
   }
 
   async listNotifications(userId: Id): Promise<NotificationItem[]> {

@@ -17,6 +17,7 @@ import type {
   NotificationItem,
   Profile,
   PullMetrics,
+  RhythmView,
   UpsertProfileInput,
 } from './repository';
 
@@ -436,6 +437,19 @@ export class MockActivitiesRepository implements ActivitiesRepository {
       .filter((a) => a.status === 'scheduled' && isMemberOf(a.groupId, userId))
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
       .map((a) => toView(a, userId));
+  }
+
+  async getRhythm(_userId: Id): Promise<RhythmView> {
+    // Illustrative rhythm (mockup frame 09): a gentle streak, this-week grid, and
+    // recently-attended. Private/self-only — never a public counter (Инв. 10/14).
+    return {
+      streakWeeks: 6,
+      week: ['none', 'planned', 'none', 'attended', 'none', 'none', 'none'],
+      recent: [
+        { id: 'r1', title: 'Футбол 5×5', when: 'Прошлый четверг · пришёл', icon: 'check' },
+        { id: 'r2', title: 'Настолки: Каркассон', when: '2 недели назад · пришёл', icon: 'users' },
+      ],
+    };
   }
 
   async listNotifications(_userId: Id): Promise<NotificationItem[]> {
