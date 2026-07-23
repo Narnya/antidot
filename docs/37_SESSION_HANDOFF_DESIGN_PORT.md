@@ -172,23 +172,32 @@ session; typecheck green).
 - **Filter/rhythm chips:** set `chipText lineHeight` (RN default is too tall → chips look puffy).
 - **Verify at 560×1000** and take a SECOND screenshot after `--clear`.
 
-## 7. What's next (the core-loop port is done)
+## 7. Secondary frames — Session 3 update (2026-07-23)
 
-The 19 core-loop frames are ported. Remaining mockup frames are secondary / P1 and
-were **not** ported yet:
+The core-loop **plus** the secondary frames K/C/N/M/O are now ported:
 
-- **K · Пусто · лента** (empty feed state) — the feed currently has no dedicated
-  empty state matched to the mockup.
-- **L · Чат круга** (P1, member-only) — blocked until the chat product decision
-  (CLAUDE.md §10); do not add DM/chat tables or routes without it.
-- **C · Занять место** (pull success), **M · Приём в круг (host-confirm)**,
-  **N · Место за тобой** (reveal success), **O · Жалоба отправлена** — success/
-  confirmation states; some logic exists (claim/host-confirm/report) but the
-  polished success screens aren't matched to these frames.
+- **K · Пусто · лента** — Feed empty state (gate-ic compass + «Пока тихо» +
+  «Создать активность»); `FeedScreen`. Verify with an empty filter (e.g. «Кофе»).
+- **C · Занять место** + **N · Место за тобой** — the pull moment is now a
+  dedicated step, not an inline tap: `ClaimSlotScreen` (`/claim/[id]`: solo/+1,
+  note, safety notice) → `ClaimSuccessScreen` (`/claimed/[id]`: reveal + calendar
+  stub). Detail's «Занять место» CTA routes to `/claim`. (+1/note not persisted yet.)
+- **O · Жалоба отправлена** — was already the `ReportScreen` done-state.
+- **M · Приём в круг · хост** — new `ManageActivityScreen` (`/manage/[id]`): accept
+  overflow guests + attendance. **Product decision (2026-07-23, «по макету»):** M is
+  the SINGLE host surface, so the accept block was **removed from Circle Home**
+  (→ now belonging-only frame 08) and the attendance section was **removed from
+  Activity Detail** (→ replaced by a «Управление активностью» row → M). Host location
+  editor stays in Detail (frame M has none). Net: `confirmMember` + `markAttendance`
+  each live in exactly one place — no duplicated host UI.
+
+Still **not** ported: **L · Чат круга** (P1, member-only) — blocked until the chat
+product decision (CLAUDE.md §10); do not add DM/chat tables or routes without it.
 
 Beyond the port: wire the new surfaces to **real data** on the live path
 (`listNotifications` richer events; `getRhythm` streak/attended once **attendance
-(T5)** is aggregated; persist `profiles.bio/interests` once the columns exist).
+(T5)** is aggregated; persist `profiles.bio/interests` + slot_claims note/+1 once
+the columns exist).
 
 **Workflow (unchanged):** commit each screen separately, typecheck green
 (`pnpm --filter @social-events/mobile typecheck`), verify on 8082, show an A/B /
