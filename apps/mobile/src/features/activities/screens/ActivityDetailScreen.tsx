@@ -41,7 +41,6 @@ export function ActivityDetailScreen({ activityId }: Props) {
   const [location, setLocation] = useState<string | null>(null);
   const [claimants, setClaimants] = useState<AttendanceEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [claiming, setClaiming] = useState(false);
 
   const isHost = view ? view.activity.createdBy === userId || view.group.ownerId === userId : false;
 
@@ -64,15 +63,12 @@ export function ActivityDetailScreen({ activityId }: Props) {
     void load();
   }, [load]);
 
-  const handleClaim = useCallback(async () => {
-    setClaiming(true);
-    try {
-      await repo.claimSlot(activityId, userId);
-      await load();
-    } finally {
-      setClaiming(false);
-    }
-  }, [activityId, load, repo, userId]);
+  // The pull moment now runs through the dedicated «Занять место» step (frame C),
+  // which claims + routes to the reveal success (frame N). We keep the inline
+  // «Вы записаны» / «Мест нет» states for users who already claimed or a full slot.
+  const handleClaim = useCallback(() => {
+    router.push(`/claim/${activityId}`);
+  }, [router, activityId]);
 
   const handleSaveLocation = useCallback(
     async (text: string) => {
@@ -108,7 +104,7 @@ export function ActivityDetailScreen({ activityId }: Props) {
           location={location}
           isHost={isHost}
           claimants={claimants}
-          claiming={claiming}
+          claiming={false}
           onClaim={handleClaim}
           onSaveLocation={handleSaveLocation}
           onMark={handleMark}
