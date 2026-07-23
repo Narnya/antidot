@@ -23,7 +23,7 @@ import { colors, INTER_MEDIUM, INTER_SEMIBOLD, radius, shadows, spacing, typogra
 
 import { Ionicons } from '@expo/vector-icons';
 
-import type { ActivityView, AttendanceEntry, AttendanceMark } from '../data/repository';
+import type { ActivityView } from '../data/repository';
 import { formatWhen } from '../lib/format';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { kindImage } from '../lib/kindImage';
@@ -39,7 +39,6 @@ export function ActivityDetailScreen({ activityId }: Props) {
   const router = useRouter();
   const [view, setView] = useState<ActivityView | null>(null);
   const [location, setLocation] = useState<string | null>(null);
-  const [claimants, setClaimants] = useState<AttendanceEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isHost = view ? view.activity.createdBy === userId || view.group.ownerId === userId : false;
@@ -48,13 +47,7 @@ export function ActivityDetailScreen({ activityId }: Props) {
     const next = await repo.getActivity(activityId, userId);
     setView(next);
     if (next) {
-      const host = next.activity.createdBy === userId || next.group.ownerId === userId;
-      const [loc, roster] = await Promise.all([
-        repo.getMeetingLocation(activityId, userId),
-        host ? repo.listClaimants(activityId, userId) : Promise.resolve<AttendanceEntry[]>([]),
-      ]);
-      setLocation(loc);
-      setClaimants(roster);
+      setLocation(await repo.getMeetingLocation(activityId, userId));
     }
     setLoading(false);
   }, [activityId, repo, userId]);
@@ -78,13 +71,10 @@ export function ActivityDetailScreen({ activityId }: Props) {
     [activityId, load, repo, userId],
   );
 
-  const handleMark = useCallback(
-    async (claimantId: string, status: AttendanceMark) => {
-      await repo.markAttendance(activityId, claimantId, status);
-      await load();
-    },
-    [activityId, load, repo],
-  );
+  // Host management (accept overflow guests + attendance) is its own screen (frame M).
+  const handleManage = useCallback(() => {
+    router.push(`/manage/${activityId}`);
+  }, [router, activityId]);
 
   const insets = useSafeAreaInsets();
 
@@ -103,11 +93,10 @@ export function ActivityDetailScreen({ activityId }: Props) {
           view={view}
           location={location}
           isHost={isHost}
-          claimants={claimants}
           claiming={false}
           onClaim={handleClaim}
           onSaveLocation={handleSaveLocation}
-          onMark={handleMark}
+          onManage={handleManage}
         />
       )}
 
@@ -144,20 +133,18 @@ function DetailBody({
   view,
   location,
   isHost,
-  claimants,
   claiming,
   onClaim,
   onSaveLocation,
-  onMark,
+  onManage,
 }: {
   view: ActivityView;
   location: string | null;
   isHost: boolean;
-  claimants: AttendanceEntry[];
   claiming: boolean;
   onClaim: () => void;
   onSaveLocation: (text: string) => Promise<void>;
-  onMark: (claimantId: string, status: AttendanceMark) => Promise<void>;
+  onManage: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const { activity, group } = view;
@@ -272,7 +259,25 @@ function DetailBody({
             </View>
           </View>
 
-          {isHost ? <AttendanceSection claimants={claimants} onMark={onMark} /> : null}
+          {/* Host management (accept overflow guests + attendance) — its own screen
+              (frame M); Detail keeps only the host location editor above. */}
+          {isHost ? (
+            <Pressable
+              onPress={onManage}
+              style={({ pressed }) => [styles.manageRow, pressed && styles.buttonPressed]}
+              accessibilityRole="button"
+              testID="detail-manage"
+            >
+              <View style={styles.iconTile}>
+                <Ionicons name="options-outline" size={20} color={colors.action.primary} />
+              </View>
+              <View style={styles.infoTextWrap}>
+                <Text style={styles.infoTitle}>Управление активностью</Text>
+                <Text style={styles.infoSub}>Приём гостей · кто пришёл</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.text.muted} />
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -359,79 +364,6 @@ function LocationEditor({
   );
 }
 
-/** Host-only: after the meeting, mark who actually showed up (feeds attend→member). */
-function AttendanceSection({
-  claimants,
-  onMark,
-}: {
-  claimants: AttendanceEntry[];
-  onMark: (claimantId: string, status: AttendanceMark) => Promise<void>;
-}) {
-  const [pendingId, setPendingId] = useState<string | null>(null);
-
-  if (claimants.length === 0) {
-    return (
-      <View style={styles.attendBlock}>
-        <Text style={styles.sectionLabel}>Кто пришёл</Text>
-        <Text style={styles.emptyRow}>Пока никто не записался.</Text>
-      </View>
-    );
-  }
-
-  const mark = async (claimantId: string, status: AttendanceMark) => {
-    setPendingId(claimantId);
-    try {
-      await onMark(claimantId, status);
-    } finally {
-      setPendingId(null);
-    }
-  };
-
-  return (
-    <View style={styles.attendBlock}>
-      <Text style={styles.sectionLabel}>Кто пришёл</Text>
-      <Text style={styles.attendHint}>Отметьте после встречи.</Text>
-      {claimants.map((c) => {
-        const busy = pendingId === c.userId;
-        return (
-          <View key={c.userId} style={styles.attendRow}>
-            <View style={styles.attendMain}>
-              <Text style={styles.attendName} numberOfLines={1}>
-                {c.displayName ?? 'Гость'}
-              </Text>
-              {c.source === 'overflow' ? <Text style={styles.attendMeta}>гость</Text> : null}
-            </View>
-            <View style={styles.attendActions}>
-              <Pressable
-                onPress={() => mark(c.userId, 'attended')}
-                disabled={busy}
-                style={[styles.markBtn, c.status === 'attended' && styles.markBtnYesOn]}
-                accessibilityRole="button"
-                testID={`attend-yes-${c.userId}`}
-              >
-                <Text style={[styles.markText, c.status === 'attended' && styles.markTextOn]}>
-                  Пришёл
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => mark(c.userId, 'no_show')}
-                disabled={busy}
-                style={[styles.markBtn, c.status === 'no_show' && styles.markBtnNoOn]}
-                accessibilityRole="button"
-                testID={`attend-no-${c.userId}`}
-              >
-                <Text style={[styles.markText, c.status === 'no_show' && styles.markTextOn]}>
-                  Нет
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background.default },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
@@ -478,6 +410,16 @@ const styles = StyleSheet.create({
   pillText: { fontFamily: INTER_MEDIUM, fontSize: 13, color: colors.text.secondary },
 
   infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    backgroundColor: colors.surface.default,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    borderRadius: radius.lg,
+    padding: spacing[4],
+  },
+  manageRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
@@ -606,33 +548,4 @@ const styles = StyleSheet.create({
   buttonText: { ...typography.button, color: colors.action.primaryText },
   buttonTextClaimed: { color: colors.safety.noticeText },
   buttonTextFull: { color: colors.text.muted },
-  sectionLabel: { ...typography.bodyMedium, color: colors.text.secondary },
-  attendBlock: { gap: spacing[2] },
-  attendHint: { ...typography.caption, color: colors.text.muted },
-  emptyRow: { ...typography.body, color: colors.text.muted, paddingVertical: spacing[2] },
-  attendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    backgroundColor: colors.surface.default,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    padding: spacing[3],
-  },
-  attendMain: { flex: 1, gap: 2 },
-  attendName: { ...typography.bodyMedium, color: colors.text.primary },
-  attendMeta: { ...typography.caption, color: colors.text.muted },
-  attendActions: { flexDirection: 'row', gap: spacing[2] },
-  markBtn: {
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-  },
-  markBtnYesOn: { backgroundColor: colors.trust.verifiedBg, borderColor: colors.trust.verifiedBg },
-  markBtnNoOn: { backgroundColor: colors.action.secondary, borderColor: colors.action.secondary },
-  markText: { ...typography.caption, color: colors.text.secondary },
-  markTextOn: { color: colors.text.primary },
 });

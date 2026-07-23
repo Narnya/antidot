@@ -1,8 +1,9 @@
 // ACT-009 / T2 — Circle Home. Per-circle hub (belonging surface), pixel-matched to
 // mockups/all-screens.html frame 08: full-bleed hero → green title + aggregate
 // avatar row → «Ближайшая активность» card → circle-chat row. Aggregate composition
-// only, no people list (Inv. 13). Host extras (confirm overflow guests — §4.1 A —,
-// create activity, pause, report) live below, styled from the shared DS kit.
+// only, no people list (Inv. 13). This is belonging-only: host management (accept
+// overflow guests + attendance) lives on the activity's «Управление» screen (frame
+// M), reached from the activity detail — not here.
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -13,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, INTER_SEMIBOLD, radius, shadows, spacing, typography } from '@social-events/ui';
 
 import { Button, HeroTitle, IconButton, IconTile, SectionLabel } from '../../../components';
-import type { CircleView, MemberCandidate } from '../data/repository';
+import type { CircleView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { formatWhen } from '../lib/format';
 import { kindImage } from '../lib/kindImage';
@@ -34,35 +35,18 @@ type Props = { circleId: string };
 export function CircleHomeScreen({ circleId }: Props) {
   const { repo, userId } = useActivitiesRepo();
   const [view, setView] = useState<CircleView | null>(null);
-  const [candidates, setCandidates] = useState<MemberCandidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {
-    const next = await repo.getCircle(circleId, userId);
-    setView(next);
-    setCandidates(next?.isOwner ? await repo.listMemberCandidates(circleId) : []);
+    setView(await repo.getCircle(circleId, userId));
     setLoading(false);
   }, [circleId, repo, userId]);
 
   useEffect(() => {
     void load();
   }, [load]);
-
-  const handleConfirm = useCallback(
-    async (candidateId: string) => {
-      setConfirmingId(candidateId);
-      try {
-        await repo.confirmMember(circleId, candidateId);
-        await load();
-      } finally {
-        setConfirmingId(null);
-      }
-    },
-    [circleId, repo, load],
-  );
 
   return (
     <View style={styles.root}>
@@ -75,12 +59,7 @@ export function CircleHomeScreen({ circleId }: Props) {
           <Text style={styles.empty}>Круг не найден.</Text>
         </View>
       ) : (
-        <Body
-          view={view}
-          candidates={candidates}
-          confirmingId={confirmingId}
-          onConfirm={handleConfirm}
-        />
+        <Body view={view} />
       )}
 
       <View style={[styles.floatBack, { top: insets.top + spacing[2] }]} pointerEvents="box-none">
@@ -92,17 +71,7 @@ export function CircleHomeScreen({ circleId }: Props) {
   );
 }
 
-function Body({
-  view,
-  candidates,
-  confirmingId,
-  onConfirm,
-}: {
-  view: CircleView;
-  candidates: MemberCandidate[];
-  confirmingId: string | null;
-  onConfirm: (candidateId: string) => void;
-}) {
+function Body({ view }: { view: CircleView }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { group, memberCount, nextActivity, isMember, isOwner } = view;
@@ -200,38 +169,8 @@ function Body({
           </Pressable>
         ) : null}
 
-        {isOwner && candidates.length > 0 ? (
-          <>
-            <SectionLabel>Гости, которых можно принять</SectionLabel>
-            {candidates.map((c) => (
-              <View key={c.userId} style={styles.candRow}>
-                <Pressable
-                  style={styles.candMain}
-                  onPress={() => router.push(`/profile/${c.userId}`)}
-                  accessibilityRole="button"
-                  testID={`cand-profile-${c.userId}`}
-                >
-                  <Text style={styles.t1}>Новый гость</Text>
-                  <Text style={styles.t2} numberOfLines={1}>
-                    Занял слот сам · «{c.throughActivityTitle}»
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => onConfirm(c.userId)}
-                  disabled={confirmingId === c.userId}
-                  style={({ pressed }) => [styles.confirmBtn, pressed && styles.pressed]}
-                  accessibilityRole="button"
-                  testID={`confirm-${c.userId}`}
-                >
-                  <Text style={styles.confirmText}>
-                    {confirmingId === c.userId ? '…' : 'Принять'}
-                  </Text>
-                </Pressable>
-              </View>
-            ))}
-          </>
-        ) : null}
-
+        {/* Belonging-only (frame 08). Host management (accept guests + attendance,
+            frame M) is reached from the activity detail's «Управление», not here. */}
         <View style={styles.actions}>
           <Button label="Создать активность" onPress={() => router.push('/create')} />
         </View>
@@ -330,26 +269,6 @@ const styles = StyleSheet.create({
   rowTxt: { flex: 1 },
   t1: { fontFamily: INTER_SEMIBOLD, fontSize: 15.5, color: colors.text.primary },
   t2: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-
-  candRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 10,
-    backgroundColor: colors.surface.default,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: 16,
-    padding: 15,
-  },
-  candMain: { flex: 1 },
-  confirmBtn: {
-    backgroundColor: colors.action.primary,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
-  },
-  confirmText: { ...typography.badge, color: colors.action.primaryText },
 
   actions: { marginTop: 22 },
   subtleLink: { ...typography.body, color: colors.text.muted, textAlign: 'center', paddingVertical: spacing[3] },
