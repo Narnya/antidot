@@ -200,12 +200,14 @@ The core-loop **plus** the secondary frames K/C/N/M/O are now ported:
 
 Beyond the port — real-data / backend follow-ups (each a proper feature task, not a
 pixel port):
-- **Circle chat store:** a member-only `circle_messages` table + RLS (positive+
-  negative on the live DB) + Supabase Realtime + a `sendCircleMessage` repo method;
-  the pinned meeting place must respect the reveal rule (Инв. 1).
-- `listNotifications` richer events; `getRhythm` streak/attended once **attendance
-  (T5)** is aggregated; persist `profiles.bio/interests` + slot_claims note/+1 once
-  the columns exist.
+- **DONE (code, pending live `db push` + RLS test):** circle chat store —
+  `20260727000009_circle_chat.sql` (member-only RLS + Realtime + send), reveal-safe
+  pinned place (Инв. 1); profile persist — `20260727000010_profile_bio_interests.sql`
+  (bio + interests), onboarding now persists interests. Two migrations await `db
+  push` to antidot-dev + the +/- RLS test in the chat migration's comments.
+- **Still open:** `listNotifications` richer events; `getRhythm` streak/attended once
+  **attendance (T5)** is aggregated; persist `slot_claims` +1/note (frame C collects
+  them, no column yet).
 
 **Workflow (unchanged):** commit each screen separately, typecheck green
 (`pnpm --filter @social-events/mobile typecheck`), verify on 8082, show an A/B /
