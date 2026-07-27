@@ -207,9 +207,13 @@ pixel port):
   `20260727000011_slot_claim_plus_one_note.sql` (+1/note collected on frame C →
   persisted → shown to host on frame M). **Three migrations await `db push` to
   antidot-dev + the +/- RLS test in the chat migration's comments.**
-- **Still open:** `listNotifications` richer events (host confirmed you, a guest
-  claimed your slot); `getRhythm` streak/attended once **attendance (T5)** is
-  aggregated into a real streak/recent source.
+- **Notifications — real events on live (2026-07-27):** `listNotifications` derives
+  the user's own events from existing data — «Тебя приняли в круг» (active non-owner
+  memberships), «Место встречи открыто» (my claims whose place RLS reveals),
+  reminders. No notifications table yet; mock keeps the frame-10 illustrative set.
+- **Still open:** notifications read-state/dedup + «гость занял твой слот» (needs a
+  notifications table or a claim-events source); `getRhythm` streak/attended once
+  **attendance (T5)** is aggregated into a real streak/recent source.
 
 **Workflow (unchanged):** commit each screen separately, typecheck green
 (`pnpm --filter @social-events/mobile typecheck`), verify on 8082, show an A/B /
