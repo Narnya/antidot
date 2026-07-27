@@ -225,9 +225,22 @@ pixel port):
   `…013_notifications_realtime.sql` (notifications in the realtime publication →
   badge bumps live; RLS enforced on the stream). listNotifications merges stored +
   derived. **FIVE migrations applied to antidot-dev (009–013).**
-- **Still open (marginal polish):** more pushed event types via triggers (host
-  confirmed you, chat message, roster updated) — the rest is derived and populates
-  as hosts mark attendance / activities happen.
+- **LIVE END-TO-END VERIFIED (2026-07-27):** ran the real core loop against
+  antidot-dev with two real authenticated users (created directly in `auth.users`
+  with bcrypt password + `email_confirmed_at`, then `signInWithPassword`; the app's
+  OTP login can't be automated). Full loop passed **11/11**: create circle →
+  activity → meeting location → guest overflow claim → **trigger notified host** →
+  chat send/read → non-member blocked (Инв.2) → claimant sees exact place (Инв.1).
+- **CRITICAL BUG found + fixed this way:** `createCircle` (`insert(group).select()`,
+  i.e. INSERT … RETURNING) failed RLS for every real user — `groups_select` required
+  membership and a new group has none yet, so the RETURNING's SELECT-policy check
+  rejected the row. Seed groups only existed because they were inserted as postgres.
+  Fixed by `…014_fix_groups_select_owner.sql` (owner sees own group). **Lesson: any
+  `insert(...).select()` needs the new row to pass the table's SELECT policy — audit
+  other creates the same way.** Mock-preview could never catch this.
+- **Still open:** run the actual app UI against live (blocked by OTP login — needs a
+  real email or dev login); native build + device test; prod env; marginal polish
+  (more pushed event types).
 
 **Workflow (unchanged):** commit each screen separately, typecheck green
 (`pnpm --filter @social-events/mobile typecheck`), verify on 8082, show an A/B /
