@@ -137,13 +137,33 @@ function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
-/** Local midnight of Monday of the current week. */
-function mondayOfCurrentWeek(): Date {
-  const now = new Date();
-  const monOffset = (now.getDay() + 6) % 7; // 0 = Monday
-  const monday = startOfDay(now);
+/** Local midnight of Monday of the week containing `d`. */
+function mondayOf(d: Date): Date {
+  const monOffset = (d.getDay() + 6) % 7; // 0 = Monday
+  const monday = startOfDay(d);
   monday.setDate(monday.getDate() - monOffset);
   return monday;
+}
+
+/** Local midnight of Monday of the current week. */
+function mondayOfCurrentWeek(): Date {
+  return mondayOf(new Date());
+}
+
+const WEEK_MS = 7 * 86_400_000;
+const RU_WEEKDAY = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+
+/** Gentle past label for a recently-attended activity (no gender-fussy grammar). */
+function pastLabel(startsAt: string): string {
+  const days = Math.floor((startOfDay(new Date()).getTime() - startOfDay(new Date(startsAt)).getTime()) / 86_400_000);
+  if (days <= 0) return 'сегодня';
+  if (days < 7) return RU_WEEKDAY[new Date(startsAt).getDay()].replace(/^./, (c) => c.toUpperCase());
+  const weeks = Math.floor(days / 7);
+  if (weeks === 1) return 'неделю назад';
+  const m10 = weeks % 10;
+  const m100 = weeks % 100;
+  const word = m10 === 1 && m100 !== 11 ? 'неделю' : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? 'недели' : 'недель';
+  return `${weeks} ${word} назад`;
 }
 
 export class SupabaseActivitiesRepository implements ActivitiesRepository {
@@ -534,23 +554,58 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
   }
 
   async getRhythm(userId: Id): Promise<RhythmView> {
-    // First live cut: mark days in the current week that have an upcoming activity
-    // as `planned`. Attendance-backed `attended` days, the streak count, and the
-    // recently-attended list need the attendance data (T5) wired up — until then
-    // they degrade to empty (no fabricated streak; soft-tone product decision).
+    // Derived from my own claims (no rhythm table). `attended` = a host-marked claim
+    // (T5); `going` on an upcoming day = `planned`. Streak = consecutive weeks with
+    // ≥1 attended activity, counting back from this week (or last week if this week's
+    // meeting hasn't happened yet, so a mid-week user isn't reset). Private/self-only,
+    // no fabricated numbers (soft-tone product decision).
     const week: RhythmDay[] = ['none', 'none', 'none', 'none', 'none', 'none', 'none'];
-    try {
-      const upcoming = await this.listMyActivities(userId);
-      const monday = mondayOfCurrentWeek();
-      for (const v of upcoming) {
-        const d = new Date(v.activity.startsAt);
-        const idx = Math.floor((startOfDay(d).getTime() - monday.getTime()) / 86_400_000);
-        if (idx >= 0 && idx < 7) week[idx] = 'planned';
+    const empty: RhythmView = { streakWeeks: 0, week, recent: [] };
+
+    const { data, error } = await supabase
+      .from('slot_claims')
+      .select('status, activity:activities(id, title, starts_at)')
+      .eq('user_id', userId)
+      .in('status', ['going', 'attended']);
+    if (error) throw new Error(error.message);
+    const rows = ((data ?? []) as unknown as {
+      status: SlotClaim['status'];
+      activity: { id: string; title: string; starts_at: string } | null;
+    }[]).filter((r) => r.activity != null);
+
+    const monday = mondayOfCurrentWeek();
+    const attendedWeeks = new Set<number>();
+    const attended: { id: string; title: string; startsAt: string }[] = [];
+
+    for (const r of rows) {
+      const a = r.activity!;
+      // This-week grid: attended wins over planned; planned = an upcoming `going` day.
+      const idx = Math.floor((startOfDay(new Date(a.starts_at)).getTime() - monday.getTime()) / 86_400_000);
+      if (idx >= 0 && idx < 7) {
+        if (r.status === 'attended') week[idx] = 'attended';
+        else if (week[idx] === 'none') week[idx] = 'planned';
       }
-    } catch {
-      // leave the week empty on a transient failure
+      if (r.status === 'attended') {
+        attendedWeeks.add(mondayOf(new Date(a.starts_at)).getTime());
+        attended.push({ id: a.id, title: a.title, startsAt: a.starts_at });
+      }
     }
-    return { streakWeeks: 0, week, recent: [] };
+
+    // Consecutive attended weeks back from this week (or last week).
+    const thisMon = monday.getTime();
+    let cursor = attendedWeeks.has(thisMon) ? thisMon : thisMon - WEEK_MS;
+    let streakWeeks = 0;
+    while (attendedWeeks.has(cursor)) {
+      streakWeeks += 1;
+      cursor -= WEEK_MS;
+    }
+
+    const recent = attended
+      .sort((x, y) => y.startsAt.localeCompare(x.startsAt))
+      .slice(0, 5)
+      .map((a) => ({ id: a.id, title: a.title, when: `${pastLabel(a.startsAt)} · пришёл`, icon: 'check' as const }));
+
+    return { ...empty, streakWeeks, week, recent };
   }
 
   async listNotifications(userId: Id): Promise<NotificationItem[]> {
