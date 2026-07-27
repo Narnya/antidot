@@ -238,6 +238,10 @@ pixel port):
   Fixed by `…014_fix_groups_select_owner.sql` (owner sees own group). **Lesson: any
   `insert(...).select()` needs the new row to pass the table's SELECT policy — audit
   other creates the same way.** Mock-preview could never catch this.
+  **Audit done (2026-07-27):** the only other RETURNING creates are createActivity
+  (creator is a member → row visible) and claimSlot (own row visible) — both pass
+  live. All other writes (report, block, membership, meeting_location, confirmMember,
+  message) use no RETURNING, so they're safe. createCircle was the sole occurrence.
 - **Still open:** run the actual app UI against live (blocked by OTP login — needs a
   real email or dev login); native build + device test; prod env; marginal polish
   (more pushed event types).
