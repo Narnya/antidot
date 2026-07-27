@@ -383,25 +383,38 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
   async getProfile(userId: Id): Promise<Profile | null> {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, display_name, area')
+      .select('id, display_name, area, bio, interests')
       .eq('id', userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!data) return null;
-    const r = data as unknown as { id: string; display_name: string; area: string | null };
-    return { userId: r.id, displayName: r.display_name, area: r.area };
+    const r = data as unknown as {
+      id: string;
+      display_name: string;
+      area: string | null;
+      bio: string | null;
+      interests: string[] | null;
+    };
+    return {
+      userId: r.id,
+      displayName: r.display_name,
+      area: r.area,
+      bio: r.bio,
+      interests: r.interests ?? [],
+    };
   }
 
   async upsertProfile(input: UpsertProfileInput): Promise<void> {
-    const { error } = await supabase.from('profiles').upsert(
-      {
-        id: input.userId,
-        display_name: input.displayName,
-        area: input.area,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'id' },
-    );
+    const payload: Record<string, unknown> = {
+      id: input.userId,
+      display_name: input.displayName,
+      area: input.area,
+      updated_at: new Date().toISOString(),
+    };
+    // Only overwrite interests when the caller supplied them (onboarding does), so a
+    // name/area-only update never clears the existing chips.
+    if (input.interests !== undefined) payload.interests = input.interests;
+    const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
     if (error) throw new Error(error.message);
   }
 
@@ -451,10 +464,10 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
     if (otherIds.length > 0) {
       const { data: profs } = await supabase
         .from('profiles')
-        .select('user_id, display_name')
-        .in('user_id', otherIds);
-      for (const p of (profs ?? []) as unknown as { user_id: string; display_name: string }[]) {
-        names.set(p.user_id, p.display_name);
+        .select('id, display_name')
+        .in('id', otherIds);
+      for (const p of (profs ?? []) as unknown as { id: string; display_name: string }[]) {
+        names.set(p.id, p.display_name);
       }
     }
 
