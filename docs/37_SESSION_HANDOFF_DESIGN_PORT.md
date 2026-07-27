@@ -214,9 +214,14 @@ pixel port):
   the user's own events from existing data — «Тебя приняли в круг» (active non-owner
   memberships), «Место встречи открыто» (my claims whose place RLS reveals),
   reminders. No notifications table yet; mock keeps the frame-10 illustrative set.
-- **Still open:** notifications read-state/dedup + «гость занял твой слот» (needs a
-  notifications table or a claim-events source); `getRhythm` streak/attended once
-  **attendance (T5)** is aggregated into a real streak/recent source.
+- **Rhythm — real on live (2026-07-27):** `getRhythm` derives streak (consecutive
+  weeks with ≥1 attended activity) + this-week grid (attended/planned) + recent from
+  the user's own claims. With 0 attended claims live it shows «Всё впереди». **Every
+  screen now runs on real data where the data exists.**
+- **Still open (needs a new table, not derivable):** notifications read-state/dedup
+  + «гость занял твой слот» — a `notifications` table (or claim-events source). The
+  rhythm/notifications derived cuts populate as hosts mark attendance / activity
+  happens.
 
 **Workflow (unchanged):** commit each screen separately, typecheck green
 (`pnpm --filter @social-events/mobile typecheck`), verify on 8082, show an A/B /
