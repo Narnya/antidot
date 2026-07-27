@@ -28,6 +28,13 @@ function hash(s: string) {
   return h;
 }
 
+// «Занял слот сам · <note> · +1 друг» — the note and/or +1 they gave on frame C,
+// falling back to the activity they claimed through.
+function candidateDetail(c: MemberCandidate): string {
+  const parts = [c.note ? `«${c.note}»` : null, c.plusOne ? '+1 друг' : null].filter(Boolean);
+  return parts.length > 0 ? parts.join(' · ') : `«${c.throughActivityTitle}»`;
+}
+
 type Props = { activityId: string };
 
 export function ManageActivityScreen({ activityId }: Props) {
@@ -116,7 +123,7 @@ export function ManageActivityScreen({ activityId }: Props) {
                   <View style={styles.txt}>
                     <Text style={styles.t1}>Новый гость</Text>
                     <Text style={styles.t2} numberOfLines={1}>
-                      Занял слот сам · «{c.throughActivityTitle}»
+                      Занял слот сам · {candidateDetail(c)}
                     </Text>
                   </View>
                   <Pressable

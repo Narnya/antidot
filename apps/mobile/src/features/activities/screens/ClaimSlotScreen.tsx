@@ -2,11 +2,9 @@
 // step an outsider goes through from the feed: a summary of the activity, who they
 // bring (solo / +1), an optional word to the organizer, and the safety notice that
 // the EXACT place opens only after confirming (Инв. 1). On confirm it claims the
-// slot and routes to the reveal success (frame N).
-//
-// Note: «+1» and the organizer note are collected here but not yet persisted — the
-// slot_claims schema has no note/plus-one column. Wire them when the column exists;
-// for now the claim is recorded via the existing repo.claimSlot.
+// slot and routes to the reveal success (frame N). «+1» and the note are persisted
+// on the claim (slot_claims.plus_one / note) and shown to the host on «Приём в круг»
+// (frame M) — per-claim context, not a messaging channel (Инв. 2).
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -55,12 +53,12 @@ export function ClaimSlotScreen({ activityId }: Props) {
   const handleConfirm = useCallback(async () => {
     setClaiming(true);
     try {
-      await repo.claimSlot(activityId, userId);
+      await repo.claimSlot(activityId, userId, { plusOne, note: note.trim() || null });
       router.replace(`/claimed/${activityId}`);
     } catch {
       setClaiming(false);
     }
-  }, [repo, activityId, userId, router]);
+  }, [repo, activityId, userId, plusOne, note, router]);
 
   return (
     <View style={styles.root}>

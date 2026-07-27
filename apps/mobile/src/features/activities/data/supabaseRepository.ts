@@ -18,6 +18,7 @@ import type {
   CreateReportInput,
   ChatMessage,
   CircleChatView,
+  ClaimOptions,
   MemberCandidate,
   MyCircle,
   NotificationItem,
@@ -57,6 +58,8 @@ type ClaimRow = {
   status: SlotClaim['status'];
   source: SlotClaim['source'];
   created_at: string;
+  plus_one?: boolean;
+  note?: string | null;
 };
 type MessageRow = {
   id: string;
@@ -109,6 +112,8 @@ const mapClaim = (r: ClaimRow): SlotClaim => ({
   status: r.status,
   source: r.source,
   createdAt: r.created_at,
+  plusOne: r.plus_one ?? false,
+  note: r.note ?? null,
 });
 
 function buildMemberView(
@@ -256,7 +261,7 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
 
     const { data: cl, error: ce } = await supabase
       .from('slot_claims')
-      .select('user_id, activity_id')
+      .select('user_id, activity_id, plus_one, note')
       .in(
         'activity_id',
         actRows.map((a) => a.id),
@@ -264,7 +269,12 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       .eq('source', 'overflow')
       .in('status', ['going', 'attended']);
     if (ce) throw new Error(ce.message);
-    const claimRows = (cl ?? []) as unknown as { user_id: string; activity_id: string }[];
+    const claimRows = (cl ?? []) as unknown as {
+      user_id: string;
+      activity_id: string;
+      plus_one: boolean | null;
+      note: string | null;
+    }[];
 
     const { data: mem, error: me } = await supabase
       .from('group_memberships')
@@ -281,7 +291,12 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
     for (const c of claimRows) {
       if (memberSet.has(c.user_id) || seen.has(c.user_id)) continue;
       seen.add(c.user_id);
-      out.push({ userId: c.user_id, throughActivityTitle: titleById.get(c.activity_id) ?? '' });
+      out.push({
+        userId: c.user_id,
+        throughActivityTitle: titleById.get(c.activity_id) ?? '',
+        plusOne: c.plus_one ?? false,
+        note: c.note ?? null,
+      });
     }
     return out;
   }
@@ -764,7 +779,7 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
     };
   }
 
-  async claimSlot(activityId: Id, userId: Id): Promise<SlotClaim> {
+  async claimSlot(activityId: Id, userId: Id, opts?: ClaimOptions): Promise<SlotClaim> {
     const { data: aRow, error: ae } = await supabase
       .from('activities')
       .select('group_id')
@@ -785,7 +800,14 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
     const { data, error } = await supabase
       .from('slot_claims')
       .upsert(
-        { activity_id: activityId, user_id: userId, status: 'going', source },
+        {
+          activity_id: activityId,
+          user_id: userId,
+          status: 'going',
+          source,
+          plus_one: opts?.plusOne ?? false,
+          note: opts?.note ?? null,
+        },
         { onConflict: 'activity_id,user_id' },
       )
       .select('*')

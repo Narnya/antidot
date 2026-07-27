@@ -72,6 +72,16 @@ export interface MyCircle {
 export interface MemberCandidate {
   userId: Id;
   throughActivityTitle: string;
+  /** «+1 друг» flagged on their claim (frame C → shown to the host, frame M). */
+  plusOne: boolean;
+  /** Their short word to the organizer, if any. */
+  note: string | null;
+}
+
+/** Extras captured on «Занять место» (frame C). */
+export interface ClaimOptions {
+  plusOne?: boolean;
+  note?: string | null;
 }
 
 /** A claimant as the host sees them when marking attendance (T5). Host-only view. */
@@ -260,7 +270,7 @@ export interface ActivitiesRepository {
    * Claim a spot. Whether it counts as a 'member' or 'overflow' claim (the pull
    * signal) is derived from the user's membership, not passed by the caller.
    */
-  claimSlot(activityId: Id, userId: Id): Promise<SlotClaim>;
+  claimSlot(activityId: Id, userId: Id, opts?: ClaimOptions): Promise<SlotClaim>;
   cancelClaim(activityId: Id, userId: Id): Promise<void>;
   /**
    * The exact meeting location — returns it only when the caller is allowed to see

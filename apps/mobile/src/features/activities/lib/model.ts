@@ -77,6 +77,10 @@ export interface SlotClaim {
   status: ClaimStatus;
   source: ClaimSource;
   createdAt: IsoTimestamp;
+  /** Bringing a friend (fills alongside — captured on «Занять место», frame C). */
+  plusOne?: boolean;
+  /** Short word to the organizer (per-claim context, not a message — Инв. 2). */
+  note?: string | null;
 }
 
 export type GroupRole = 'owner' | 'member';

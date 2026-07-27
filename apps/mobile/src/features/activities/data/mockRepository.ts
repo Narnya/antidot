@@ -14,6 +14,7 @@ import type {
   CreateReportInput,
   ChatMessage,
   CircleChatView,
+  ClaimOptions,
   MemberCandidate,
   MyCircle,
   NotificationItem,
@@ -181,7 +182,8 @@ const claims: SlotClaim[] = [
     source: 'overflow',
     createdAt: '2026-07-05T00:00:00Z',
   },
-  // an overflow guest on my football circle (g1) — a member candidate for the host.
+  // Overflow guests on my football circle (g1) — member candidates for the host,
+  // carrying the +1 / note they gave on «Занять место» (frame C → shown in M).
   {
     id: 'c-a1-of',
     activityId: 'a1',
@@ -189,6 +191,16 @@ const claims: SlotClaim[] = [
     status: 'going',
     source: 'overflow',
     createdAt: '2026-07-05T00:00:00Z',
+    note: 'Играю справа',
+  },
+  {
+    id: 'c-a1-of2',
+    activityId: 'a1',
+    userId: 'guest2',
+    status: 'going',
+    source: 'overflow',
+    createdAt: '2026-07-05T00:00:00Z',
+    plusOne: true,
   },
 ];
 
@@ -376,7 +388,12 @@ export class MockActivitiesRepository implements ActivitiesRepository {
       if (c.status !== 'going' && c.status !== 'attended') continue;
       if (isMemberOf(circleId, c.userId) || seen.has(c.userId)) continue;
       seen.add(c.userId);
-      out.push({ userId: c.userId, throughActivityTitle: titleByActivity.get(c.activityId) ?? '' });
+      out.push({
+        userId: c.userId,
+        throughActivityTitle: titleByActivity.get(c.activityId) ?? '',
+        plusOne: c.plusOne ?? false,
+        note: c.note ?? null,
+      });
     }
     return out;
   }
@@ -638,7 +655,7 @@ export class MockActivitiesRepository implements ActivitiesRepository {
     };
   }
 
-  async claimSlot(activityId: Id, userId: Id): Promise<SlotClaim> {
+  async claimSlot(activityId: Id, userId: Id, opts?: ClaimOptions): Promise<SlotClaim> {
     const activity = activities.find((a) => a.id === activityId);
     if (!activity) throw new Error('activity_not_found');
 
@@ -649,6 +666,8 @@ export class MockActivitiesRepository implements ActivitiesRepository {
     const existing = claims.find((c) => c.activityId === activityId && c.userId === userId);
     if (existing) {
       existing.status = 'going';
+      if (opts?.plusOne !== undefined) existing.plusOne = opts.plusOne;
+      if (opts?.note !== undefined) existing.note = opts.note;
       return existing;
     }
     const slot: SlotClaim = {
@@ -658,6 +677,8 @@ export class MockActivitiesRepository implements ActivitiesRepository {
       status: 'going',
       source: isMember ? 'member' : 'overflow',
       createdAt: new Date().toISOString(),
+      plusOne: opts?.plusOne ?? false,
+      note: opts?.note ?? null,
     };
     claims.push(slot);
     return slot;
