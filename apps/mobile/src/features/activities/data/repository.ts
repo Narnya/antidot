@@ -159,7 +159,8 @@ export type NotificationKind =
   | 'location_open' // pin · место встречи открыто
   | 'reminder' // clock (coral) · напоминание о встрече
   | 'chat' // chat · новое в чате круга
-  | 'roster_updated'; // users (muted) · состав круга обновился
+  | 'roster_updated' // users (muted) · состав круга обновился
+  | 'slot_claimed'; // users · кто-то занял твой слот (host, pushed event)
 
 export interface NotificationItem {
   id: Id;
@@ -249,6 +250,9 @@ export interface ActivitiesRepository {
    *  user's membership transitions beyond the neutral «Состав круга обновился»
    *  (Инв. 11–12). */
   listNotifications(userId: Id): Promise<NotificationItem[]>;
+  /** Mark the user's stored (pushed) notifications as read. Derived events have no
+   *  read-state; this only touches the `notifications` table rows. */
+  markNotificationsRead(userId: Id): Promise<void>;
   /** Personal rhythm surface (mockup frame 09) — streak weeks + this-week grid +
    *  recently-attended. Private / self-only, never a public counter (Инв. 10/14). */
   getRhythm(userId: Id): Promise<RhythmView>;

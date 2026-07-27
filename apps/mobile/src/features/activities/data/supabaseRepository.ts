@@ -609,10 +609,28 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
   }
 
   async listNotifications(userId: Id): Promise<NotificationItem[]> {
-    // Live events derived from existing data (no notifications table yet). All are
-    // the user's OWN events — never another member's transitions (Инв. 11–12), and
-    // the place opens only where RLS reveals it (Инв. 1).
+    // Two sources: (1) STORED pushed events from the notifications table — things you
+    // can't derive from your own data (e.g. a guest claimed your slot), written by a
+    // definer trigger and RLS-scoped to you; (2) DERIVED self-events (приняли в круг,
+    // место открыто, напоминание). Stored (real events) come first, newest first.
     const out: NotificationItem[] = [];
+
+    const { data: stored, error: se } = await supabase
+      .from('notifications')
+      .select('id, kind, title, detail, href')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (se) throw new Error(se.message);
+    for (const n of (stored ?? []) as unknown as {
+      id: string;
+      kind: NotificationItem['kind'];
+      title: string;
+      detail: string | null;
+      href: string | null;
+    }[]) {
+      out.push({ id: n.id, kind: n.kind, title: n.title, detail: n.detail ?? '', href: n.href });
+    }
 
     // «Тебя приняли в круг» — active non-owner memberships (you were host-confirmed).
     const { data: mem, error: me } = await supabase
@@ -682,6 +700,15 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
     }
 
     return out;
+  }
+
+  async markNotificationsRead(userId: Id): Promise<void> {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .is('read_at', null);
+    if (error) throw new Error(error.message);
   }
 
   async listOpenInCity(userId: Id): Promise<ActivityView[]> {

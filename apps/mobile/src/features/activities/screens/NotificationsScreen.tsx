@@ -34,6 +34,7 @@ const TILE: Record<
   reminder: { Icon: IconClock, bg: '#F7DED6', fg: CORAL },
   chat: { Icon: IconChat, bg: colors.trust.verifiedBg, fg: GREEN },
   roster_updated: { Icon: IconUsers, bg: colors.background.subtle, fg: colors.text.secondary, dim: true },
+  slot_claimed: { Icon: IconUsers, bg: colors.trust.verifiedBg, fg: GREEN },
 };
 
 export function NotificationsScreen() {
@@ -45,6 +46,8 @@ export function NotificationsScreen() {
   const load = useCallback(async () => {
     setItems(await repo.listNotifications(userId));
     setLoading(false);
+    // Mark pushed notifications read once the user is looking at them.
+    void repo.markNotificationsRead(userId);
   }, [repo, userId]);
 
   useEffect(() => {

@@ -559,6 +559,10 @@ export class MockActivitiesRepository implements ActivitiesRepository {
     ];
   }
 
+  async markNotificationsRead(_userId: Id): Promise<void> {
+    // No stored notifications in mock — the illustrative feed has no read-state.
+  }
+
   async listOpenInCity(userId: Id): Promise<ActivityView[]> {
     // Feed / объявления: overflow-open activities from groups the user is NOT in,
     // still upcoming with spots remaining. City-wide (product decision 2026-07).
