@@ -245,6 +245,13 @@ export interface ActivitiesRepository {
   /** Member-only circle chat (mockup frame L). Returns null if the circle is not
    *  found or the user is not a member (chat is gated to members — Core §10). */
   getCircleChat(circleId: Id, userId: Id): Promise<CircleChatView | null>;
+  /** Post a message to a circle chat as the current user. RLS requires an active
+   *  membership + self-authorship (Инв. 2 — no cold/foreign messages). */
+  sendCircleMessage(circleId: Id, userId: Id, text: string): Promise<void>;
+  /** Subscribe to new messages in a circle chat (Supabase Realtime); `onChange`
+   *  fires on each insert. Returns an unsubscribe fn. No-op (returns a noop) where
+   *  realtime isn't available (mock/preview). */
+  subscribeCircleChat(circleId: Id, onChange: () => void): () => void;
   /** Open slots across the city the user can claim — the feed / объявления. */
   listOpenInCity(userId: Id): Promise<ActivityView[]>;
   getActivity(activityId: Id, userId: Id): Promise<ActivityView | null>;

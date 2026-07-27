@@ -58,6 +58,12 @@ type ClaimRow = {
   source: SlotClaim['source'];
   created_at: string;
 };
+type MessageRow = {
+  id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+};
 type FeedRow = {
   id: string;
   group_id: string;
@@ -425,12 +431,65 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
   }
 
   async getCircleChat(circleId: Id, userId: Id): Promise<CircleChatView | null> {
-    // UI is ported; the message store (a member-only `circle_messages` table with
-    // RLS + Realtime) is a follow-up. Until then we return the circle header and an
-    // empty thread — gated to members via getCircle's membership check.
+    // Member-gated: getCircle returns null / isMember=false for non-members, and RLS
+    // on circle_messages independently blocks the rows (Инв. 2 — chat is member-only).
     const cv = await this.getCircle(circleId, userId);
     if (!cv || !cv.isMember) return null;
-    return { name: cv.group.name, memberCount: cv.memberCount, pinned: null, messages: [] as ChatMessage[] };
+
+    const { data, error } = await supabase
+      .from('circle_messages')
+      .select('id, author_id, body, created_at')
+      .eq('group_id', circleId)
+      .order('created_at', { ascending: true })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as unknown as MessageRow[];
+
+    // Resolve author display names for others' messages in one batch.
+    const otherIds = [...new Set(rows.map((r) => r.author_id).filter((id) => id !== userId))];
+    const names = new Map<string, string | null>();
+    if (otherIds.length > 0) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .in('user_id', otherIds);
+      for (const p of (profs ?? []) as unknown as { user_id: string; display_name: string }[]) {
+        names.set(p.user_id, p.display_name);
+      }
+    }
+
+    const messages: ChatMessage[] = rows.map((r) => ({
+      id: r.id,
+      kind: 'msg',
+      mine: r.author_id === userId,
+      authorName: r.author_id === userId ? null : (names.get(r.author_id) ?? 'Участник'),
+      text: r.body,
+    }));
+    // The reveal-safe pinned place (Инв. 1) is a follow-up; header only for now.
+    return { name: cv.group.name, memberCount: cv.memberCount, pinned: null, messages };
+  }
+
+  async sendCircleMessage(circleId: Id, userId: Id, text: string): Promise<void> {
+    const body = text.trim();
+    if (body.length === 0) return;
+    const { error } = await supabase
+      .from('circle_messages')
+      .insert({ group_id: circleId, author_id: userId, body });
+    if (error) throw new Error(error.message);
+  }
+
+  subscribeCircleChat(circleId: Id, onChange: () => void): () => void {
+    const channel = supabase
+      .channel(`circle_messages:${circleId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'circle_messages', filter: `group_id=eq.${circleId}` },
+        () => onChange(),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }
 
   async getRhythm(userId: Id): Promise<RhythmView> {

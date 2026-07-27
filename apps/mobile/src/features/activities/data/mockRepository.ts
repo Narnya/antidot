@@ -197,6 +197,24 @@ const reports: CreateReportInput[] = [];
 const blocks: { blockerId: Id; blockedId: Id }[] = [];
 
 // T4 — in-memory profiles (mock).
+// Illustrative circle chat threads (mockup frame L), keyed by circle. «Состав круга
+// обновился» is the only membership-transition signal we ever surface (Инв. 11–12).
+// Sends append here so the preview persists them in-session.
+const chatMessages: Record<Id, ChatMessage[]> = {
+  g1: [
+    { id: 'm1', kind: 'system', text: 'Аня открыла места городу' },
+    {
+      id: 'm2',
+      kind: 'msg',
+      authorName: 'Аня',
+      text: 'Всем привет! Сегодня как обычно, приходим к 18:50 размяться 🙌',
+    },
+    { id: 'm3', kind: 'msg', authorName: 'Кирилл', text: 'Буду. Мяч свой брать?' },
+    { id: 'm4', kind: 'msg', mine: true, text: 'Я в деле, форма есть 👟' },
+    { id: 'm5', kind: 'system', text: 'Состав круга обновился' },
+  ],
+};
+
 const profiles: Profile[] = [
   {
     userId: 'me',
@@ -325,26 +343,26 @@ export class MockActivitiesRepository implements ActivitiesRepository {
     const memberCount = memberships.filter(
       (m) => m.groupId === circleId && m.status === 'active',
     ).length;
-    // Illustrative thread (mockup frame L). «Состав круга обновился» is the only
-    // membership-transition signal we ever surface (Инв. 11–12).
-    const messages: ChatMessage[] = [
-      { id: 'm1', kind: 'system', text: 'Аня открыла места городу' },
-      {
-        id: 'm2',
-        kind: 'msg',
-        authorName: 'Аня',
-        text: 'Всем привет! Сегодня как обычно, приходим к 18:50 размяться 🙌',
-      },
-      { id: 'm3', kind: 'msg', authorName: 'Кирилл', text: 'Буду. Мяч свой брать?' },
-      { id: 'm4', kind: 'msg', mine: true, text: 'Я в деле, форма есть 👟' },
-      { id: 'm5', kind: 'system', text: 'Состав круга обновился' },
-    ];
     return {
       name: group.name,
       memberCount,
-      pinned: { title: 'Встреча сегодня, 19:00', detail: 'Приморский · ул. Савушкина, поле №2' },
-      messages,
+      pinned:
+        circleId === 'g1'
+          ? { title: 'Встреча сегодня, 19:00', detail: 'Приморский · ул. Савушкина, поле №2' }
+          : null,
+      messages: chatMessages[circleId] ?? [],
     };
+  }
+
+  async sendCircleMessage(circleId: Id, _userId: Id, text: string): Promise<void> {
+    const body = text.trim();
+    if (body.length === 0) return;
+    (chatMessages[circleId] ??= []).push({ id: nextId('msg'), kind: 'msg', mine: true, text: body });
+  }
+
+  subscribeCircleChat(_circleId: Id, _onChange: () => void): () => void {
+    // No realtime in mock/preview — the screen reloads after its own send.
+    return () => {};
   }
 
   async listMemberCandidates(circleId: Id): Promise<MemberCandidate[]> {

@@ -55,16 +55,25 @@ export function CircleChatScreen({ circleId }: Props) {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    // Realtime: another member's message reloads the thread (no-op on mock).
+    const unsubscribe = repo.subscribeCircleChat(circleId, () => void load());
+    return unsubscribe;
+  }, [load, repo, circleId]);
 
-  const send = useCallback(() => {
+  const send = useCallback(async () => {
     const text = draft.trim();
     if (text.length === 0) return;
-    // Ephemeral local echo — not persisted until the message store lands.
+    setDraft('');
+    // Optimistic echo so it feels instant; the reload reconciles with the store/DB.
     localSeq.current += 1;
     setMessages((prev) => [...prev, { id: `local-${localSeq.current}`, kind: 'msg', mine: true, text }]);
-    setDraft('');
-  }, [draft]);
+    try {
+      await repo.sendCircleMessage(circleId, userId, text);
+      await load();
+    } catch {
+      // Keep the optimistic bubble; a failed send is rare in preview/dev.
+    }
+  }, [draft, repo, circleId, userId, load]);
 
   return (
     <View style={styles.root}>
