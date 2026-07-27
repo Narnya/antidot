@@ -218,15 +218,16 @@ pixel port):
   weeks with ≥1 attended activity) + this-week grid (attended/planned) + recent from
   the user's own claims. With 0 attended claims live it shows «Всё впереди». **Every
   screen now runs on real data where the data exists.**
-- **Notifications table — applied + verified live (2026-07-27):**
-  `20260727000012_notifications.sql` — `notifications` (recipient-only RLS: read/
-  mark-read own, no client insert) + a SECURITY DEFINER trigger «гость занял твой
-  слот» (overflow claim → host row). listNotifications merges stored + derived;
-  markNotificationsRead on screen open. Trigger + RLS +/- test PASSED live.
-- **Still open (polish/extensions):** an unread badge on the bell tab; more pushed
-  event types via triggers (host confirmed you, chat message, roster updated);
-  realtime for the bell; the derived rhythm/notifications populate as hosts mark
-  attendance / activities happen.
+- **Notifications feature COMPLETE — applied + verified live (2026-07-27):**
+  `…012_notifications.sql` (recipient-only RLS + SECURITY DEFINER trigger «гость
+  занял твой слот»; trigger + RLS +/- test PASSED live) · unread **bell badge**
+  (UnreadNotificationsProvider context; clears on open; verified in preview) ·
+  `…013_notifications_realtime.sql` (notifications in the realtime publication →
+  badge bumps live; RLS enforced on the stream). listNotifications merges stored +
+  derived. **FIVE migrations applied to antidot-dev (009–013).**
+- **Still open (marginal polish):** more pushed event types via triggers (host
+  confirmed you, chat message, roster updated) — the rest is derived and populates
+  as hosts mark attendance / activities happen.
 
 **Workflow (unchanged):** commit each screen separately, typecheck green
 (`pnpm --filter @social-events/mobile typecheck`), verify on 8082, show an A/B /
