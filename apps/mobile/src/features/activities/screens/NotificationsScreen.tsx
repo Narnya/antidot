@@ -20,6 +20,7 @@ import {
 } from '../../../components';
 import type { NotificationItem, NotificationKind } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
+import { useUnreadNotifications } from '../hooks/useUnreadNotifications';
 
 const GREEN = colors.action.primary;
 const CORAL = colors.accent.coral;
@@ -40,15 +41,18 @@ const TILE: Record<
 export function NotificationsScreen() {
   const router = useRouter();
   const { repo, userId } = useActivitiesRepo();
+  const { refresh: refreshBadge } = useUnreadNotifications();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setItems(await repo.listNotifications(userId));
     setLoading(false);
-    // Mark pushed notifications read once the user is looking at them.
-    void repo.markNotificationsRead(userId);
-  }, [repo, userId]);
+    // Mark pushed notifications read once the user is looking at them, then clear
+    // the bell-tab badge.
+    await repo.markNotificationsRead(userId);
+    refreshBadge();
+  }, [repo, userId, refreshBadge]);
 
   useEffect(() => {
     void load();

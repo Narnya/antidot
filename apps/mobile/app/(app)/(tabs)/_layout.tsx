@@ -14,6 +14,10 @@ import {
   IconRhythm,
   type NavIconProps,
 } from '../../../src/components/NavIcons';
+import {
+  UnreadNotificationsProvider,
+  useUnreadNotifications,
+} from '../../../src/features/activities/hooks/useUnreadNotifications';
 
 type IconCmp = (props: NavIconProps) => JSX.Element;
 function tabIcon(Icon: IconCmp) {
@@ -21,6 +25,15 @@ function tabIcon(Icon: IconCmp) {
 }
 
 export default function TabsLayout() {
+  return (
+    <UnreadNotificationsProvider>
+      <TabsInner />
+    </UnreadNotificationsProvider>
+  );
+}
+
+function TabsInner() {
+  const { count } = useUnreadNotifications();
   return (
     <Tabs
       screenOptions={{
@@ -43,7 +56,12 @@ export default function TabsLayout() {
       <Tabs.Screen name="rhythm" options={{ title: 'Ритм', tabBarIcon: tabIcon(IconRhythm) }} />
       <Tabs.Screen
         name="notifications"
-        options={{ title: 'Уведомления', tabBarIcon: tabIcon(IconBell) }}
+        options={{
+          title: 'Уведомления',
+          tabBarIcon: tabIcon(IconBell),
+          tabBarBadge: count > 0 ? count : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.accent.coral, fontSize: 10 },
+        }}
       />
       <Tabs.Screen name="profile" options={{ title: 'Профиль', tabBarIcon: tabIcon(IconProfile) }} />
     </Tabs>

@@ -208,6 +208,10 @@ const claims: SlotClaim[] = [
 const reports: CreateReportInput[] = [];
 const blocks: { blockerId: Id; blockedId: Id }[] = [];
 
+// Preview-only unread bell count: starts non-zero to show the badge, clears when the
+// notifications screen is opened (markNotificationsRead). Live uses the real table.
+let mockUnread = 3;
+
 // T4 — in-memory profiles (mock).
 // Illustrative circle chat threads (mockup frame L), keyed by circle. «Состав круга
 // обновился» is the only membership-transition signal we ever surface (Инв. 11–12).
@@ -560,7 +564,11 @@ export class MockActivitiesRepository implements ActivitiesRepository {
   }
 
   async markNotificationsRead(_userId: Id): Promise<void> {
-    // No stored notifications in mock — the illustrative feed has no read-state.
+    mockUnread = 0; // clears the bell badge in the preview once the screen is opened
+  }
+
+  async unreadNotificationCount(_userId: Id): Promise<number> {
+    return mockUnread;
   }
 
   async listOpenInCity(userId: Id): Promise<ActivityView[]> {
