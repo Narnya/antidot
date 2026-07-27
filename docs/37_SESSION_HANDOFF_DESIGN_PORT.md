@@ -200,13 +200,16 @@ The core-loop **plus** the secondary frames K/C/N/M/O are now ported:
 
 Beyond the port — real-data / backend follow-ups (each a proper feature task, not a
 pixel port):
-- **DONE (code, pending live `db push`):** circle chat store —
-  `20260727000009_circle_chat.sql` (member-only RLS + Realtime + send) + reveal-safe
-  pinned place (Инв. 1); profile persist — `20260727000010_profile_bio_interests.sql`
-  (bio + interests; onboarding persists interests); claim extras —
-  `20260727000011_slot_claim_plus_one_note.sql` (+1/note collected on frame C →
-  persisted → shown to host on frame M). **Three migrations await `db push` to
-  antidot-dev + the +/- RLS test in the chat migration's comments.**
+- **APPLIED + RLS-VERIFIED on antidot-dev (2026-07-27):** the three migrations —
+  `20260727000009_circle_chat.sql` (member-only chat: RLS + Realtime + send; +
+  reveal-safe pinned place, Инв. 1), `20260727000010_profile_bio_interests.sql`
+  (bio + interests; onboarding persists interests), `20260727000011_slot_claim_
+  plus_one_note.sql` (+1/note, frame C → frame M) — were applied via `psql` (session
+  pooler, region eu-central-1; base schema was applied directly so there's no CLI
+  migration history — do NOT `supabase db push`, apply new migrations with psql).
+  The chat +/- RLS test PASSED live: member reads/inserts-self ✅, author-spoof ❌,
+  non-member read 0 / insert ❌ (run inside a txn + ROLLBACK, no test rows left).
+  Supabase CLI 2.109.1 is now installed. **DB password is a secret — never committed.**
 - **Notifications — real events on live (2026-07-27):** `listNotifications` derives
   the user's own events from existing data — «Тебя приняли в круг» (active non-owner
   memberships), «Место встречи открыто» (my claims whose place RLS reveals),
