@@ -465,8 +465,21 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       authorName: r.author_id === userId ? null : (names.get(r.author_id) ?? 'Участник'),
       text: r.body,
     }));
-    // The reveal-safe pinned place (Инв. 1) is a follow-up; header only for now.
-    return { name: cv.group.name, memberCount: cv.memberCount, pinned: null, messages };
+
+    // Pinned meeting — reveal-safe (Инв. 1): the EXACT place is shown only if RLS
+    // reveals it (the viewer has an active claim / is a member within the window);
+    // otherwise just time + area with a nudge to claim a slot. getMeetingLocation is
+    // gated by auth.uid() server-side, so a member who hasn't claimed sees no address.
+    let pinned: CircleChatView['pinned'] = null;
+    if (cv.nextActivity) {
+      const na = cv.nextActivity.activity;
+      const place = await this.getMeetingLocation(na.id);
+      pinned = {
+        title: `Встреча ${formatWhen(na.startsAt)}`,
+        detail: place ?? `${na.area} · займи слот, чтобы увидеть место`,
+      };
+    }
+    return { name: cv.group.name, memberCount: cv.memberCount, pinned, messages };
   }
 
   async sendCircleMessage(circleId: Id, userId: Id, text: string): Promise<void> {
