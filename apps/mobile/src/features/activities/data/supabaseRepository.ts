@@ -554,16 +554,79 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
   }
 
   async listNotifications(userId: Id): Promise<NotificationItem[]> {
-    // First live cut: reminders derived from the user's own upcoming activities.
-    // Richer events (host confirmed you, a guest claimed your slot) land later.
+    // Live events derived from existing data (no notifications table yet). All are
+    // the user's OWN events — never another member's transitions (Инв. 11–12), and
+    // the place opens only where RLS reveals it (Инв. 1).
+    const out: NotificationItem[] = [];
+
+    // «Тебя приняли в круг» — active non-owner memberships (you were host-confirmed).
+    const { data: mem, error: me } = await supabase
+      .from('group_memberships')
+      .select('group_id, group:groups(name)')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .eq('role', 'member')
+      .order('created_at', { ascending: false });
+    if (me) throw new Error(me.message);
+    for (const m of (mem ?? []) as unknown as { group_id: string; group: { name: string } | null }[]) {
+      if (!m.group) continue;
+      out.push({
+        id: `confirmed-${m.group_id}`,
+        kind: 'member_confirmed',
+        title: 'Тебя приняли в круг',
+        detail: `«${m.group.name}» · участие подтверждено`,
+        href: `/circle/${m.group_id}`,
+      });
+    }
+
+    // «Место встречи открыто» — my active claims whose EXACT place RLS reveals.
+    const { data: cl, error: ce } = await supabase
+      .from('slot_claims')
+      .select('activity_id, activity:activities(title)')
+      .eq('user_id', userId)
+      .in('status', ['going', 'attended']);
+    if (ce) throw new Error(ce.message);
+    const claimRows = (cl ?? []) as unknown as {
+      activity_id: string;
+      activity: { title: string } | null;
+    }[];
+    if (claimRows.length > 0) {
+      const { data: locs, error: le } = await supabase
+        .from('meeting_locations')
+        .select('activity_id')
+        .in(
+          'activity_id',
+          claimRows.map((c) => c.activity_id),
+        );
+      if (le) throw new Error(le.message);
+      const revealed = new Set(
+        ((locs ?? []) as unknown as { activity_id: string }[]).map((l) => l.activity_id),
+      );
+      for (const c of claimRows) {
+        if (!revealed.has(c.activity_id)) continue;
+        out.push({
+          id: `location-${c.activity_id}`,
+          kind: 'location_open',
+          title: 'Место встречи открыто',
+          detail: c.activity ? `${c.activity.title} · ты занял слот` : 'Ты занял слот',
+          href: `/activity/${c.activity_id}`,
+        });
+      }
+    }
+
+    // Reminders — upcoming activities from your circles.
     const upcoming = await this.listMyActivities(userId);
-    return upcoming.map((v) => ({
-      id: `reminder-${v.activity.id}`,
-      kind: 'reminder' as const,
-      title: 'Напоминание о встрече',
-      detail: `${v.activity.title} · ${formatWhen(v.activity.startsAt)}`,
-      href: `/activity/${v.activity.id}`,
-    }));
+    for (const v of upcoming) {
+      out.push({
+        id: `reminder-${v.activity.id}`,
+        kind: 'reminder',
+        title: 'Напоминание о встрече',
+        detail: `${v.activity.title} · ${formatWhen(v.activity.startsAt)}`,
+        href: `/activity/${v.activity.id}`,
+      });
+    }
+
+    return out;
   }
 
   async listOpenInCity(userId: Id): Promise<ActivityView[]> {
