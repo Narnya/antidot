@@ -571,6 +571,10 @@ export class MockActivitiesRepository implements ActivitiesRepository {
     return mockUnread;
   }
 
+  subscribeNotifications(_userId: Id, _onChange: () => void): () => void {
+    return () => {}; // no realtime in mock/preview
+  }
+
   async listOpenInCity(userId: Id): Promise<ActivityView[]> {
     // Feed / объявления: overflow-open activities from groups the user is NOT in,
     // still upcoming with spots remaining. City-wide (product decision 2026-07).

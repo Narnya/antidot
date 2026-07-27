@@ -26,7 +26,10 @@ export function UnreadNotificationsProvider({ children }: { children: ReactNode 
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+    // Realtime: a new notification bumps the badge live (no-op on mock).
+    const unsubscribe = repo.subscribeNotifications(userId, refresh);
+    return unsubscribe;
+  }, [refresh, repo, userId]);
 
   return <Ctx.Provider value={{ count, refresh }}>{children}</Ctx.Provider>;
 }

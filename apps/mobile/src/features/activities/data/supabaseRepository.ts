@@ -721,6 +721,20 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
     return count ?? 0;
   }
 
+  subscribeNotifications(userId: Id, onChange: () => void): () => void {
+    const channel = supabase
+      .channel(`notifications:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+        () => onChange(),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }
+
   async listOpenInCity(userId: Id): Promise<ActivityView[]> {
     const { data, error } = await supabase.rpc('feed_open_activities');
     if (error) throw new Error(error.message);

@@ -255,6 +255,9 @@ export interface ActivitiesRepository {
   markNotificationsRead(userId: Id): Promise<void>;
   /** Count of the user's UNREAD stored notifications — for the bell tab badge. */
   unreadNotificationCount(userId: Id): Promise<number>;
+  /** Subscribe to the user's new stored notifications (Supabase Realtime); `onChange`
+   *  fires on each insert. Returns an unsubscribe fn; no-op where realtime is absent. */
+  subscribeNotifications(userId: Id, onChange: () => void): () => void;
   /** Personal rhythm surface (mockup frame 09) — streak weeks + this-week grid +
    *  recently-attended. Private / self-only, never a public counter (Инв. 10/14). */
   getRhythm(userId: Id): Promise<RhythmView>;
