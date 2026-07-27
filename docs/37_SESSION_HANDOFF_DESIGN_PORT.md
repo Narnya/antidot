@@ -200,14 +200,16 @@ The core-loop **plus** the secondary frames K/C/N/M/O are now ported:
 
 Beyond the port — real-data / backend follow-ups (each a proper feature task, not a
 pixel port):
-- **DONE (code, pending live `db push` + RLS test):** circle chat store —
-  `20260727000009_circle_chat.sql` (member-only RLS + Realtime + send), reveal-safe
+- **DONE (code, pending live `db push`):** circle chat store —
+  `20260727000009_circle_chat.sql` (member-only RLS + Realtime + send) + reveal-safe
   pinned place (Инв. 1); profile persist — `20260727000010_profile_bio_interests.sql`
-  (bio + interests), onboarding now persists interests. Two migrations await `db
-  push` to antidot-dev + the +/- RLS test in the chat migration's comments.
-- **Still open:** `listNotifications` richer events; `getRhythm` streak/attended once
-  **attendance (T5)** is aggregated; persist `slot_claims` +1/note (frame C collects
-  them, no column yet).
+  (bio + interests; onboarding persists interests); claim extras —
+  `20260727000011_slot_claim_plus_one_note.sql` (+1/note collected on frame C →
+  persisted → shown to host on frame M). **Three migrations await `db push` to
+  antidot-dev + the +/- RLS test in the chat migration's comments.**
+- **Still open:** `listNotifications` richer events (host confirmed you, a guest
+  claimed your slot); `getRhythm` streak/attended once **attendance (T5)** is
+  aggregated into a real streak/recent source.
 
 **Workflow (unchanged):** commit each screen separately, typecheck green
 (`pnpm --filter @social-events/mobile typecheck`), verify on 8082, show an A/B /
