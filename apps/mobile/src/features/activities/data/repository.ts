@@ -181,6 +181,9 @@ export interface ChatMessage {
   /** True for the current user's own messages (right-aligned green bubble). */
   mine?: boolean;
   text: string;
+  /** For OWN messages only: true once another member has read past it (✓✓), false =
+   *  sent-not-yet-read (✓). Undefined for others' / pending messages. */
+  read?: boolean;
 }
 
 export interface CircleChatView {
@@ -267,6 +270,8 @@ export interface ActivitiesRepository {
   /** Post a message to a circle chat as the current user. RLS requires an active
    *  membership + self-authorship (Инв. 2 — no cold/foreign messages). */
   sendCircleMessage(circleId: Id, userId: Id, text: string): Promise<void>;
+  /** Mark the circle chat read up to now for the current user (read receipts). */
+  markChatRead(circleId: Id, userId: Id): Promise<void>;
   /** Subscribe to new messages in a circle chat (Supabase Realtime); `onChange`
    *  fires on each insert. Returns an unsubscribe fn. No-op (returns a noop) where
    *  realtime isn't available (mock/preview). */

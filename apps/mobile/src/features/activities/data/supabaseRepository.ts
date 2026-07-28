@@ -506,13 +506,30 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       }
     }
 
-    const messages: ChatMessage[] = rows.map((r) => ({
-      id: r.id,
-      kind: 'msg',
-      mine: r.author_id === userId,
-      authorName: r.author_id === userId ? null : (names.get(r.author_id) ?? 'Участник'),
-      text: r.body,
-    }));
+    // Read receipts: the latest moment ANY other active member has read the chat.
+    // My message is «прочитано» (✓✓) once that moment is at/after it was sent.
+    const { data: reads } = await supabase
+      .from('group_memberships')
+      .select('chat_last_read_at')
+      .eq('group_id', circleId)
+      .eq('status', 'active')
+      .neq('user_id', userId);
+    const otherReadTimes = ((reads ?? []) as unknown as { chat_last_read_at: string | null }[])
+      .map((r) => (r.chat_last_read_at ? new Date(r.chat_last_read_at).getTime() : 0))
+      .filter((t) => t > 0);
+    const maxOtherRead = otherReadTimes.length > 0 ? Math.max(...otherReadTimes) : 0;
+
+    const messages: ChatMessage[] = rows.map((r) => {
+      const mine = r.author_id === userId;
+      return {
+        id: r.id,
+        kind: 'msg',
+        mine,
+        authorName: mine ? null : (names.get(r.author_id) ?? 'Участник'),
+        text: r.body,
+        read: mine ? maxOtherRead >= new Date(r.created_at).getTime() : undefined,
+      };
+    });
 
     // Pinned meeting — reveal-safe (Инв. 1): the EXACT place is shown only if RLS
     // reveals it (the viewer has an active claim / is a member within the window);
@@ -536,6 +553,15 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
     const { error } = await supabase
       .from('circle_messages')
       .insert({ group_id: circleId, author_id: userId, body });
+    if (error) throw new Error(error.message);
+  }
+
+  async markChatRead(circleId: Id, userId: Id): Promise<void> {
+    const { error } = await supabase
+      .from('group_memberships')
+      .update({ chat_last_read_at: new Date().toISOString() })
+      .eq('group_id', circleId)
+      .eq('user_id', userId);
     if (error) throw new Error(error.message);
   }
 

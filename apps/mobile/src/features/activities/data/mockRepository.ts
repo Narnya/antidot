@@ -226,7 +226,7 @@ const chatMessages: Record<Id, ChatMessage[]> = {
       text: 'Всем привет! Сегодня как обычно, приходим к 18:50 размяться 🙌',
     },
     { id: 'm3', kind: 'msg', authorName: 'Кирилл', text: 'Буду. Мяч свой брать?' },
-    { id: 'm4', kind: 'msg', mine: true, text: 'Я в деле, форма есть 👟' },
+    { id: 'm4', kind: 'msg', mine: true, text: 'Я в деле, форма есть 👟', read: true },
     { id: 'm5', kind: 'system', text: 'Состав круга обновился' },
   ],
 };
@@ -374,6 +374,10 @@ export class MockActivitiesRepository implements ActivitiesRepository {
     const body = text.trim();
     if (body.length === 0) return;
     (chatMessages[circleId] ??= []).push({ id: nextId('msg'), kind: 'msg', mine: true, text: body });
+  }
+
+  async markChatRead(_circleId: Id, _userId: Id): Promise<void> {
+    // No cross-member read tracking in the mock/preview.
   }
 
   subscribeCircleChat(_circleId: Id, _onChange: () => void): () => void {

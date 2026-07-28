@@ -14,7 +14,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors, INTER_SEMIBOLD, radius, shadows, spacing, typography } from '@social-events/ui';
 
-import { AppTextInput, IconClock, IconSend } from '../../../components';
+import { AppTextInput, IconCheck, IconClock, IconSend } from '../../../components';
+
+// Read-receipt tick colours on the (dark green) own bubble.
+const TICK_SENT = 'rgba(255,253,249,0.5)'; // ✓ sent, not yet read
+const TICK_READ = '#86E5B0'; // ✓✓ read by another member
 import type { ChatMessage, CircleChatView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
@@ -51,6 +55,8 @@ export function CircleChatScreen({ circleId }: Props) {
     setChat(v);
     setMessages(v?.messages ?? []);
     setLoading(false);
+    // Opening the chat marks it read (drives other members' ✓✓ read receipts).
+    if (v) void repo.markChatRead(circleId, userId);
   }, [repo, circleId, userId]);
 
   useEffect(() => {
@@ -135,6 +141,16 @@ export function CircleChatScreen({ circleId }: Props) {
                   <View key={m.id} style={[styles.msg, styles.msgMine]}>
                     <View style={[styles.bubble, styles.bubbleMine]}>
                       <Text style={styles.txMine}>{m.text}</Text>
+                      {!m.id.startsWith('local-') ? (
+                        <View style={styles.ticks}>
+                          <IconCheck color={m.read ? TICK_READ : TICK_SENT} size={13} />
+                          {m.read ? (
+                            <View style={styles.tick2}>
+                              <IconCheck color={TICK_READ} size={13} />
+                            </View>
+                          ) : null}
+                        </View>
+                      ) : null}
                     </View>
                   </View>
                 ) : (
@@ -258,6 +274,8 @@ const styles = StyleSheet.create({
   who: { fontFamily: INTER_SEMIBOLD, fontSize: 12, color: colors.action.primary, marginBottom: 2 },
   tx: { fontSize: 14, lineHeight: 19, color: colors.text.primary },
   txMine: { fontSize: 14, lineHeight: 19, color: colors.text.inverse },
+  ticks: { flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center', marginTop: 3, marginRight: -1 },
+  tick2: { marginLeft: -7 },
 
   // input bar
   inputBar: {
