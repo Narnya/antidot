@@ -45,6 +45,9 @@ export function ManageActivityScreen({ activityId }: Props) {
   const [roster, setRoster] = useState<AttendanceEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  // Guests accepted in this session — kept visible as «✓ Принят» so accepting
+  // gives clear feedback instead of the row silently vanishing.
+  const [acceptedRows, setAcceptedRows] = useState<MemberCandidate[]>([]);
 
   const isHost = view ? view.activity.createdBy === userId || view.group.ownerId === userId : false;
 
@@ -67,11 +70,14 @@ export function ManageActivityScreen({ activityId }: Props) {
   }, [load]);
 
   const accept = useCallback(
-    async (candidateId: string) => {
+    async (candidate: MemberCandidate) => {
       if (!view) return;
-      setPendingId(candidateId);
+      setPendingId(candidate.userId);
       try {
-        await repo.confirmMember(view.group.id, candidateId);
+        await repo.confirmMember(view.group.id, candidate.userId);
+        setAcceptedRows((prev) =>
+          prev.some((r) => r.userId === candidate.userId) ? prev : [...prev, candidate],
+        );
         await load();
       } finally {
         setPendingId(null);
@@ -113,10 +119,27 @@ export function ManageActivityScreen({ activityId }: Props) {
         <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
           {/* Accept overflow guests → members */}
           <SectionLabel first>Заняли слот из ленты · overflow</SectionLabel>
-          {candidates.length === 0 ? (
+          {acceptedRows.length === 0 && candidates.length === 0 ? (
             <Text style={styles.emptyRow}>Пока никто не занял слот из ленты.</Text>
           ) : (
             <>
+              {/* Just-accepted guests — confirmed, non-vanishing feedback. */}
+              {acceptedRows.map((c) => (
+                <View key={c.userId} style={styles.row}>
+                  <View style={[styles.avLg, { backgroundColor: tint(c.userId) }]} />
+                  <View style={styles.txt}>
+                    <Text style={styles.t1}>Новый гость</Text>
+                    <Text style={styles.t2} numberOfLines={1}>
+                      Принят в круг · участие подтверждено
+                    </Text>
+                  </View>
+                  <View style={[styles.chip, styles.chipDone]}>
+                    <IconCheck color={colors.trust.verifiedText} size={14} />
+                    <Text style={styles.chipTextDone}>Принят</Text>
+                  </View>
+                </View>
+              ))}
+              {/* Still-pending guests to accept. */}
               {candidates.map((c) => (
                 <View key={c.userId} style={styles.row}>
                   <View style={[styles.avLg, { backgroundColor: tint(c.userId) }]} />
@@ -127,7 +150,7 @@ export function ManageActivityScreen({ activityId }: Props) {
                     </Text>
                   </View>
                   <Pressable
-                    onPress={() => accept(c.userId)}
+                    onPress={() => accept(c)}
                     disabled={pendingId === c.userId}
                     style={[styles.chip, styles.chipOn]}
                     accessibilityRole="button"
@@ -137,12 +160,14 @@ export function ManageActivityScreen({ activityId }: Props) {
                   </Pressable>
                 </View>
               ))}
-              <View style={styles.notice}>
-                <IconCheck color={colors.text.muted} size={16} />
-                <Text style={styles.noticeText}>
-                  Приняв гостя, ты добавляешь его в круг. Ему придёт «Участие подтверждено».
-                </Text>
-              </View>
+              {candidates.length > 0 ? (
+                <View style={styles.notice}>
+                  <IconCheck color={colors.text.muted} size={16} />
+                  <Text style={styles.noticeText}>
+                    Приняв гостя, ты добавляешь его в круг. Ему придёт «Участие подтверждено».
+                  </Text>
+                </View>
+              ) : null}
             </>
           )}
 
@@ -219,6 +244,9 @@ const styles = StyleSheet.create({
 
   attActions: { flexDirection: 'row', gap: 6 },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     borderWidth: 1,
     borderColor: colors.border.default,
     borderRadius: radius.full,
@@ -227,8 +255,10 @@ const styles = StyleSheet.create({
   },
   chipOn: { backgroundColor: colors.action.primary, borderColor: colors.action.primary },
   chipOff: { backgroundColor: colors.surface.default },
+  chipDone: { backgroundColor: colors.trust.verifiedBg, borderColor: colors.trust.verifiedBg },
   chipTextOn: { fontFamily: typography.badge.fontFamily, fontSize: 13, color: colors.action.primaryText },
   chipTextOff: { fontFamily: typography.badge.fontFamily, fontSize: 13, color: colors.text.secondary },
+  chipTextDone: { fontFamily: typography.badge.fontFamily, fontSize: 13, color: colors.trust.verifiedText },
 
   notice: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 2, marginBottom: 4, paddingHorizontal: 2 },
   noticeText: { ...typography.caption, color: colors.text.muted, flex: 1, lineHeight: 18 },
