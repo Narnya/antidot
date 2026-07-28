@@ -12,9 +12,18 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-nat
 import { colors, INTER_MEDIUM, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
 
 import { Button, CtaBar, Field, FieldLabel, IconCircles, IconTile, ScreenHeader } from '../../../components';
+import { WhenPicker } from '../components/WhenPicker';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { formatWhen } from '../lib/format';
 import type { ActivityKind, Group } from '../lib/model';
+
+/** Default start: tomorrow at 19:00. */
+function defaultWhen(): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(19, 0, 0, 0);
+  return d;
+}
 
 const KIND_OPTIONS: { kind: ActivityKind; label: string }[] = [
   { kind: 'football', label: '⚽ Футбол' },
@@ -25,31 +34,17 @@ const KIND_OPTIONS: { kind: ActivityKind; label: string }[] = [
   { kind: 'other', label: '✨ Другое' },
 ];
 
-function buildWhenPresets(): { label: string; iso: string }[] {
-  const at = (days: number, hour: number): string => {
-    const d = new Date();
-    d.setDate(d.getDate() + days);
-    d.setHours(hour, 0, 0, 0);
-    return d.toISOString();
-  };
-  return [
-    { label: 'Сегодня 19:00', iso: at(0, 19) },
-    { label: 'Завтра 19:00', iso: at(1, 19) },
-    { label: 'Через неделю', iso: at(7, 19) },
-  ];
-}
-
 export function CreateActivityScreen() {
   const router = useRouter();
   const { repo, userId } = useActivitiesRepo();
-  const [presets] = useState(buildWhenPresets);
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupIdx, setGroupIdx] = useState(0);
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState<ActivityKind>('football');
   const [area, setArea] = useState('');
   const [spots, setSpots] = useState(10);
-  const [whenIdx, setWhenIdx] = useState(0);
+  const [startsAt, setStartsAt] = useState<Date>(defaultWhen);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [overflow, setOverflow] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -69,7 +64,6 @@ export function CreateActivityScreen() {
     setGroupIdx(next);
     setArea(groups[next].area);
   };
-  const cycleWhen = () => setWhenIdx((i) => (i + 1) % presets.length);
 
   const handleSubmit = async () => {
     if (!group) {
@@ -93,7 +87,7 @@ export function CreateActivityScreen() {
         title: title.trim(),
         kind,
         area: area.trim(),
-        startsAt: presets[whenIdx].iso,
+        startsAt: startsAt.toISOString(),
         totalSpots: spots,
         overflow,
         exactLocation: null,
@@ -140,10 +134,10 @@ export function CreateActivityScreen() {
         <View style={styles.row2}>
           <View style={styles.rowWhen}>
             <FieldLabel>Когда</FieldLabel>
-            <Pressable style={styles.pick} onPress={cycleWhen} testID="create-when">
+            <Pressable style={styles.pick} onPress={() => setPickerOpen(true)} testID="create-when">
               <Ionicons name="calendar-outline" size={18} color={colors.text.muted} />
               <Text style={styles.pickValue} numberOfLines={1}>
-                {formatWhen(presets[whenIdx].iso)}
+                {formatWhen(startsAt.toISOString())}
               </Text>
             </Pressable>
           </View>
@@ -208,6 +202,13 @@ export function CreateActivityScreen() {
           onPress={handleSubmit}
         />
       </CtaBar>
+
+      <WhenPicker
+        visible={pickerOpen}
+        value={startsAt}
+        onChange={setStartsAt}
+        onClose={() => setPickerOpen(false)}
+      />
     </View>
   );
 }
