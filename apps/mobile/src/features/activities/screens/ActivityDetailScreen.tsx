@@ -325,6 +325,10 @@ function LocationEditor({
   const [value, setValue] = useState(location ?? '');
   const [saving, setSaving] = useState(false);
   const dirty = value.trim() !== (location ?? '').trim();
+  // A place is currently saved (either loaded or just saved) when there's nothing
+  // pending and the field isn't empty — surfaces a clear «сохранено» state instead
+  // of just dimming the button.
+  const saved = !dirty && value.trim().length > 0;
 
   const handleSave = async () => {
     setSaving(true);
@@ -334,6 +338,8 @@ function LocationEditor({
       setSaving(false);
     }
   };
+
+  const label = saving ? 'Сохраняем…' : saved ? '✓ Место сохранено' : 'Сохранить место';
 
   return (
     <View style={styles.hostCard}>
@@ -351,14 +357,14 @@ function LocationEditor({
         disabled={!dirty || saving}
         style={({ pressed }) => [
           styles.hostSave,
-          (!dirty || saving) && styles.hostSaveDisabled,
+          saved && !saving ? styles.hostSaveDone : (!dirty || saving) && styles.hostSaveDisabled,
           pressed && dirty && !saving && styles.buttonPressed,
         ]}
         accessibilityRole="button"
         accessibilityState={{ disabled: !dirty || saving }}
         testID="detail-location-save"
       >
-        <Text style={styles.hostSaveText}>{saving ? 'Сохраняем…' : 'Сохранить место'}</Text>
+        <Text style={[styles.hostSaveText, saved && !saving && styles.hostSaveDoneText]}>{label}</Text>
       </Pressable>
     </View>
   );
@@ -516,7 +522,9 @@ const styles = StyleSheet.create({
     marginTop: spacing[1],
   },
   hostSaveDisabled: { opacity: 0.5 },
+  hostSaveDone: { backgroundColor: colors.trust.verifiedBg },
   hostSaveText: { ...typography.button, color: colors.action.primaryText },
+  hostSaveDoneText: { color: colors.trust.verifiedText },
   circleRow: {
     flexDirection: 'row',
     alignItems: 'center',
