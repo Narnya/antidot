@@ -117,10 +117,24 @@ export function ManageActivityScreen({ activityId }: Props) {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+          {/* Activity summary — so the screen reads as complete even when empty. */}
+          <View style={styles.summary}>
+            <Text style={styles.summaryBig}>
+              {view.spotsTaken} из {view.activity.totalSpots} мест занято
+            </Text>
+            <Text style={styles.summarySub}>
+              Круг «{view.group.name}» · {view.activity.area}
+              {view.activity.visibility === 'overflow' ? ' · открыта городу' : ''}
+            </Text>
+          </View>
+
           {/* Accept overflow guests → members */}
           <SectionLabel first>Заняли слот из ленты · overflow</SectionLabel>
           {acceptedRows.length === 0 && candidates.length === 0 ? (
-            <Text style={styles.emptyRow}>Пока никто не занял слот из ленты.</Text>
+            <Text style={styles.emptyRow}>
+              Пока никто не занял слот из ленты. Как только чужой займёт открытый слот, ты примешь
+              его в круг здесь.
+            </Text>
           ) : (
             <>
               {/* Just-accepted guests — confirmed, non-vanishing feedback. */}
@@ -174,7 +188,9 @@ export function ManageActivityScreen({ activityId }: Props) {
           {/* Attendance — who showed up */}
           <SectionLabel>Кто пришёл</SectionLabel>
           {roster.length === 0 ? (
-            <Text style={styles.emptyRow}>Пока никто не записался.</Text>
+            <Text style={styles.emptyRow}>
+              Пока никто не записался на встречу. После встречи здесь отметишь, кто пришёл.
+            </Text>
           ) : (
             roster.map((e) => {
               const busy = pendingId === e.userId;
@@ -243,6 +259,18 @@ const styles = StyleSheet.create({
   t2: { fontSize: 13, color: colors.text.secondary, marginTop: 2, fontFamily: typography.caption.fontFamily },
 
   attActions: { flexDirection: 'row', gap: 6 },
+  summary: {
+    backgroundColor: colors.surface.default,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    borderRadius: radius.lg,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginTop: 6,
+  },
+  summaryBig: { fontFamily: typography.badge.fontFamily, fontSize: 16, color: colors.text.primary },
+  summarySub: { fontSize: 13, color: colors.text.secondary, marginTop: 3, fontFamily: typography.caption.fontFamily },
+
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
