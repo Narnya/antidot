@@ -1,11 +1,12 @@
 // ACT / pull payoff — «Место за тобой» (mockup frame N). The success screen after
 // claiming a slot: a big check, the activity line, and — the payoff — the EXACT
 // meeting location revealed (Инв. 1: visible only to those who claimed this
-// activity). «Добавить в календарь» is a stub for now; «К активности» returns to
-// the detail.
+// activity). «Добавить в календарь» opens a pre-filled calendar event (Google
+// Calendar template URL — works on web + native via Linking); «К активности»
+// returns to the detail.
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, PLAYFAIR_FAMILY, radius, spacing, typography } from '@social-events/ui';
 
@@ -42,6 +43,23 @@ export function ClaimSuccessScreen({ activityId }: Props) {
   }, [repo, activityId, userId]);
 
   const goToActivity = () => router.replace(`/activity/${activityId}`);
+
+  // Open a pre-filled calendar event. The exact place is included only when it's
+  // been revealed to this claimant (Инв. 1) — otherwise just the area.
+  const addToCalendar = useCallback(() => {
+    if (!view) return;
+    const start = new Date(view.activity.startsAt);
+    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000); // default 2h
+    const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const place = location ?? view.activity.area;
+    const url =
+      'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+      `&text=${encodeURIComponent(view.activity.title)}` +
+      `&dates=${stamp(start)}/${stamp(end)}` +
+      `&location=${encodeURIComponent(place)}` +
+      `&details=${encodeURIComponent(`Круг «${view.group.name}»`)}`;
+    void Linking.openURL(url);
+  }, [view, location]);
 
   return (
     <View style={styles.root}>
@@ -84,7 +102,12 @@ export function ClaimSuccessScreen({ activityId }: Props) {
             )}
 
             <View style={styles.calBtn}>
-              <Button label="Добавить в календарь" variant="ghost" icon={<IconCalendar color={colors.text.primary} size={18} />} />
+              <Button
+                label="Добавить в календарь"
+                variant="ghost"
+                onPress={addToCalendar}
+                icon={<IconCalendar color={colors.text.primary} size={18} />}
+              />
             </View>
           </ScrollView>
 
