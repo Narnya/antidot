@@ -3,6 +3,7 @@
 // «Аккаунт» (Выйти / Удалить аккаунт), then a privacy notice. Blocked users are
 // shown as «Скрытый участник» — never their real name (Inv. 3/12).
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -10,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, INTER_MEDIUM, INTER_SEMIBOLD, radius, spacing, typography } from '@social-events/ui';
 
-import { Button, IconTile, ScreenHeader, SectionLabel } from '../../../components';
+import { Button, IconShield, IconTile, ScreenHeader, SectionLabel } from '../../../components';
 import { useAuthSession } from '../../auth';
 import type { Profile } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
@@ -72,7 +73,20 @@ export function SettingsScreen() {
         {loading ? (
           <ActivityIndicator color={colors.text.muted} style={{ alignSelf: 'flex-start' }} />
         ) : blocked.length === 0 ? (
-          <Text style={styles.emptyRow}>Вы никого не заблокировали.</Text>
+          // Empty is the common case — a lone gray line read as unfinished, so give
+          // it a real card (matches the account rows below and the /manage empty state).
+          <View style={[styles.listrow, styles.blockedEmpty]}>
+            <IconTile>
+              <IconShield color={colors.action.primary} size={21} />
+            </IconTile>
+            <View style={styles.rowTxt}>
+              <Text style={styles.t1}>Список пуст</Text>
+              <Text style={[styles.t2, styles.blockedEmptySub]}>
+                Заблокируешь кого-то — он исчезнет из твоих активностей и чатов. Разблокировать
+                можно здесь.
+              </Text>
+            </View>
+          </View>
         ) : (
           blocked.map((p, i) => (
             <View key={p.userId} style={styles.listrow}>
@@ -171,6 +185,10 @@ export function SettingsScreen() {
             просто исчезает из состава.
           </Text>
         </View>
+
+        {/* Push the footer to the bottom on short content; anchors the screen. */}
+        <View style={styles.footerSpacer} />
+        <Text style={styles.footer}>Antidot · версия {Constants.expoConfig?.version ?? '0.0.0'}</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -178,8 +196,17 @@ export function SettingsScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background.default },
-  body: { paddingHorizontal: spacing[6], paddingTop: spacing[1], paddingBottom: spacing[8] },
+  body: { paddingHorizontal: spacing[6], paddingTop: spacing[1], paddingBottom: spacing[8], flexGrow: 1 },
   emptyRow: { ...typography.body, color: colors.text.muted, paddingVertical: spacing[1] },
+  blockedEmpty: { alignItems: 'flex-start' },
+  blockedEmptySub: { lineHeight: 18 },
+  footerSpacer: { flexGrow: 1, minHeight: spacing[6] },
+  footer: {
+    ...typography.caption,
+    color: colors.text.muted,
+    textAlign: 'center',
+    paddingBottom: spacing[2],
+  },
 
   listrow: {
     flexDirection: 'row',
