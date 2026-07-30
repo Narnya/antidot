@@ -25,18 +25,19 @@ import {
   ScreenHeader,
 } from '../../../components';
 import { useGoBack } from '../../../lib/useGoBack';
-import type { Profile } from '../data/repository';
+import type { Profile, TrustBadgeKey } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
 const GREEN = colors.action.primary;
 
 type Props = { profileUserId?: string };
 
-const BADGES = [
-  { key: 'verified', label: 'Проверен', Icon: IconShield },
-  { key: 'reliable', label: 'Надёжный участник', Icon: IconCheck },
-  { key: 'hosted', label: 'Проводил встречи', Icon: IconUsers },
-] as const;
+// Soft badges are shown ONLY when earned (profile.badges) — never a blanket set.
+const BADGE_META: Record<TrustBadgeKey, { label: string; Icon: typeof IconShield }> = {
+  verified: { label: 'Проверен', Icon: IconShield },
+  reliable: { label: 'Надёжный участник', Icon: IconCheck },
+  hosted: { label: 'Проводил встречи', Icon: IconUsers },
+};
 
 export function ProfileScreen({ profileUserId }: Props) {
   const router = useRouter();
@@ -60,16 +61,21 @@ export function ProfileScreen({ profileUserId }: Props) {
   const name = profile?.displayName ?? 'Без имени';
   const initial = name.trim().charAt(0).toUpperCase() || '·';
 
-  const badges = (
-    <View style={styles.badgeWrap}>
-      {BADGES.map(({ key, label, Icon }) => (
-        <View key={key} style={styles.badge}>
-          <Icon color={GREEN} size={13} />
-          <Text style={styles.badgeText}>{label}</Text>
-        </View>
-      ))}
-    </View>
-  );
+  const earnedBadges = profile?.badges ?? [];
+  const badges =
+    earnedBadges.length > 0 ? (
+      <View style={styles.badgeWrap}>
+        {earnedBadges.map((key) => {
+          const { label, Icon } = BADGE_META[key];
+          return (
+            <View key={key} style={styles.badge}>
+              <Icon color={GREEN} size={13} />
+              <Text style={styles.badgeText}>{label}</Text>
+            </View>
+          );
+        })}
+      </View>
+    ) : null;
 
   const profTop = (
     <View style={styles.profTop}>
@@ -122,6 +128,21 @@ export function ProfileScreen({ profileUserId }: Props) {
           showsVerticalScrollIndicator={false}
         >
           {profTop}
+
+          {/* Fresh self profile (no «О себе» yet) — a soft, honest hint instead of
+              a bare empty column. Explains that the profile fills in with activity. */}
+          {isSelf && !profile?.bio ? (
+            <View style={styles.selfHint}>
+              <View style={styles.selfHintIc}>
+                <IconUsers color={GREEN} size={26} />
+              </View>
+              <Text style={styles.selfHintTitle}>Профиль наполняется сам</Text>
+              <Text style={styles.selfHintText}>
+                Приходи на активности — здесь появятся твои круги, встречи и ритм. Мягкие бейджи
+                добавляются, когда ты их заработал.
+              </Text>
+            </View>
+          ) : null}
 
           {!isSelf && profile?.sharedContext ? (
             <View style={styles.section}>
@@ -271,6 +292,32 @@ const styles = StyleSheet.create({
 
   // sections
   section: { paddingHorizontal: spacing[6], marginTop: 22 },
+
+  // soft self empty hint (fresh profile, no «О себе» yet)
+  selfHint: {
+    marginHorizontal: spacing[6],
+    marginTop: 26,
+    alignItems: 'center',
+    paddingHorizontal: spacing[4],
+  },
+  selfHintIc: {
+    width: 66,
+    height: 66,
+    borderRadius: radius.xl,
+    backgroundColor: colors.trust.verifiedBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  selfHintTitle: { fontFamily: PLAYFAIR_FAMILY, fontSize: 20, letterSpacing: -0.3, color: colors.action.primary },
+  selfHintText: {
+    fontSize: 14.5,
+    lineHeight: 21,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginTop: 10,
+  },
+
   label: {
     fontFamily: typography.badge.fontFamily,
     fontSize: 13,

@@ -26,6 +26,7 @@ import type {
   PullMetrics,
   RhythmDay,
   RhythmView,
+  TrustBadgeKey,
   UpsertProfileInput,
 } from './repository';
 
@@ -430,10 +431,27 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       bio: string | null;
       interests: string[] | null;
     };
+    // Soft badges — earned only, never blanket (Inv. 3). Computed from real data
+    // the caller can see under RLS (accurate for self; conservative for others —
+    // we under-show rather than fabricate). `verified` has no live signal yet.
+    const badges: TrustBadgeKey[] = [];
+    const { count: owned } = await supabase
+      .from('groups')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', r.id);
+    if ((owned ?? 0) > 0) badges.push('hosted');
+    const { count: attended } = await supabase
+      .from('slot_claims')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', r.id)
+      .eq('status', 'attended');
+    if ((attended ?? 0) >= 2) badges.push('reliable');
+
     return {
       userId: r.id,
       displayName: r.display_name,
       area: r.area,
+      badges,
       bio: r.bio,
       interests: r.interests ?? [],
     };

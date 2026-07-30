@@ -236,6 +236,7 @@ const profiles: Profile[] = [
     userId: 'me',
     displayName: 'Рафаэль',
     area: 'Санкт-Петербург · Приморский',
+    badges: ['verified', 'reliable', 'hosted'],
     bio: 'Играю по четвергам, люблю настолки и утренний бег вдоль залива.',
     interests: ['Спорт', 'Настолки', 'Бег'],
     stats: { circles: 2, meetings: 14, rhythmWeeks: 6 },
@@ -244,10 +245,12 @@ const profiles: Profile[] = [
     userId: 'u3',
     displayName: 'Аня',
     area: 'Санкт-Петербург · Приморский',
+    badges: ['verified', 'hosted'],
     bio: 'Организую футбол по четвергам уже год. Всем рада 🙂',
     sharedContext: { activities: 2, circleName: 'Четверговый футбол' },
   },
-  { userId: 'guest1', displayName: 'Новый гость', area: null },
+  // Fresh guest — no earned badges (verifies the «hide unearned» path).
+  { userId: 'guest1', displayName: 'Новый гость', area: null, badges: [] },
 ];
 
 // T5 — in-memory exact meeting locations (activityId → exact spot). Revealed only

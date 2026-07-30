@@ -124,11 +124,17 @@ export interface CreateReportInput {
   note: string | null;
 }
 
+/** Soft, non-numeric positive trust badges (Inv. 3). Shown ONLY when earned —
+ *  never a blanket set, never a negative label. `verified` has no live signal yet. */
+export type TrustBadgeKey = 'verified' | 'reliable' | 'hosted';
+
 /** Minimal safe profile — display name + area only (no sensitive fields). */
 export interface Profile {
   userId: Id;
   displayName: string;
   area: string | null;
+  /** Earned soft badges. Absent/empty → no badge row (do not fabricate trust). */
+  badges?: TrustBadgeKey[] | null;
   /** Free-text «О себе» (optional safe field; absent on minimal/legacy rows). */
   bio?: string | null;
   /** Interest chips (safe tags — not a searchable people catalog, Inv. 13). */
