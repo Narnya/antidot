@@ -75,6 +75,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     (async () => {
       try {
         await loadSession();
+        /*DEVLOGIN*/ if (__DEV__ && process.env.EXPO_PUBLIC_DEV_LOGIN === '1') {
+          const { data: s } = await supabase.auth.getSession();
+          if (!s.session) {
+            await supabase.auth.signInWithPassword({
+              email: process.env.EXPO_PUBLIC_DEV_EMAIL ?? '',
+              password: process.env.EXPO_PUBLIC_DEV_PASSWORD ?? '',
+            });
+          }
+        }
       } finally {
         if (!cancelled) {
           setIsLoading(false);

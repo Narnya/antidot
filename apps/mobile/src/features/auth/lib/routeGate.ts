@@ -66,9 +66,15 @@ export type GateDecision =
 const PREVIEW_UNLOCK =
   typeof __DEV__ !== 'undefined' && __DEV__ && process.env.EXPO_PUBLIC_PREVIEW === '1';
 
+/*DEVLOGIN*/ const DEV_LOGIN =
+  typeof __DEV__ !== 'undefined' && __DEV__ && process.env.EXPO_PUBLIC_DEV_LOGIN === '1';
+
 export function decideRouteAccess(group: GroupKind, input: GateInput): GateDecision {
   if (PREVIEW_UNLOCK) {
     return { kind: 'allow' };
+  }
+  /*DEVLOGIN*/ if (DEV_LOGIN) {
+    input = { ...input, hasBetaAccess: true, isOnboardedPlaceholder: true };
   }
 
   if (input.isLoading) {
