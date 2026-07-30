@@ -22,6 +22,7 @@ import { colors, INTER_MEDIUM, INTER_SEMIBOLD, radius, shadows, spacing, typogra
 
 import { Ionicons } from '@expo/vector-icons';
 
+import { useGoBack } from '../../../lib/useGoBack';
 import { AppTextInput } from '../../../components';
 
 import type { ActivityView } from '../data/repository';
@@ -38,6 +39,7 @@ type Props = { activityId: string };
 export function ActivityDetailScreen({ activityId }: Props) {
   const { repo, userId } = useActivitiesRepo();
   const router = useRouter();
+  const goBack = useGoBack();
   const [view, setView] = useState<ActivityView | null>(null);
   const [location, setLocation] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -104,7 +106,7 @@ export function ActivityDetailScreen({ activityId }: Props) {
       {/* Floating header — always accessible over the full-bleed hero. */}
       <View style={[styles.floatRow, { top: insets.top + spacing[2] }]} pointerEvents="box-none">
         <Pressable
-          onPress={() => router.back()}
+          onPress={goBack}
           style={styles.iconBtn}
           accessibilityRole="button"
           accessibilityLabel="Назад"

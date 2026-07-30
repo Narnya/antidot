@@ -4,13 +4,13 @@
 // shown as «Скрытый участник» — never their real name (Inv. 3/12).
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, INTER_MEDIUM, INTER_SEMIBOLD, radius, spacing, typography } from '@social-events/ui';
 
+import { useGoBack } from '../../../lib/useGoBack';
 import { Button, IconShield, IconTile, ScreenHeader, SectionLabel } from '../../../components';
 import { useAuthSession } from '../../auth';
 import type { Profile } from '../data/repository';
@@ -19,7 +19,7 @@ import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 const AVATAR_TINTS = ['#D3C4B2', '#C9BDA9', '#D9CBB8', '#C2B4A0'];
 
 export function SettingsScreen() {
-  const router = useRouter();
+  const goBack = useGoBack();
   const { repo, userId } = useActivitiesRepo();
   const { signOut, isSigningOut } = useAuthSession();
 
@@ -66,7 +66,7 @@ export function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScreenHeader title="Настройки" onBack={() => router.back()} />
+      <ScreenHeader title="Настройки" onBack={goBack} />
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <SectionLabel first>Заблокированные</SectionLabel>

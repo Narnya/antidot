@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, INTER_SEMIBOLD, PLAYFAIR_FAMILY, spacing, typography } from '@social-events/ui';
 
+import { useGoBack } from '../../../lib/useGoBack';
 import { Button, IconTile } from '../../../components';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
@@ -17,17 +18,18 @@ type Props = { circleId: string; circleName: string };
 
 export function CircleMembershipScreen({ circleId, circleName }: Props) {
   const router = useRouter();
+  const goBack = useGoBack();
   const insets = useSafeAreaInsets();
   const { repo, userId } = useActivitiesRepo();
   const [busy, setBusy] = useState(false);
 
-  const close = () => router.back();
+  const close = goBack;
 
   const pause = async () => {
     setBusy(true);
     try {
       await repo.pauseMembership(circleId, userId);
-      router.back();
+      goBack();
     } finally {
       setBusy(false);
     }

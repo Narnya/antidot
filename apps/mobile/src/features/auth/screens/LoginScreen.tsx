@@ -3,18 +3,18 @@
 // fields, «Продолжить» / «Отправить код заново», and a privacy notice. On verify the
 // SDK sets the session and the route gate takes over.
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '@social-events/ui';
 
+import { useGoBack } from '../../../lib/useGoBack';
 import { BrandMini, Button, Field, FieldLabel, HeroTitle, ScreenHeader } from '../../../components';
 import { sendEmailCode, verifyEmailCode } from '../actions/otpAuth';
 import { isValidEmail } from '../lib/auth';
 
 export function LoginScreen() {
-  const router = useRouter();
+  const goBack = useGoBack('/welcome');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
@@ -50,7 +50,7 @@ export function LoginScreen() {
 
   return (
     <View style={styles.root}>
-      <ScreenHeader onBack={() => router.back()} />
+      <ScreenHeader onBack={goBack} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

@@ -9,6 +9,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 
 import { colors, spacing, typography } from '@social-events/ui';
 
+import { useGoBack } from '../../../lib/useGoBack';
 import { BrandMini, Button, Field, FieldLabel, HeroTitle, ScreenHeader } from '../../../components';
 import { submitWaitlistPlaceholder } from '../lib/waitlistPlaceholder';
 import { validateWaitlistInput } from '../lib/waitlistValidation';
@@ -21,6 +22,7 @@ type UiState =
 
 export function WaitlistScreen() {
   const router = useRouter();
+  const goBack = useGoBack('/welcome');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
@@ -60,7 +62,7 @@ export function WaitlistScreen() {
 
   return (
     <View style={styles.root}>
-      <ScreenHeader onBack={() => router.back()} />
+      <ScreenHeader onBack={goBack} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={styles.body}

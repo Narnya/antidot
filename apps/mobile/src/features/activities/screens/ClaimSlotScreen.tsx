@@ -11,6 +11,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View
 
 import { colors, INTER_SEMIBOLD, radius, spacing, typography } from '@social-events/ui';
 
+import { useGoBack } from '../../../lib/useGoBack';
 import { AppTextInput, Button, CtaBar, FieldLabel, IconCheck, IconPin, ScreenHeader } from '../../../components';
 import type { ActivityView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
@@ -29,6 +30,7 @@ type Props = { activityId: string };
 
 export function ClaimSlotScreen({ activityId }: Props) {
   const router = useRouter();
+  const goBack = useGoBack();
   const { repo, userId } = useActivitiesRepo();
   const [view, setView] = useState<ActivityView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,7 @@ export function ClaimSlotScreen({ activityId }: Props) {
 
   return (
     <View style={styles.root}>
-      <ScreenHeader title="Занять место" onBack={() => router.back()} />
+      <ScreenHeader title="Занять место" onBack={goBack} />
 
       {loading || !view ? (
         <View style={styles.center}>

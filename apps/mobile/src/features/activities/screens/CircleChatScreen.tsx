@@ -7,13 +7,13 @@
 // header until the `circle_messages` table + RLS + Realtime land). Sending appends
 // an ephemeral local bubble — NOT persisted yet.
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, INTER_SEMIBOLD, PLAYFAIR_FAMILY, radius, shadows, spacing, typography } from '@social-events/ui';
 
+import { useGoBack } from '../../../lib/useGoBack';
 import { AppTextInput, IconChat, IconCheck, IconClock, IconSend } from '../../../components';
 
 // Read-receipt tick colours on the (dark green) own bubble.
@@ -40,7 +40,7 @@ function membersWord(n: number) {
 type Props = { circleId: string };
 
 export function CircleChatScreen({ circleId }: Props) {
-  const router = useRouter();
+  const goBack = useGoBack();
   const insets = useSafeAreaInsets();
   const { repo, userId } = useActivitiesRepo();
   const [chat, setChat] = useState<CircleChatView | null>(null);
@@ -86,7 +86,7 @@ export function CircleChatScreen({ circleId }: Props) {
       <SafeAreaView edges={['top']} style={styles.top}>
         <View style={styles.header}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={goBack}
             style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel="Назад"

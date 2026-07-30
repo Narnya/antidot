@@ -8,6 +8,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, INTER_MEDIUM, radius, spacing, typography } from '@social-events/ui';
 
+import { useGoBack } from '../../../lib/useGoBack';
 import { AppTextInput, Button, CtaBar, Field, FieldLabel, ScreenHeader } from '../../../components';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import type { CircleRhythm } from '../lib/model';
@@ -21,6 +22,7 @@ const RHYTHMS: { v: CircleRhythm; label: string }[] = [
 
 export function CreateCircleScreen() {
   const router = useRouter();
+  const goBack = useGoBack();
   const { repo, userId } = useActivitiesRepo();
   const [name, setName] = useState('');
   const [area, setArea] = useState('');
@@ -57,7 +59,7 @@ export function CreateCircleScreen() {
 
   return (
     <View style={styles.root}>
-      <ScreenHeader title="Новый круг" onBack={() => router.back()} />
+      <ScreenHeader title="Новый круг" onBack={goBack} />
 
       <ScrollView
         contentContainerStyle={styles.body}

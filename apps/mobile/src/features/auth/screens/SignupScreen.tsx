@@ -10,6 +10,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { colors, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
 
+import { useGoBack } from '../../../lib/useGoBack';
 import { BrandMini, HeroTitle, ScreenHeader } from '../../../components';
 import { signInWithProvider } from '../actions/otpAuth';
 
@@ -26,6 +27,7 @@ function GoogleLogo() {
 
 export function SignupScreen() {
   const router = useRouter();
+  const goBack = useGoBack('/welcome');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +41,7 @@ export function SignupScreen() {
 
   return (
     <View style={styles.root}>
-      <ScreenHeader onBack={() => router.back()} />
+      <ScreenHeader onBack={goBack} />
 
       <ScrollView
         contentContainerStyle={styles.body}

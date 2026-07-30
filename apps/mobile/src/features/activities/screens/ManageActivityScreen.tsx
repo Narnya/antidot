@@ -16,6 +16,7 @@ import { colors, PLAYFAIR_FAMILY, radius, spacing, typography } from '@social-ev
 
 import { Button, IconChat, IconCheck, IconUsers, ScreenHeader, SectionLabel } from '../../../components';
 import type { ActivityView, AttendanceEntry, AttendanceMark, MemberCandidate } from '../data/repository';
+import { useGoBack } from '../../../lib/useGoBack';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { formatWhen } from '../lib/format';
 
@@ -39,6 +40,7 @@ type Props = { activityId: string };
 
 export function ManageActivityScreen({ activityId }: Props) {
   const router = useRouter();
+  const goBack = useGoBack();
   const { repo, userId } = useActivitiesRepo();
   const [view, setView] = useState<ActivityView | null>(null);
   const [candidates, setCandidates] = useState<MemberCandidate[]>([]);
@@ -114,7 +116,7 @@ export function ManageActivityScreen({ activityId }: Props) {
       <ScreenHeader
         title={view?.activity.title ?? 'Управление'}
         subtitle={view ? `${formatWhen(view.activity.startsAt)} · управление` : undefined}
-        onBack={() => router.back()}
+        onBack={goBack}
       />
 
       {loading ? (

@@ -3,12 +3,12 @@
 // (round back button, reason radios, «Подробнее», «Также заблокировать», coral CTA
 // bar) and frame O for the sent state. We never reveal who reported (Inv. 6).
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
 
+import { useGoBack } from '../../../lib/useGoBack';
 import { AppTextInput, Button, CtaBar, FieldLabel, HeroTitle, ScreenHeader } from '../../../components';
 import type { ReportReason, ReportSubjectType } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
@@ -24,7 +24,7 @@ const REASONS: { v: ReportReason; label: string }[] = [
 type Props = { subjectType: ReportSubjectType; subjectId: string };
 
 export function ReportScreen({ subjectType, subjectId }: Props) {
-  const router = useRouter();
+  const goBack = useGoBack();
   const { repo, userId } = useActivitiesRepo();
   const [reason, setReason] = useState<ReportReason>('unsafe');
   const [note, setNote] = useState('');
@@ -68,7 +68,7 @@ export function ReportScreen({ subjectType, subjectId }: Props) {
           </View>
         </View>
         <CtaBar>
-          <Button label="Готово" onPress={() => router.back()} />
+          <Button label="Готово" onPress={goBack} />
         </CtaBar>
       </View>
     );
@@ -76,7 +76,7 @@ export function ReportScreen({ subjectType, subjectId }: Props) {
 
   return (
     <View style={styles.root}>
-      <ScreenHeader title="Пожаловаться" onBack={() => router.back()} />
+      <ScreenHeader title="Пожаловаться" onBack={goBack} />
 
       <ScrollView
         contentContainerStyle={styles.body}

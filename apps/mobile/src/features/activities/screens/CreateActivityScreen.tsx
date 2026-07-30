@@ -11,6 +11,7 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-nat
 
 import { colors, INTER_MEDIUM, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
 
+import { useGoBack } from '../../../lib/useGoBack';
 import { Button, CtaBar, Field, FieldLabel, IconCircles, IconTile, ScreenHeader } from '../../../components';
 import { WhenPicker } from '../components/WhenPicker';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
@@ -36,6 +37,7 @@ const KIND_OPTIONS: { kind: ActivityKind; label: string }[] = [
 
 export function CreateActivityScreen() {
   const router = useRouter();
+  const goBack = useGoBack();
   const { repo, userId } = useActivitiesRepo();
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupIdx, setGroupIdx] = useState(0);
@@ -101,7 +103,7 @@ export function CreateActivityScreen() {
 
   return (
     <View style={styles.root}>
-      <ScreenHeader title="Новая активность" onBack={() => router.back()} />
+      <ScreenHeader title="Новая активность" onBack={goBack} />
 
       <ScrollView
         contentContainerStyle={styles.body}

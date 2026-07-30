@@ -24,6 +24,7 @@ import {
   IconUsers,
   ScreenHeader,
 } from '../../../components';
+import { useGoBack } from '../../../lib/useGoBack';
 import type { Profile } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
@@ -39,6 +40,7 @@ const BADGES = [
 
 export function ProfileScreen({ profileUserId }: Props) {
   const router = useRouter();
+  const goBack = useGoBack();
   const { repo, userId } = useActivitiesRepo();
   const targetId = profileUserId && profileUserId.length > 0 ? profileUserId : userId;
   const isSelf = targetId === userId;
@@ -97,7 +99,7 @@ export function ProfileScreen({ profileUserId }: Props) {
         </View>
       ) : (
         <ScreenHeader
-          onBack={() => router.back()}
+          onBack={goBack}
           right={
             <IconButton
               onPress={() => router.push(`/report?type=user&id=${targetId}`)}

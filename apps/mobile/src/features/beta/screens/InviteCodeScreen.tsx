@@ -9,6 +9,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 
 import { colors, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
 
+import { useGoBack } from '../../../lib/useGoBack';
 import { BrandMini, Button, Field, FieldLabel, HeroTitle, ScreenHeader } from '../../../components';
 import { mobilePublicConfig } from '../../../config/env';
 import { validateInviteCode } from '../lib/inviteValidation';
@@ -18,6 +19,7 @@ type UiState = { status: 'idle' } | { status: 'loading' } | { status: 'error'; m
 
 export function InviteCodeScreen() {
   const router = useRouter();
+  const goBack = useGoBack('/welcome');
   const [code, setCode] = useState('');
   const [uiState, setUiState] = useState<UiState>({ status: 'idle' });
   const { grantBetaAccess } = useBetaAccess();
@@ -49,7 +51,7 @@ export function InviteCodeScreen() {
 
   return (
     <View style={styles.root}>
-      <ScreenHeader onBack={() => router.back()} />
+      <ScreenHeader onBack={goBack} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={styles.body}

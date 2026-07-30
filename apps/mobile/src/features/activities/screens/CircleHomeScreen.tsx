@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, INTER_SEMIBOLD, radius, shadows, spacing, typography } from '@social-events/ui';
 
+import { useGoBack } from '../../../lib/useGoBack';
 import { Button, HeroTitle, IconButton, IconTile, SectionLabel } from '../../../components';
 import type { CircleView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
@@ -37,6 +38,7 @@ export function CircleHomeScreen({ circleId }: Props) {
   const [view, setView] = useState<CircleView | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const goBack = useGoBack();
   const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {
@@ -63,7 +65,7 @@ export function CircleHomeScreen({ circleId }: Props) {
       )}
 
       <View style={[styles.floatBack, { top: insets.top + spacing[2] }]} pointerEvents="box-none">
-        <IconButton onPress={() => router.back()} label="Назад" testID="ch-back">
+        <IconButton onPress={goBack} label="Назад" testID="ch-back">
           <Ionicons name="chevron-back" size={22} color={colors.text.primary} />
         </IconButton>
       </View>
