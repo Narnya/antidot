@@ -12,9 +12,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, radius, spacing, typography } from '@social-events/ui';
+import { colors, PLAYFAIR_FAMILY, radius, spacing, typography } from '@social-events/ui';
 
-import { IconCheck, ScreenHeader, SectionLabel } from '../../../components';
+import { Button, IconChat, IconCheck, IconUsers, ScreenHeader, SectionLabel } from '../../../components';
 import type { ActivityView, AttendanceEntry, AttendanceMark, MemberCandidate } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { formatWhen } from '../lib/format';
@@ -50,19 +50,29 @@ export function ManageActivityScreen({ activityId }: Props) {
   const [acceptedRows, setAcceptedRows] = useState<MemberCandidate[]>([]);
 
   const isHost = view ? view.activity.createdBy === userId || view.group.ownerId === userId : false;
+  // Nothing to manage yet: no overflow guests to accept and nobody on the roster.
+  // The two thin sections would collapse to bare gray text on empty ivory, so we
+  // show one designed empty state instead (mirrors the approved Feed empty state).
+  const isEmpty =
+    acceptedRows.length === 0 && candidates.length === 0 && roster.length === 0;
 
   const load = useCallback(async () => {
-    const v = await repo.getActivity(activityId, userId);
-    setView(v);
-    if (v && (v.activity.createdBy === userId || v.group.ownerId === userId)) {
-      const [cands, entries] = await Promise.all([
-        repo.listMemberCandidates(v.group.id),
-        repo.listClaimants(activityId, userId),
-      ]);
-      setCandidates(cands);
-      setRoster(entries);
+    // Always resolve loading — a thrown repo call (e.g. an expired token → 401)
+    // must not leave the screen spinning forever.
+    try {
+      const v = await repo.getActivity(activityId, userId);
+      setView(v);
+      if (v && (v.activity.createdBy === userId || v.group.ownerId === userId)) {
+        const [cands, entries] = await Promise.all([
+          repo.listMemberCandidates(v.group.id),
+          repo.listClaimants(activityId, userId),
+        ]);
+        setCandidates(cands);
+        setRoster(entries);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [repo, activityId, userId]);
 
   useEffect(() => {
@@ -128,6 +138,28 @@ export function ManageActivityScreen({ activityId }: Props) {
             </Text>
           </View>
 
+          {isEmpty ? (
+            <View style={styles.emptyWrap}>
+              <View style={styles.emptyIc}>
+                <IconUsers color={colors.action.primary} size={34} />
+              </View>
+              <Text style={styles.emptyTitle}>Гостей пока нет</Text>
+              <Text style={styles.emptySub}>
+                {view.activity.visibility === 'overflow'
+                  ? 'Активность открыта городу. Как только кто-то займёт открытый слот из ленты — примешь его в круг здесь. После встречи отметишь, кто пришёл.'
+                  : 'Как только кто-то займёт слот, увидишь его здесь. После встречи отметишь, кто пришёл.'}
+              </Text>
+              <View style={styles.emptyCta}>
+                <Button
+                  label="Позвать своих в чат"
+                  variant="ghost"
+                  icon={<IconChat color={colors.text.primary} size={18} />}
+                  onPress={() => router.push(`/chat/${view.group.id}`)}
+                />
+              </View>
+            </View>
+          ) : (
+            <>
           {/* Accept overflow guests → members */}
           <SectionLabel first>Заняли слот из ленты · overflow</SectionLabel>
           {acceptedRows.length === 0 && candidates.length === 0 ? (
@@ -229,6 +261,8 @@ export function ManageActivityScreen({ activityId }: Props) {
               );
             })
           )}
+            </>
+          )}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -239,7 +273,39 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.default },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
   empty: { ...typography.body, color: colors.text.muted, textAlign: 'center' },
-  body: { paddingHorizontal: spacing[6], paddingBottom: spacing[10] },
+  body: { paddingHorizontal: spacing[6], paddingBottom: spacing[10], flexGrow: 1 },
+
+  emptyWrap: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing[4],
+    paddingTop: spacing[6],
+    paddingBottom: spacing[10],
+  },
+  emptyIc: {
+    width: 78,
+    height: 78,
+    borderRadius: radius.xl,
+    backgroundColor: colors.trust.verifiedBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontFamily: PLAYFAIR_FAMILY,
+    fontSize: 25,
+    letterSpacing: -0.4,
+    color: colors.action.primary,
+  },
+  emptySub: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  emptyCta: { alignSelf: 'stretch', marginTop: 24 },
 
   row: {
     flexDirection: 'row',
