@@ -12,9 +12,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, INTER_SEMIBOLD, radius, shadows, spacing, typography } from '@social-events/ui';
+import { colors, INTER_SEMIBOLD, PLAYFAIR_FAMILY, radius, shadows, spacing, typography } from '@social-events/ui';
 
-import { AppTextInput, IconCheck, IconClock, IconSend } from '../../../components';
+import { AppTextInput, IconChat, IconCheck, IconClock, IconSend } from '../../../components';
 
 // Read-receipt tick colours on the (dark green) own bubble.
 const TICK_SENT = 'rgba(255,253,249,0.5)'; // ✓ sent, not yet read
@@ -128,9 +128,16 @@ export function CircleChatScreen({ circleId }: Props) {
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
           >
             {messages.length === 0 ? (
-              <Text style={styles.emptyText}>
-                Пока пусто. Напиши первым — участники круга увидят.
-              </Text>
+              <View style={styles.emptyWrap}>
+                <View style={styles.emptyIc}>
+                  <IconChat color={colors.action.primary} size={30} />
+                </View>
+                <Text style={styles.emptyTitle}>Пока тихо</Text>
+                <Text style={styles.emptySub}>
+                  Это чат круга — его видят только участники. Напиши первым: договоритесь о встрече
+                  и поделитесь деталями.
+                </Text>
+              </View>
             ) : (
               messages.map((m) =>
                 m.kind === 'system' ? (
@@ -243,8 +250,32 @@ const styles = StyleSheet.create({
   pt2: { fontSize: 12, color: '#4A5C50', marginTop: 1 },
 
   // messages
-  wrap: { paddingHorizontal: 18, paddingTop: 16, gap: 11 },
-  emptyText: { ...typography.body, fontSize: 14, color: colors.text.muted, textAlign: 'center', marginTop: 24 },
+  wrap: { paddingHorizontal: 18, paddingTop: 16, gap: 11, flexGrow: 1 },
+  // Empty chat — a designed centered state, not a lone gray line.
+  emptyWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing[6],
+    paddingBottom: spacing[10],
+  },
+  emptyIc: {
+    width: 78,
+    height: 78,
+    borderRadius: radius.xl,
+    backgroundColor: colors.trust.verifiedBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 22,
+  },
+  emptyTitle: { fontFamily: PLAYFAIR_FAMILY, fontSize: 25, letterSpacing: -0.4, color: colors.action.primary },
+  emptySub: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginTop: 12,
+  },
   sys: {
     alignSelf: 'center',
     backgroundColor: colors.surface.field,
