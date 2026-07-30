@@ -150,7 +150,21 @@ function Body({ view }: { view: CircleView }) {
             </View>
           </Pressable>
         ) : (
-          <Text style={styles.emptyRow}>Пока нет запланированных встреч</Text>
+          // No next meeting — a soft card (not a bare gray line) that points at the
+          // «Создать активность» CTA below for the host, or reassures a member.
+          <View style={[styles.listrow, styles.emptyCard]}>
+            <IconTile size={42}>
+              <Ionicons name="calendar-outline" size={20} color={colors.action.primary} />
+            </IconTile>
+            <View style={styles.rowTxt}>
+              <Text style={styles.t1}>Пока нет встреч</Text>
+              <Text style={styles.t2}>
+                {isOwner
+                  ? 'Создай активность — свои займут места, не хватит — откроешь городу.'
+                  : 'Загляни позже — хост назначит следующую встречу.'}
+              </Text>
+            </View>
+          </View>
         )}
 
         {isMember ? (
@@ -255,7 +269,7 @@ const styles = StyleSheet.create({
   actBody: { padding: spacing[4], gap: 3 },
   actTitle: { ...typography.section, fontSize: 16, color: colors.text.primary },
   actMeta: { ...typography.body, fontSize: 14.5, lineHeight: 20, color: colors.text.secondary },
-  emptyRow: { ...typography.body, color: colors.text.muted, paddingVertical: spacing[2] },
+  emptyCard: { alignItems: 'flex-start' },
 
   listrow: {
     flexDirection: 'row',
