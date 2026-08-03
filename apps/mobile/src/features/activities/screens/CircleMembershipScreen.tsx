@@ -22,25 +22,30 @@ export function CircleMembershipScreen({ circleId, circleName }: Props) {
   const insets = useSafeAreaInsets();
   const { repo, userId } = useActivitiesRepo();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const close = goBack;
 
   const pause = async () => {
     setBusy(true);
+    setError(null);
     try {
       await repo.pauseMembership(circleId, userId);
       goBack();
-    } finally {
+    } catch {
+      setError('Не удалось поставить на паузу. Попробуй ещё раз.');
       setBusy(false);
     }
   };
 
   const leave = async () => {
     setBusy(true);
+    setError(null);
     try {
       await repo.leaveCircle(circleId, userId);
       router.replace('/circles');
-    } finally {
+    } catch {
+      setError('Не удалось выйти из круга. Попробуй ещё раз.');
       setBusy(false);
     }
   };
@@ -93,6 +98,12 @@ export function CircleMembershipScreen({ circleId, circleName }: Props) {
           </Text>
         </View>
 
+        {error ? (
+          <Text style={styles.error} accessibilityRole="alert">
+            {error}
+          </Text>
+        ) : null}
+
         <Button label="Отмена" variant="ghost" onPress={close} />
       </View>
     </View>
@@ -130,4 +141,5 @@ const styles = StyleSheet.create({
 
   notice: { flexDirection: 'row', gap: 8, marginTop: 14, marginBottom: 18, paddingHorizontal: 2 },
   noticeText: { ...typography.caption, color: colors.text.muted, flex: 1, lineHeight: 18 },
+  error: { ...typography.body, fontSize: 14, color: colors.status.danger, textAlign: 'center', marginBottom: 12, paddingHorizontal: 2 },
 });
