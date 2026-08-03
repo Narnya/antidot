@@ -675,6 +675,11 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
     }[]) {
       out.push({ id: n.id, kind: n.kind, title: n.title, detail: n.detail ?? '', href: n.href });
     }
+    // Dedupe key for events that are BOTH pushed (stored via trigger, migration 016)
+    // AND derivable below. Once a stored row exists we skip re-deriving it, so a
+    // pushed «приняли в круг» / «место открыто» isn't shown twice. Before the
+    // triggers are applied there are no stored rows → derivation still shows them.
+    const storedKeys = new Set(out.map((n) => `${n.kind}::${n.href ?? ''}`));
 
     // «Тебя приняли в круг» — active non-owner memberships (you were host-confirmed).
     const { data: mem, error: me } = await supabase
@@ -687,6 +692,7 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
     if (me) throw new Error(me.message);
     for (const m of (mem ?? []) as unknown as { group_id: string; group: { name: string } | null }[]) {
       if (!m.group) continue;
+      if (storedKeys.has(`member_confirmed::/circle/${m.group_id}`)) continue; // already pushed
       out.push({
         id: `confirmed-${m.group_id}`,
         kind: 'member_confirmed',
@@ -721,6 +727,7 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
       );
       for (const c of claimRows) {
         if (!revealed.has(c.activity_id)) continue;
+        if (storedKeys.has(`location_open::/activity/${c.activity_id}`)) continue; // already pushed
         out.push({
           id: `location-${c.activity_id}`,
           kind: 'location_open',
