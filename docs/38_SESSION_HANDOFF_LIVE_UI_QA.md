@@ -138,13 +138,21 @@ rendered UI on live** (docs/37's 11/11 E2E drove the *repo/SQL*, not the UI).
    - ✅ **Foreign-profile view** — `/profile/2222…` («Аня») rendered guest mode:
      back+flag header, **locked «Написать»** («Будет доступно после общей встречи»,
      Инв. 2 — a non-interactive row, not a DM button), no unearned badges.
-   - ⏳ **Fresh onboarding `/start`** — the ONLY piece still needing a second,
-     **profile-less** `auth.users` row (the dev user has a profile, so `/start`
-     auto-advances). Get it via: user provides a confirmed email+password, OR admin
-     toggles email-confirm off on dev, OR create the row directly in `auth.users`
-     (bcrypt pw + `email_confirmed_at`, docs/37 §7). Then reuse the §10 injection to
-     drive `/start`.
-   Also **definitively resolved:** the feed is **not** broken on live — a fresh
+   - ✅ **Fresh onboarding `/start`** — done live **without** a second account, via
+     two reversible tricks (§11): the `/start` skip-check is `displayName.trim()
+     .length > 0`, so setting the dev profile's `display_name` to a **single space**
+     (passes the DB non-empty CHECK, reads as empty to the screen) makes the user
+     look fresh; and because the 8083 `DEV_LOGIN` gate override forces
+     `isOnboardedPlaceholder:true` (routeGate.ts:76), `/start` is unreachable there —
+     so onboarding was driven on a **second plain server (8084, live Supabase, no
+     DEV_LOGIN)** with the session **and** the beta placeholder
+     (`@antidot/dev_beta_access_granted_v1='true'`) injected. Drove slides → form →
+     «Далее»: `upsertProfile` wrote name/area/interests and redirected to `/feed`.
+     The submit **restored the profile to its exact backup** (display_name/area/
+     interests; bio never touched) — net-zero. A genuinely fresh `auth.users` row is
+     still nice-to-have for a from-scratch pass, but the flow itself is verified.
+   **All three guest sub-flows are now verified live through the real UI.** Also
+   **definitively resolved:** the feed is **not** broken on live — a fresh
    password-grant session returns 3 feed rows in ~0.7s; the earlier headless spinner
    was the stale-session artifact the §8 fix targets.
 2. **Backend/feature gaps** (from docs/37 §7 «Still open»): more pushed notification
@@ -223,9 +231,29 @@ app boots already-authed with no dev-login wait:
 3. **Drive** — click the actual `<button>` whose `textContent` matches (not a
    wrapping div); `Page.captureScreenshot` to verify; assert side-effects via REST.
 
-This is exactly how the §7 guest claim + foreign-profile were verified, and it's
-the mechanism to finish fresh-onboarding once a second `auth.users` row exists —
-mint **its** session the same way and inject. Python needs `websocket-client`
-(present) and, for the HTTPS curl on Python 3.14, an `ssl.CERT_NONE` context.
-Reset live state after mutating (the claim test did own-claim `DELETE` → re-claim,
-net-zero).
+This is exactly how the §7 guest claim + foreign-profile were verified. Python
+needs `websocket-client` (present) and, for the HTTPS curl on Python 3.14, an
+`ssl.CERT_NONE` context. Reset live state after mutating (the claim test did
+own-claim `DELETE` → re-claim, net-zero).
+
+## 11. Testing onboarding without a fresh user (the two blockers + tricks)
+
+Two things stop the dev user from seeing `/start`, each with a reversible workaround:
+
+1. **The screen skips users whose profile has a name.** `start.tsx` markes-onboarded
+   when `getProfile(userId).displayName.trim().length > 0`. The `profiles.display_name`
+   column has a **non-empty CHECK** (can't PATCH to `''`), but a **single space**
+   `" "` passes the constraint (length 1) yet `.trim()` is empty → the screen shows
+   the slides. Back up the row first; the onboarding submit rewrites display_name, so
+   entering the original values restores it exactly (verify against the backup).
+2. **The 8083 `DEV_LOGIN` gate override forces onboarded=true.** `routeGate.ts:76-78`
+   sets `hasBetaAccess:true, isOnboardedPlaceholder:true` whenever
+   `EXPO_PUBLIC_DEV_LOGIN==='1'`, so the onboarding group always redirects to `/feed`
+   there. Run a **second plain server** (`npx expo start --web --port 8084` with the
+   `.env` = live Supabase, **no** DEV_LOGIN) and drive that. Grant beta by injecting
+   the placeholder key `@antidot/dev_beta_access_granted_v1='true'` (AsyncStorage→
+   localStorage on web) alongside the session; the onboarding placeholder is
+   React-state-only (defaults false), so the gate then allows `/start`.
+
+Net effect: authed ✓ + beta ✓ + not-onboarded → `/start` allowed; the screen sees an
+empty-trim name → slides → form → submit writes the profile and redirects to `/feed`.
