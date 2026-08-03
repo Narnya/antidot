@@ -74,6 +74,7 @@ docs/37 §2 works, but to *act* (fill forms, click) we drive Chrome via CDP:
 | `f74cfc0` | **all 15 stack screens** | **back-arrow bug fix** — `useGoBack` (§4) |
 | `26b23c5` | **profile** | **earned-only trust badges** (§5) + soft self empty hint «Профиль наполняется сам» |
 | `cf66f3e` | **Circle Home** | designed «no next meeting» card (IconTile calendar + isOwner-conditional hint) instead of a bare gray line |
+| `16b7a35` | **8 data screens** | **infinite-spinner fix** — `try/catch/finally` + shared `LoadError` (§9); MyCircles gained a real zero-circles empty state |
 
 **Empty-state pattern (now house style):** center-stack of a **78×78 tile**
 (`radius.xl`, bg `trust.verifiedBg`) + **Playfair title** (`action.primary`) +
@@ -144,7 +145,35 @@ rendered UI on live** (docs/37's 11/11 E2E drove the *repo/SQL*, not the UI).
    `qaguest.antidot2026@gmail.com` exists in `auth.users` from a signup attempt —
    harmless, removable only via admin.
 
-## 8. Gotchas added this session
+## 8. Infinite-spinner class of bug (`16b7a35`)
+
+Walking the live feed, the list spun forever. Root cause was a **pattern**, not
+one screen: `const load = async () => { setX(await repo.foo()); setLoading(false) }`
+clears `loading` only on the success line — so if `repo.foo()` **throws**
+(expired session, dropped network, an RLS error) the screen spins forever with no
+recovery. A grep found **8 screens** with this shape (Feed, MyCircles,
+Notifications, Profile, Rhythm, CircleHome, ClaimSuccess, Login).
+
+Fix, applied uniformly: `setLoading(true); setError(false); try { … } catch {
+setError(true) } finally { setLoading(false) }` + a new shared
+`src/components/LoadError.tsx` (78×78 tile + Playfair «Не удалось загрузить» +
+«Повторить» → re-runs `load`). Use `inline` variant inside a scroll/list slot.
+MyCircles also got a proper zero-circles empty state (it had been showing the
+«нашёл свои круги» *success* notice to a user with none).
+
+**What was NOT the bug:** the feed RPC (`feed_open_activities`) returns data in
+~0.8s live, and the gate providers (`AuthProvider`, `BetaAccessProvider`) already
+clear their loading in a `finally` — verified. The perpetual «Проверяем сессию…»
+seen in **headless** is just the dev-login `signInWithPassword` round-trip being
+slow to warm up in a cold Chrome profile; on a real browser/device the gate
+resolves in ~1s. Don't chase it as a product bug.
+
+**Verify-harness note:** driving the *live* app headlessly is flaky because
+dev-login needs a long warmup and a persisted session; the fast, deterministic
+check is still the **mock preview (8082)** — Feed/MyCircles/Profile re-verified
+there for no-regression after this change.
+
+## 9. Gotchas added this session
 
 - **Empty states must be designed, not degraded.** Mockups drawn with data hide
   their empty branches; check every list/feed/chat screen's zero-data path.
