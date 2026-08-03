@@ -28,10 +28,15 @@ export function LoginScreen() {
     }
     setError(null);
     setLoading(true);
-    const r = await sendEmailCode(email);
-    setLoading(false);
-    if (r.ok) setSent(true);
-    else setError(r.error.message);
+    try {
+      const r = await sendEmailCode(email);
+      if (r.ok) setSent(true);
+      else setError(r.error.message);
+    } catch {
+      setError('Не удалось отправить код. Проверь связь и попробуй ещё раз.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleContinue = async () => {
@@ -42,10 +47,15 @@ export function LoginScreen() {
     }
     setError(null);
     setLoading(true);
-    const r = await verifyEmailCode(email, code);
-    setLoading(false);
-    if (!r.ok) setError(r.error.message);
-    // On success the session updates and the (public) gate redirects forward.
+    try {
+      const r = await verifyEmailCode(email, code);
+      if (!r.ok) setError(r.error.message);
+      // On success the session updates and the (public) gate redirects forward.
+    } catch {
+      setError('Не удалось проверить код. Проверь связь и попробуй ещё раз.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

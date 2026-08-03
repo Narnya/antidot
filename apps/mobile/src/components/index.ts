@@ -12,6 +12,7 @@ export { IconTile } from './IconTile';
 export { BrandMini } from './BrandMini';
 export { HeroTitle } from './HeroTitle';
 export { Button } from './Button';
+export { LoadError } from './LoadError';
 export {
   IconForYou,
   IconCircles,

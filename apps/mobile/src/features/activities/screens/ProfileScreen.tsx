@@ -22,6 +22,7 @@ import {
   IconShield,
   IconTile,
   IconUsers,
+  LoadError,
   ScreenHeader,
 } from '../../../components';
 import { useGoBack } from '../../../lib/useGoBack';
@@ -48,10 +49,18 @@ export function ProfileScreen({ profileUserId }: Props) {
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
-    setProfile(await repo.getProfile(targetId));
-    setLoading(false);
+    setLoading(true);
+    setError(false);
+    try {
+      setProfile(await repo.getProfile(targetId));
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [repo, targetId]);
 
   useEffect(() => {
@@ -122,6 +131,8 @@ export function ProfileScreen({ profileUserId }: Props) {
         <View style={styles.center}>
           <ActivityIndicator color={colors.text.muted} />
         </View>
+      ) : error ? (
+        <LoadError onRetry={() => void load()} />
       ) : (
         <ScrollView
           contentContainerStyle={styles.body}

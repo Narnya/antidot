@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, INTER_SEMIBOLD, radius, shadows, spacing, typography } from '@social-events/ui';
 
 import { useGoBack } from '../../../lib/useGoBack';
-import { Button, HeroTitle, IconButton, IconTile, SectionLabel } from '../../../components';
+import { Button, HeroTitle, IconButton, IconTile, LoadError, SectionLabel } from '../../../components';
 import type { CircleView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { formatWhen } from '../lib/format';
@@ -37,13 +37,21 @@ export function CircleHomeScreen({ circleId }: Props) {
   const { repo, userId } = useActivitiesRepo();
   const [view, setView] = useState<CircleView | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const router = useRouter();
   const goBack = useGoBack();
   const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {
-    setView(await repo.getCircle(circleId, userId));
-    setLoading(false);
+    setLoading(true);
+    setError(false);
+    try {
+      setView(await repo.getCircle(circleId, userId));
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [circleId, repo, userId]);
 
   useEffect(() => {
@@ -56,6 +64,8 @@ export function CircleHomeScreen({ circleId }: Props) {
         <View style={styles.center}>
           <ActivityIndicator color={colors.text.muted} />
         </View>
+      ) : error ? (
+        <LoadError onRetry={() => void load()} />
       ) : !view ? (
         <View style={styles.center}>
           <Text style={styles.empty}>Круг не найден.</Text>

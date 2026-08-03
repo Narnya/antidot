@@ -9,9 +9,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, INTER_SEMIBOLD, radius, shadows, spacing, typography } from '@social-events/ui';
+import { colors, INTER_SEMIBOLD, PLAYFAIR_FAMILY, radius, shadows, spacing, typography } from '@social-events/ui';
 
-import { IconButton, IconCircles, IconTile, ScreenHeader } from '../../../components';
+import { Button, IconButton, IconCircles, IconTile, LoadError, ScreenHeader } from '../../../components';
 import type { ActivityView, MyCircle } from '../data/repository';
 import { formatWhen } from '../lib/format';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
@@ -45,17 +45,28 @@ export function MyCirclesScreen() {
   const [circles, setCircles] = useState<MyCircle[]>([]);
   const [byGroup, setByGroup] = useState<Record<string, ActivityView[]>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
-    const [cs, acts] = await Promise.all([repo.listMyCircles(userId), repo.listMyActivities(userId)]);
-    const grouped: Record<string, ActivityView[]> = {};
-    for (const v of acts) (grouped[v.activity.groupId] ??= []).push(v);
-    for (const id of Object.keys(grouped)) {
-      grouped[id].sort((a, b) => a.activity.startsAt.localeCompare(b.activity.startsAt));
+    setLoading(true);
+    setError(false);
+    try {
+      const [cs, acts] = await Promise.all([
+        repo.listMyCircles(userId),
+        repo.listMyActivities(userId),
+      ]);
+      const grouped: Record<string, ActivityView[]> = {};
+      for (const v of acts) (grouped[v.activity.groupId] ??= []).push(v);
+      for (const id of Object.keys(grouped)) {
+        grouped[id].sort((a, b) => a.activity.startsAt.localeCompare(b.activity.startsAt));
+      }
+      setCircles(cs);
+      setByGroup(grouped);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
     }
-    setCircles(cs);
-    setByGroup(grouped);
-    setLoading(false);
   }, [repo, userId]);
 
   useEffect(() => {
@@ -76,6 +87,22 @@ export function MyCirclesScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.text.muted} />
+        </View>
+      ) : error ? (
+        <LoadError onRetry={() => void load()} />
+      ) : circles.length === 0 ? (
+        <View style={styles.empty}>
+          <IconTile size={78} round bg={colors.trust.verifiedBg}>
+            <IconCircles color={colors.action.primary} size={34} />
+          </IconTile>
+          <Text style={styles.emptyTitle}>Пока ни одного круга</Text>
+          <Text style={styles.emptySub}>
+            Круг появляется сам: займи слот на активности и приходи — или собери свой и открой
+            места городу.
+          </Text>
+          <View style={styles.emptyCta}>
+            <Button label="Создать круг" onPress={() => router.push('/circle/create')} />
+          </View>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
@@ -141,6 +168,16 @@ export function MyCirclesScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.default },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
+  emptyTitle: {
+    fontFamily: PLAYFAIR_FAMILY,
+    fontSize: 26,
+    letterSpacing: -0.4,
+    color: colors.action.primary,
+    marginTop: 24,
+  },
+  emptySub: { fontSize: 15, lineHeight: 22, color: colors.text.secondary, textAlign: 'center', marginTop: 12 },
+  emptyCta: { alignSelf: 'stretch', marginTop: 26 },
   body: { paddingHorizontal: spacing[6], paddingTop: spacing[2], paddingBottom: spacing[6] },
   card: {
     backgroundColor: colors.surface.default,

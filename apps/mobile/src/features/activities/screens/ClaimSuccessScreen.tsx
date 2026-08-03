@@ -10,7 +10,7 @@ import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from '
 
 import { colors, PLAYFAIR_FAMILY, radius, spacing, typography } from '@social-events/ui';
 
-import { Button, CtaBar, IconCalendar, IconCheck, IconPin } from '../../../components';
+import { Button, CtaBar, IconCalendar, IconCheck, IconPin, LoadError } from '../../../components';
 import type { ActivityView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { formatWhen } from '../lib/format';
@@ -23,24 +23,28 @@ export function ClaimSuccessScreen({ activityId }: Props) {
   const [view, setView] = useState<ActivityView | null>(null);
   const [location, setLocation] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    void (async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
       const [v, loc] = await Promise.all([
         repo.getActivity(activityId, userId),
         repo.getMeetingLocation(activityId, userId),
       ]);
-      if (active) {
-        setView(v);
-        setLocation(loc);
-        setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
+      setView(v);
+      setLocation(loc);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [repo, activityId, userId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const goToActivity = () => router.replace(`/activity/${activityId}`);
 
@@ -67,6 +71,8 @@ export function ClaimSuccessScreen({ activityId }: Props) {
         <View style={styles.center}>
           <ActivityIndicator color={colors.text.muted} />
         </View>
+      ) : error ? (
+        <LoadError onRetry={() => void load()} />
       ) : (
         <>
           <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>

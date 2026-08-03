@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, PLAYFAIR_FAMILY, radius, spacing, typography } from '@social-events/ui';
 
-import { IconCheck, IconTile, IconUsers, SectionLabel } from '../../../components';
+import { IconCheck, IconTile, IconUsers, LoadError, SectionLabel } from '../../../components';
 import type { RhythmView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
@@ -30,10 +30,18 @@ export function RhythmScreen() {
   const { repo, userId } = useActivitiesRepo();
   const [rhythm, setRhythm] = useState<RhythmView | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
-    setRhythm(await repo.getRhythm(userId));
-    setLoading(false);
+    setLoading(true);
+    setError(false);
+    try {
+      setRhythm(await repo.getRhythm(userId));
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [repo, userId]);
 
   useEffect(() => {
@@ -49,6 +57,8 @@ export function RhythmScreen() {
 
         {loading ? (
           <ActivityIndicator color={colors.text.muted} style={styles.loader} />
+        ) : error ? (
+          <LoadError inline onRetry={() => void load()} />
         ) : (
           <>
             {/* Streak hero — gentle reflection, not a target */}

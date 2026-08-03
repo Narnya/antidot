@@ -17,6 +17,7 @@ import {
   IconPin,
   IconTile,
   IconUsers,
+  LoadError,
 } from '../../../components';
 import type { NotificationItem, NotificationKind } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
@@ -44,14 +45,27 @@ export function NotificationsScreen() {
   const { refresh: refreshBadge } = useUnreadNotifications();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
-    setItems(await repo.listNotifications(userId));
-    setLoading(false);
+    setLoading(true);
+    setError(false);
+    try {
+      setItems(await repo.listNotifications(userId));
+    } catch {
+      setError(true);
+      return;
+    } finally {
+      setLoading(false);
+    }
     // Mark pushed notifications read once the user is looking at them, then clear
-    // the bell-tab badge.
-    await repo.markNotificationsRead(userId);
-    refreshBadge();
+    // the bell-tab badge. Best-effort — a failure here must not break the screen.
+    try {
+      await repo.markNotificationsRead(userId);
+      refreshBadge();
+    } catch {
+      /* ignore */
+    }
   }, [repo, userId, refreshBadge]);
 
   useEffect(() => {
@@ -65,6 +79,8 @@ export function NotificationsScreen() {
 
         {loading ? (
           <ActivityIndicator color={colors.text.muted} style={styles.loader} />
+        ) : error ? (
+          <LoadError inline onRetry={() => void load()} />
         ) : items.length === 0 ? (
           <View style={styles.empty}>
             <IconTile bg={colors.background.subtle}>

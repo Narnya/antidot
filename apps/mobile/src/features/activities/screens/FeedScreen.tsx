@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, INTER_SEMIBOLD, PLAYFAIR_FAMILY, radius, spacing, typography } from '@social-events/ui';
 
 import { IconChevronDown } from '../../../components/NavIcons';
-import { Button, IconForYou, IconPlus } from '../../../components';
+import { Button, IconForYou, IconPlus, LoadError } from '../../../components';
 
 import { ActivityCard } from '../components/ActivityCard';
 import type { ActivityView } from '../data/repository';
@@ -31,11 +31,19 @@ export function FeedScreen() {
   const { repo, userId } = useActivitiesRepo();
   const [views, setViews] = useState<ActivityView[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [filterKey, setFilterKey] = useState('all');
 
   const load = useCallback(async () => {
-    setViews(await repo.listOpenInCity(userId));
-    setLoading(false);
+    setLoading(true);
+    setError(false);
+    try {
+      setViews(await repo.listOpenInCity(userId));
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [repo, userId]);
 
   useEffect(() => {
@@ -91,6 +99,8 @@ export function FeedScreen() {
         <View style={styles.center}>
           <ActivityIndicator color={colors.text.muted} />
         </View>
+      ) : error ? (
+        <LoadError onRetry={() => void load()} />
       ) : groups.length === 0 ? (
         <View style={styles.emptyCenter}>
           <View style={styles.gateIc}>
