@@ -126,19 +126,27 @@ rendered UI on live** (docs/37's 11/11 E2E drove the *repo/SQL*, not the UI).
 
 ## 7. Open / next (in priority order)
 
-1. **Guest-perspective flows (BLOCKED — needs a 2nd confirmed account).** To verify
-   claim / onboarding / foreign-profile **as a non-host guest**, we need a second
-   confirmed `auth.users` row. Anon signup on antidot-dev **can't self-confirm**
-   (email confirmation is ON; signup returns `email_confirmed_at:null` →
-   «Email not confirmed»; `@example.com` is blocklisted; antidot.space hit a 429).
-   No admin/DB creds are available in-session (Инв. 12 — service role never client,
-   DB password is a secret). **Unblock options:** user provides a confirmed
-   email+password, OR someone with admin toggles off email-confirm on dev, OR
-   creates the row directly in `auth.users` (bcrypt pw + `email_confirmed_at`, the
-   docs/37 §7 method). Once available: `signInWithPassword` for user 2 → inject the
-   session into `localStorage` (`sb-<ref>-auth-token`) so dev-login's `if (!s.session)`
-   skips → drive the **claim** on an overflow activity the guest doesn't host →
-   assert a `slot_claims` row; then `/start` onboarding + foreign-profile view.
+1. **Guest-perspective flows — MOSTLY DONE live (only fresh-onboarding left).**
+   Key realization: the dev user (Рафаэль, `6952…`) is **not the host** of the seed
+   activities (owner `1111…`), so two of the three guest sub-flows needed **no**
+   second account and are now verified through the **real UI on live** (§10):
+   - ✅ **Guest-overflow claim** — released his claim on the 2/10 football
+     (`bbbb…001`, non-host), then re-claimed it via the UI (`/claim` → «Подтвердить»
+     → `/claimed`): a `slot_claims` row was written with **`source=overflow`** (the
+     pull signal) and the reveal showed the exact place «Стадион Волна…» (Инв. 1).
+     Own-claim `DELETE` under RLS returns 204 — the release is a clean reset.
+   - ✅ **Foreign-profile view** — `/profile/2222…` («Аня») rendered guest mode:
+     back+flag header, **locked «Написать»** («Будет доступно после общей встречи»,
+     Инв. 2 — a non-interactive row, not a DM button), no unearned badges.
+   - ⏳ **Fresh onboarding `/start`** — the ONLY piece still needing a second,
+     **profile-less** `auth.users` row (the dev user has a profile, so `/start`
+     auto-advances). Get it via: user provides a confirmed email+password, OR admin
+     toggles email-confirm off on dev, OR create the row directly in `auth.users`
+     (bcrypt pw + `email_confirmed_at`, docs/37 §7). Then reuse the §10 injection to
+     drive `/start`.
+   Also **definitively resolved:** the feed is **not** broken on live — a fresh
+   password-grant session returns 3 feed rows in ~0.7s; the earlier headless spinner
+   was the stale-session artifact the §8 fix targets.
 2. **Backend/feature gaps** (from docs/37 §7 «Still open»): more pushed notification
    types, native build + on-device test, prod env config.
 3. **Housekeeping:** a dangling **unconfirmed** auth user
@@ -192,3 +200,32 @@ there for no-regression after this change.
 - **Don't fake trust signals.** If there's no data for a badge (`verified`), omit it.
 - **Dev-login is a dev convenience, never prod.** Keep it `__DEV__` + flag guarded;
   keep the creds in the untracked `.env`.
+
+## 10. Session-injection — driving the live UI deterministically (the unlock)
+
+Headless dev-login is flaky (40–70s warmup, inconsistent). The reliable way to
+drive the **live** app as any user is to **mint a session and inject it**, so the
+app boots already-authed with no dev-login wait:
+
+1. **Mint** — REST password grant (no UI, no OTP):
+   `POST {SUPABASE_URL}/auth/v1/token?grant_type=password` with header `apikey:
+   {anon}` and body `{email,password}` → returns the full session
+   (`access_token`/`refresh_token`/`expires_at`/`user`). The dev creds live in the
+   **running 8083 server's env** — read them with `ps eww -p <pid>` (grep
+   `EXPO_PUBLIC_DEV_EMAIL/PASSWORD`); never print token/password values, write the
+   session to a temp file and delete it after.
+2. **Inject** — launch Chrome with `--remote-debugging-port` + quoted
+   `"--remote-allow-origins=*"`; over CDP (`ws://…`, header `Origin: http://localhost`)
+   `Runtime.evaluate` → `localStorage.setItem("sb-omxvgcafqwwjlwnhrloc-auth-token",
+   <session json>)` (ref = the Supabase subdomain), then `Page.navigate` to the
+   target route. `AuthProvider.getSession()` reads the injected session →
+   dev-login's `if(!s.session)` **skips** → authed instantly as that user.
+3. **Drive** — click the actual `<button>` whose `textContent` matches (not a
+   wrapping div); `Page.captureScreenshot` to verify; assert side-effects via REST.
+
+This is exactly how the §7 guest claim + foreign-profile were verified, and it's
+the mechanism to finish fresh-onboarding once a second `auth.users` row exists —
+mint **its** session the same way and inject. Python needs `websocket-client`
+(present) and, for the HTTPS curl on Python 3.14, an `ssl.CERT_NONE` context.
+Reset live state after mutating (the claim test did own-claim `DELETE` → re-claim,
+net-zero).
