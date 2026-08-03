@@ -15,6 +15,7 @@
 // район until the profiles table gains the column (docs/32 §4.3).
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -53,6 +54,17 @@ export default function OnboardingStart() {
   const { repo, userId } = useActivitiesRepo();
   const { isSigningOut, signOut } = useAuthSession();
   const { markOnboardedPlaceholder } = useOnboardingPlaceholder();
+  const router = useRouter();
+
+  // Onboarding completion navigates to the feed EXPLICITLY rather than relying on
+  // the route-group gate to redirect once the onboarded placeholder flips. The gate
+  // still redirects on the real app, but the preview gate (PREVIEW_UNLOCK) returns
+  // `allow` before the onboarded check, so without this the form would just sit
+  // there after «Далее». Explicit nav makes completion deterministic everywhere.
+  const finishOnboarding = useCallback(() => {
+    markOnboardedPlaceholder();
+    router.replace('/feed');
+  }, [markOnboardedPlaceholder, router]);
 
   const [checking, setChecking] = useState(true);
   const [step, setStep] = useState(0); // 0–2 value slides · 3 profile form
@@ -70,7 +82,7 @@ export default function OnboardingStart() {
         const existing = await repo.getProfile(userId);
         if (!active) return;
         if (existing && existing.displayName.trim().length > 0) {
-          markOnboardedPlaceholder();
+          finishOnboarding();
           return;
         }
       } catch {
@@ -81,7 +93,7 @@ export default function OnboardingStart() {
     return () => {
       active = false;
     };
-  }, [repo, userId, markOnboardedPlaceholder]);
+  }, [repo, userId, finishOnboarding]);
 
   const toggleInterest = useCallback((tag: string) => {
     setInterests((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
@@ -101,12 +113,12 @@ export default function OnboardingStart() {
         area: area.trim().length > 0 ? area.trim() : null,
         interests,
       });
-      markOnboardedPlaceholder();
+      finishOnboarding();
     } catch {
       setError('Не удалось сохранить профиль. Попробуйте ещё раз.');
       setSubmitting(false);
     }
-  }, [name, area, interests, repo, userId, markOnboardedPlaceholder]);
+  }, [name, area, interests, repo, userId, finishOnboarding]);
 
   if (checking) {
     return (
