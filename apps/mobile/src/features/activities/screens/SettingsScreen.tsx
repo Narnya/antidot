@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, INTER_MEDIUM, INTER_SEMIBOLD, radius, spacing, typography } from '@social-events/ui';
 
 import { useGoBack } from '../../../lib/useGoBack';
-import { Button, IconShield, IconTile, ScreenHeader, SectionLabel } from '../../../components';
+import { Button, IconShield, IconTile, LoadError, ScreenHeader, SectionLabel } from '../../../components';
 import { useAuthSession } from '../../auth';
 import type { Profile } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
@@ -25,14 +25,22 @@ export function SettingsScreen() {
 
   const [blocked, setBlocked] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [blockedError, setBlockedError] = useState(false);
   const [unblockingId, setUnblockingId] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setBlocked(await repo.listBlockedProfiles(userId));
-    setLoading(false);
+    setLoading(true);
+    setBlockedError(false);
+    try {
+      setBlocked(await repo.listBlockedProfiles(userId));
+    } catch {
+      setBlockedError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [repo, userId]);
 
   useEffect(() => {
@@ -72,6 +80,8 @@ export function SettingsScreen() {
         <SectionLabel first>Заблокированные</SectionLabel>
         {loading ? (
           <ActivityIndicator color={colors.text.muted} style={{ alignSelf: 'flex-start' }} />
+        ) : blockedError ? (
+          <LoadError inline onRetry={() => void load()} />
         ) : blocked.length === 0 ? (
           // Empty is the common case — a lone gray line read as unfinished, so give
           // it a real card (matches the account rows below and the /manage empty state).

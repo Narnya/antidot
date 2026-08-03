@@ -12,7 +12,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View
 import { colors, INTER_SEMIBOLD, radius, spacing, typography } from '@social-events/ui';
 
 import { useGoBack } from '../../../lib/useGoBack';
-import { AppTextInput, Button, CtaBar, FieldLabel, IconCheck, IconPin, ScreenHeader } from '../../../components';
+import { AppTextInput, Button, CtaBar, FieldLabel, IconCheck, IconPin, LoadError, ScreenHeader } from '../../../components';
 import type { ActivityView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { formatWhen } from '../lib/format';
@@ -34,23 +34,26 @@ export function ClaimSlotScreen({ activityId }: Props) {
   const { repo, userId } = useActivitiesRepo();
   const [view, setView] = useState<ActivityView | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [plusOne, setPlusOne] = useState(false);
   const [note, setNote] = useState('');
   const [claiming, setClaiming] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      const v = await repo.getActivity(activityId, userId);
-      if (active) {
-        setView(v);
-        setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      setView(await repo.getActivity(activityId, userId));
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [repo, activityId, userId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const handleConfirm = useCallback(async () => {
     setClaiming(true);
@@ -66,9 +69,15 @@ export function ClaimSlotScreen({ activityId }: Props) {
     <View style={styles.root}>
       <ScreenHeader title="Занять место" onBack={goBack} />
 
-      {loading || !view ? (
+      {loading ? (
         <View style={styles.center}>
-          {loading ? <ActivityIndicator color={colors.text.muted} /> : <Text style={styles.empty}>Активность не найдена.</Text>}
+          <ActivityIndicator color={colors.text.muted} />
+        </View>
+      ) : error ? (
+        <LoadError onRetry={() => void load()} />
+      ) : !view ? (
+        <View style={styles.center}>
+          <Text style={styles.empty}>Активность не найдена.</Text>
         </View>
       ) : (
         <>

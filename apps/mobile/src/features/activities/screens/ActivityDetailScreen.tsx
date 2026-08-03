@@ -23,7 +23,7 @@ import { colors, INTER_MEDIUM, INTER_SEMIBOLD, radius, shadows, spacing, typogra
 import { Ionicons } from '@expo/vector-icons';
 
 import { useGoBack } from '../../../lib/useGoBack';
-import { AppTextInput } from '../../../components';
+import { AppTextInput, LoadError } from '../../../components';
 
 import type { ActivityView } from '../data/repository';
 import { formatWhen } from '../lib/format';
@@ -43,16 +43,24 @@ export function ActivityDetailScreen({ activityId }: Props) {
   const [view, setView] = useState<ActivityView | null>(null);
   const [location, setLocation] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const isHost = view ? view.activity.createdBy === userId || view.group.ownerId === userId : false;
 
   const load = useCallback(async () => {
-    const next = await repo.getActivity(activityId, userId);
-    setView(next);
-    if (next) {
-      setLocation(await repo.getMeetingLocation(activityId, userId));
+    setLoading(true);
+    setError(false);
+    try {
+      const next = await repo.getActivity(activityId, userId);
+      setView(next);
+      if (next) {
+        setLocation(await repo.getMeetingLocation(activityId, userId));
+      }
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [activityId, repo, userId]);
 
   useEffect(() => {
@@ -87,6 +95,8 @@ export function ActivityDetailScreen({ activityId }: Props) {
         <View style={styles.center}>
           <ActivityIndicator color={colors.text.muted} />
         </View>
+      ) : error ? (
+        <LoadError onRetry={() => void load()} />
       ) : !view ? (
         <View style={styles.center}>
           <Text style={styles.empty}>Активность не найдена.</Text>

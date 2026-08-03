@@ -14,7 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors, INTER_SEMIBOLD, PLAYFAIR_FAMILY, radius, shadows, spacing, typography } from '@social-events/ui';
 
 import { useGoBack } from '../../../lib/useGoBack';
-import { AppTextInput, IconChat, IconCheck, IconClock, IconSend } from '../../../components';
+import { AppTextInput, IconChat, IconCheck, IconClock, IconSend, LoadError } from '../../../components';
 
 // Read-receipt tick colours on the (dark green) own bubble.
 const TICK_SENT = 'rgba(255,253,249,0.5)'; // ✓ sent, not yet read
@@ -47,16 +47,23 @@ export function CircleChatScreen({ circleId }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const localSeq = useRef(0);
 
   const load = useCallback(async () => {
-    const v = await repo.getCircleChat(circleId, userId);
-    setChat(v);
-    setMessages(v?.messages ?? []);
-    setLoading(false);
-    // Opening the chat marks it read (drives other members' ✓✓ read receipts).
-    if (v) void repo.markChatRead(circleId, userId);
+    setError(false);
+    try {
+      const v = await repo.getCircleChat(circleId, userId);
+      setChat(v);
+      setMessages(v?.messages ?? []);
+      // Opening the chat marks it read (drives other members' ✓✓ read receipts).
+      if (v) void repo.markChatRead(circleId, userId);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [repo, circleId, userId]);
 
   useEffect(() => {
@@ -120,6 +127,8 @@ export function CircleChatScreen({ circleId }: Props) {
           <View style={styles.center}>
             <ActivityIndicator color={colors.text.muted} />
           </View>
+        ) : error ? (
+          <LoadError inline onRetry={() => void load()} />
         ) : (
           <ScrollView
             ref={scrollRef}

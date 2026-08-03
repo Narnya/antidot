@@ -53,9 +53,14 @@ export function CreateActivityScreen() {
 
   useEffect(() => {
     void (async () => {
-      const gs = await repo.listMyGroups(userId);
-      setGroups(gs);
-      if (gs[0]) setArea(gs[0].area);
+      try {
+        const gs = await repo.listMyGroups(userId);
+        setGroups(gs);
+        if (gs[0]) setArea(gs[0].area);
+      } catch {
+        // Non-fatal: the circle picker just stays empty and submit surfaces
+        // «Сначала создайте круг». No spinner to hang here.
+      }
     })();
   }, [repo, userId]);
 
