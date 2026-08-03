@@ -287,3 +287,32 @@ badging needed no change — the `notifications` table is already in the publica
 
 > The DB connection string the operator supplied lives in `apps/mobile/.env`
 > (gitignored) — remove it when no longer needed; it is a superuser credential.
+
+## 13. Live RLS audit — ✅ all safety invariants hold (2026-08-03)
+
+Full adversarial sweep of the safety-critical policies on antidot-dev, simulating
+three roles via `set local role authenticated` + `set local request.jwt.claims`
+(host `1111…`, claimant/member `6952…`, outsider `2222…`). Every read AND every
+insert/spoof case behaved correctly; all writes were in txn + `ROLLBACK` so live
+data is untouched. **18/18 assertions passed** — no gaps found.
+
+- **meeting_locations (Инв. 1 — the core promise):** claimant ✅ and host ✅ see the
+  exact place; **outsider sees 0** for that activity ✅ and 0 across ALL locations ✅;
+  a non-host **cannot write** a location ✅. `can_see_meeting_location(aid)` = host OR
+  a `going/attended` claim — exactly the reveal gate.
+- **circle_messages (member-only chat):** member reads (3) ✅; outsider reads 0 ✅;
+  non-member post **blocked** ✅; author-spoof (`author_id≠auth.uid()`) **blocked** ✅.
+- **notifications (recipient-only):** other user reads the recipient's rows → 0 ✅;
+  recipient reads own → 5 ✅; client-side insert **blocked** (no insert policy) ✅.
+- **reports (reporter-only):** reporter sees own ✅; other sees 0 ✅; spoofed
+  `reporter_id` **blocked** ✅. (Note: `reason` has a CHECK — `unsafe/spam/abuse/
+  fake/other`; `subject_type` — `user/activity/circle/message`.)
+- **blocks (blocker-only):** blocker sees own ✅; the blocked user cannot see the
+  block ✅; spoofed `blocker_id` **blocked** ✅.
+
+Method note: the RLS helpers (`can_see_meeting_location`, `is_group_member`,
+`is_host_of_activity`) are `STABLE SECURITY DEFINER` and read `auth.uid()` from the
+JWT claims, so `set local request.jwt.claims` drives them correctly under
+`role authenticated` (which is not the table owner, so RLS is enforced;
+`relforcerowsecurity` is off but irrelevant here). To re-run: reconstruct the IPv4
+session-pooler URL from the `.env` password (direct `db.<ref>` host is IPv6-only).
