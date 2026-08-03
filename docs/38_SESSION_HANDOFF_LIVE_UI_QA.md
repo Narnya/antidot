@@ -75,6 +75,12 @@ docs/37 §2 works, but to *act* (fill forms, click) we drive Chrome via CDP:
 | `26b23c5` | **profile** | **earned-only trust badges** (§5) + soft self empty hint «Профиль наполняется сам» |
 | `cf66f3e` | **Circle Home** | designed «no next meeting» card (IconTile calendar + isOwner-conditional hint) instead of a bare gray line |
 | `16b7a35` | **8 data screens** | **infinite-spinner fix** — `try/catch/finally` + shared `LoadError` (§9); MyCircles gained a real zero-circles empty state |
+| `69c38d3` | **4 more screens** | infinite-spinner follow-up (ActivityDetail/ClaimSlot/CircleChat/Settings — the grep false-negatives, §8) |
+| `51d84cc` | **onboarding** | complete `/start` navigates to `/feed` explicitly (`finishOnboarding`) — «Далее» no longer sits there on the preview gate (§11) |
+| `93548b1` | **claim** | show an error when a claim fails (was silent) — the pull moment must not fail quietly |
+| `78e5852` | **pause/leave** | show an error when membership exit fails (was silent, no `catch`) |
+| `a3929bc` | **not-found** | shared `NotFound` component for CircleHome/ActivityDetail/ClaimSlot (was bare gray text) — last bare states closed |
+| `763bff8` | **notifications** | migration **016**: push «приняли в круг» + «место открыто» triggers + dedupe — ⚠️ **NOT applied**, see §12 |
 
 **Empty-state pattern (now house style):** center-stack of a **78×78 tile**
 (`radius.xl`, bg `trust.verifiedBg`) + **Playfair title** (`action.primary`) +
@@ -257,3 +263,25 @@ Two things stop the dev user from seeing `/start`, each with a reversible workar
 
 Net effect: authed ✓ + beta ✓ + not-onboarded → `/start` allowed; the screen sees an
 empty-trim name → slides → form → submit writes the profile and redirects to `/feed`.
+
+## 12. ⚠️ OPERATOR ACTION — apply migration 016 (notifications)
+
+`763bff8` added `supabase/migrations/20260803000016_notify_confirm_and_location.sql`
+— two SECURITY DEFINER triggers that push «Тебя приняли в круг» (on host-confirm)
+and «Место встречи открыто» (on location reveal). **It is NOT applied to
+antidot-dev** — this session has only the anon key, not the DB password, and RLS/
+triggers are never trusted by eyeballing (CLAUDE.md §12).
+
+To finish this feature, the operator must:
+1. Apply it with `psql` (session pooler, eu-central-1; **do NOT `supabase db push`**
+   — base schema was applied directly, there is no CLI migration history).
+2. Run the trigger tests at the bottom of the migration (in a txn + `ROLLBACK`):
+   member_confirmed inserts exactly one recipient row and a no-op update does not
+   duplicate; location_open notifies claimants but not the host; and both are
+   exception-safe (the parent insert still succeeds even if the notification insert
+   would fail).
+
+The app code (`listNotifications` dedupe) is already merged and safe pre-apply
+(it just keeps deriving these two events until the stored rows exist), so there is
+**no rush and no regression** if the migration lands later. Realtime badging needs
+no further change — the `notifications` table is already in the publication (013).
