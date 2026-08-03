@@ -38,6 +38,7 @@ export function ClaimSlotScreen({ activityId }: Props) {
   const [plusOne, setPlusOne] = useState(false);
   const [note, setNote] = useState('');
   const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,10 +58,14 @@ export function ClaimSlotScreen({ activityId }: Props) {
 
   const handleConfirm = useCallback(async () => {
     setClaiming(true);
+    setClaimError(null);
     try {
       await repo.claimSlot(activityId, userId, { plusOne, note: note.trim() || null });
       router.replace(`/claimed/${activityId}`);
     } catch {
+      // A failed claim used to silently re-enable the button with no feedback —
+      // surface it so the user knows to retry (slot filled up, network, RLS).
+      setClaimError('Не удалось занять место. Возможно, места закончились — попробуй ещё раз.');
       setClaiming(false);
     }
   }, [repo, activityId, userId, plusOne, note, router]);
@@ -143,6 +148,12 @@ export function ClaimSlotScreen({ activityId }: Props) {
                 организатор и участники активности.
               </Text>
             </View>
+
+            {claimError ? (
+              <Text style={styles.claimError} accessibilityRole="alert">
+                {claimError}
+              </Text>
+            ) : null}
           </ScrollView>
 
           <CtaBar>
@@ -254,4 +265,5 @@ const styles = StyleSheet.create({
 
   notice: { flexDirection: 'row', gap: 8, marginTop: 20, alignItems: 'flex-start' },
   noticeText: { ...typography.caption, color: colors.text.muted, flex: 1, lineHeight: 18 },
+  claimError: { ...typography.body, fontSize: 14, lineHeight: 20, color: colors.status.danger, marginTop: 16 },
 });
