@@ -161,6 +161,15 @@ setError(true) } finally { setLoading(false) }` + a new shared
 MyCircles also got a proper zero-circles empty state (it had been showing the
 «нашёл свои круги» *success* notice to a user with none).
 
+**Follow-up (`69c38d3`) — the first grep lied.** Classifying screens by
+«does the file contain `finally`?» false-marked as *guarded* four screens whose
+**action handlers** (save/claim/send/unblock) had `try/finally` but whose
+**initial `load()` did not**: ActivityDetail, ClaimSlot, CircleChat, Settings —
+all fixed the same way (Settings degrades only its blocked-list section so
+sign-out/delete stay usable; CreateActivity's picker fetch made non-throwing).
+**Lesson: audit the load function's own scope, not the file.** Net: every
+data-loading screen is now guarded (Manage was already; Report has no load).
+
 **What was NOT the bug:** the feed RPC (`feed_open_activities`) returns data in
 ~0.8s live, and the gate providers (`AuthProvider`, `BetaAccessProvider`) already
 clear their loading in a `finally` — verified. The perpetual «Проверяем сессию…»
