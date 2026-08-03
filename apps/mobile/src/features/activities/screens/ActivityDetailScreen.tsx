@@ -23,7 +23,7 @@ import { colors, INTER_MEDIUM, INTER_SEMIBOLD, radius, shadows, spacing, typogra
 import { Ionicons } from '@expo/vector-icons';
 
 import { useGoBack } from '../../../lib/useGoBack';
-import { AppTextInput, LoadError } from '../../../components';
+import { AppTextInput, LoadError, NotFound } from '../../../components';
 
 import type { ActivityView } from '../data/repository';
 import { formatWhen } from '../lib/format';
@@ -98,9 +98,13 @@ export function ActivityDetailScreen({ activityId }: Props) {
       ) : error ? (
         <LoadError onRetry={() => void load()} />
       ) : !view ? (
-        <View style={styles.center}>
-          <Text style={styles.empty}>Активность не найдена.</Text>
-        </View>
+        <NotFound
+          onBack={goBack}
+          icon="calendar-outline"
+          title="Активность не найдена"
+          sub="Возможно, её отменили или у тебя нет доступа."
+          backLabel="К ленте"
+        />
       ) : (
         <DetailBody
           view={view}

@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, INTER_SEMIBOLD, radius, shadows, spacing, typography } from '@social-events/ui';
 
 import { useGoBack } from '../../../lib/useGoBack';
-import { Button, HeroTitle, IconButton, IconTile, LoadError, SectionLabel } from '../../../components';
+import { Button, HeroTitle, IconButton, IconTile, LoadError, NotFound, SectionLabel } from '../../../components';
 import type { CircleView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { formatWhen } from '../lib/format';
@@ -67,9 +67,13 @@ export function CircleHomeScreen({ circleId }: Props) {
       ) : error ? (
         <LoadError onRetry={() => void load()} />
       ) : !view ? (
-        <View style={styles.center}>
-          <Text style={styles.empty}>Круг не найден.</Text>
-        </View>
+        <NotFound
+          onBack={goBack}
+          icon="people-outline"
+          title="Круг не найден"
+          sub="Возможно, круг распался или у тебя нет доступа."
+          backLabel="К ленте"
+        />
       ) : (
         <Body view={view} />
       )}

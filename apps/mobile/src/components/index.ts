@@ -13,6 +13,7 @@ export { BrandMini } from './BrandMini';
 export { HeroTitle } from './HeroTitle';
 export { Button } from './Button';
 export { LoadError } from './LoadError';
+export { NotFound } from './NotFound';
 export {
   IconForYou,
   IconCircles,

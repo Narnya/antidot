@@ -12,7 +12,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View
 import { colors, INTER_SEMIBOLD, radius, spacing, typography } from '@social-events/ui';
 
 import { useGoBack } from '../../../lib/useGoBack';
-import { AppTextInput, Button, CtaBar, FieldLabel, IconCheck, IconPin, LoadError, ScreenHeader } from '../../../components';
+import { AppTextInput, Button, CtaBar, FieldLabel, IconCheck, IconPin, LoadError, NotFound, ScreenHeader } from '../../../components';
 import type { ActivityView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { formatWhen } from '../lib/format';
@@ -81,9 +81,13 @@ export function ClaimSlotScreen({ activityId }: Props) {
       ) : error ? (
         <LoadError onRetry={() => void load()} />
       ) : !view ? (
-        <View style={styles.center}>
-          <Text style={styles.empty}>Активность не найдена.</Text>
-        </View>
+        <NotFound
+          onBack={goBack}
+          icon="calendar-outline"
+          title="Активность не найдена"
+          sub="Возможно, её отменили или у тебя нет доступа."
+          backLabel="К ленте"
+        />
       ) : (
         <>
           <ScrollView
