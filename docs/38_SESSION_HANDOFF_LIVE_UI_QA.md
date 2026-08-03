@@ -80,7 +80,7 @@ docs/37 §2 works, but to *act* (fill forms, click) we drive Chrome via CDP:
 | `93548b1` | **claim** | show an error when a claim fails (was silent) — the pull moment must not fail quietly |
 | `78e5852` | **pause/leave** | show an error when membership exit fails (was silent, no `catch`) |
 | `a3929bc` | **not-found** | shared `NotFound` component for CircleHome/ActivityDetail/ClaimSlot (was bare gray text) — last bare states closed |
-| `763bff8` | **notifications** | migration **016**: push «приняли в круг» + «место открыто» triggers + dedupe — ⚠️ **NOT applied**, see §12 |
+| `763bff8` | **notifications** | migration **016**: push «приняли в круг» + «место открыто» triggers + dedupe — ✅ **applied + verified live** (§12) |
 
 **Empty-state pattern (now house style):** center-stack of a **78×78 tile**
 (`radius.xl`, bg `trust.verifiedBg`) + **Playfair title** (`action.primary`) +
@@ -264,24 +264,26 @@ Two things stop the dev user from seeing `/start`, each with a reversible workar
 Net effect: authed ✓ + beta ✓ + not-onboarded → `/start` allowed; the screen sees an
 empty-trim name → slides → form → submit writes the profile and redirects to `/feed`.
 
-## 12. ⚠️ OPERATOR ACTION — apply migration 016 (notifications)
+## 12. Migration 016 (notifications) — ✅ APPLIED + verified live (2026-08-03)
 
 `763bff8` added `supabase/migrations/20260803000016_notify_confirm_and_location.sql`
 — two SECURITY DEFINER triggers that push «Тебя приняли в круг» (on host-confirm)
-and «Место встречи открыто» (on location reveal). **It is NOT applied to
-antidot-dev** — this session has only the anon key, not the DB password, and RLS/
-triggers are never trusted by eyeballing (CLAUDE.md §12).
+and «Место встречи открыто» (on location reveal). **Applied to antidot-dev via
+psql (session pooler, IPv4 — the direct `db.<ref>.supabase.co` host is IPv6-only
+and unreachable from this machine).** All trigger tests passed live (txn +
+`ROLLBACK`, no rows persisted):
+- **member_confirmed** — confirming a guest writes exactly one recipient row
+  («Тебя приняли в круг» · `/circle/<id>`); a no-op `status='active'` update does
+  **not** duplicate (the `old.role='member' and old.status='active'` guard).
+- **location_open** — revealing the place notifies the claimant, **not** the host.
+- **exception-safety** — with a `BEFORE INSERT` trigger forcing every notifications
+  insert to raise, the parent host-confirm **still succeeded** and nothing was
+  written. A notification failure can never roll back the core action.
 
-To finish this feature, the operator must:
-1. Apply it with `psql` (session pooler, eu-central-1; **do NOT `supabase db push`**
-   — base schema was applied directly, there is no CLI migration history).
-2. Run the trigger tests at the bottom of the migration (in a txn + `ROLLBACK`):
-   member_confirmed inserts exactly one recipient row and a no-op update does not
-   duplicate; location_open notifies claimants but not the host; and both are
-   exception-safe (the parent insert still succeeds even if the notification insert
-   would fail).
+The app code (`listNotifications` dedupe) was already merged and is a no-op now that
+the stored rows exist (it de-dupes derived-vs-stored by `(kind, href)`). Realtime
+badging needed no change — the `notifications` table is already in the publication
+(013), so these kinds badge live like `slot_claimed`.
 
-The app code (`listNotifications` dedupe) is already merged and safe pre-apply
-(it just keeps deriving these two events until the stored rows exist), so there is
-**no rush and no regression** if the migration lands later. Realtime badging needs
-no further change — the `notifications` table is already in the publication (013).
+> The DB connection string the operator supplied lives in `apps/mobile/.env`
+> (gitignored) — remove it when no longer needed; it is a superuser credential.

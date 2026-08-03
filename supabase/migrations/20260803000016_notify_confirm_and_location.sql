@@ -17,9 +17,12 @@
 -- defensive than the 012 slot_claimed trigger because these ship unverified — the
 -- operator must still run the tests at the bottom on the live DB.
 --
--- ⚠️ NOT YET APPLIED to antidot-dev. Apply with psql (session pooler) and run the
--- trigger tests below (positive + negative) BEFORE relying on it. Do NOT `supabase
--- db push` (base schema was applied directly; there is no CLI migration history).
+-- ✅ APPLIED + verified on antidot-dev (2026-08-03, session pooler). All trigger
+-- tests below passed live (txn + ROLLBACK): member_confirmed writes exactly one
+-- recipient row and a no-op update does not duplicate; location_open notifies
+-- claimants but not the host; and exception-safety holds — with the notifications
+-- insert forced to fail, host-confirm still succeeded. Do NOT `supabase db push`
+-- (base schema was applied directly; there is no CLI migration history).
 
 -- ── member_confirmed ─────────────────────────────────────────────────────────
 -- Fires when a membership BECOMES an active member (overflow guest → member). Skips
