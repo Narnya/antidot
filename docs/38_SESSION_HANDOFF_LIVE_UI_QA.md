@@ -316,3 +316,27 @@ JWT claims, so `set local request.jwt.claims` drives them correctly under
 `role authenticated` (which is not the table owner, so RLS is enforced;
 `relforcerowsecurity` is off but irrelevant here). To re-run: reconstruct the IPv4
 session-pooler URL from the `.env` password (direct `db.<ref>` host is IPv6-only).
+
+## 14. Migration 017 (chat-message notifications) — ✅ APPLIED + verified (2026-08-06)
+
+`19e744c` — trigger on `circle_messages` INSERT notifies active members (except the
+author) that a circle has a new message. Carries **only the circle name, not the
+body** (Инв. 14). Anti-noise: at most one UNREAD chat notification per (member,
+circle) — each message clears the member's stale unread row and inserts a fresh one.
+Exception-safe. `kind='chat'` already renders + is in the realtime publication, so
+**no app change was needed**. Verified live (txn+ROLLBACK): other member notified,
+author not, second message deduped to still-1, and the message sends even with the
+notifications insert forced to fail.
+
+**Follow-up (not done):** opening the chat (`markChatRead`) does not yet clear the
+circle's `chat` notification — it clears when the user opens the notifications
+screen (`markNotificationsRead`). A small polish would be a
+`markChatNotificationsRead(groupId,userId)` repo call in `CircleChatScreen.load()`
+(update `read_at` where `kind='chat' and href='/chat/'+groupId`). The badge
+subscription listens on INSERT only, so it would refresh on next load, not live.
+
+> **Session state at /compact:** all UI «недоделано» classes closed; full loop +
+> guest flows + onboarding verified live via UI; notifications 016+017 applied &
+> verified; **live RLS audit passed 18/18 (§13)**. Remaining: #3 (native build +
+> device, prod-env) needs hardware/prod secrets. `SUPABASE_DB_URL` still in
+> `apps/mobile/.env` (gitignored) per operator request.
