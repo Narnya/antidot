@@ -11,7 +11,7 @@ import {
 } from '@expo-google-fonts/playfair-display';
 import { Stack } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -40,8 +40,14 @@ const PHONE_HEIGHT = 920;
 // max(base, insets.bottom + n), which resolves correctly on real devices.
 const WEB_INSETS = { top: 47, left: 0, right: 0, bottom: 0 };
 const WEB_FRAME = { x: 0, y: 0, width: PHONE_WIDTH, height: PHONE_HEIGHT };
+// Above this viewport width we're on a desktop browser → show the simulated phone
+// frame (mockup parity). At or below it we're effectively on a phone (real mobile
+// Safari/Chrome, ≤~430px CSS) → behave like a native device: fill the screen and use
+// the browser's REAL safe-area insets, no simulated 480px frame / 47px status band.
+const MOBILE_WEB_MAX = 520;
 function PhoneFrame({ children }: { children: ReactNode }) {
-  if (Platform.OS !== 'web') return <>{children}</>;
+  const { width } = useWindowDimensions();
+  if (Platform.OS !== 'web' || width <= MOBILE_WEB_MAX) return <>{children}</>;
   return (
     <View style={frameStyles.canvas}>
       <View style={frameStyles.device}>
