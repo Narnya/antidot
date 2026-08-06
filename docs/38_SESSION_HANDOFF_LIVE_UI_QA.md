@@ -328,12 +328,16 @@ Exception-safe. `kind='chat'` already renders + is in the realtime publication, 
 author not, second message deduped to still-1, and the message sends even with the
 notifications insert forced to fail.
 
-**Follow-up (not done):** opening the chat (`markChatRead`) does not yet clear the
-circle's `chat` notification — it clears when the user opens the notifications
-screen (`markNotificationsRead`). A small polish would be a
-`markChatNotificationsRead(groupId,userId)` repo call in `CircleChatScreen.load()`
-(update `read_at` where `kind='chat' and href='/chat/'+groupId`). The badge
-subscription listens on INSERT only, so it would refresh on next load, not live.
+**Follow-up — ✅ done:** `markChatNotificationsRead(circleId,userId)` added to the
+repo (supabase updates `read_at` where `kind='chat' and href='/chat/'+circleId`,
+RLS-scoped to `auth.uid()`; mock no-op) and called in `CircleChatScreen.load()`, so
+reading the chat clears its «новое сообщение» push. Verified live under RLS (txn +
+ROLLBACK): another member's message created 1 unread chat notif for the user, and
+the on-open clear set it to 0. Note: the bell badge provider is mounted only around
+the **tabs** (`app/(app)/(tabs)/_layout.tsx`) and CircleChat is a pushed stack
+screen outside it, so the badge count corrects on the next notification event /
+notifications-screen open, not live from chat — acceptable, and the list no longer
+shows the read chat notif as unread.
 
 > **Session state at /compact:** all UI «недоделано» classes closed; full loop +
 > guest flows + onboarding verified live via UI; notifications 016+017 applied &

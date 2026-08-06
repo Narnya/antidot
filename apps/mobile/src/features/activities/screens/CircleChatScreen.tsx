@@ -57,8 +57,12 @@ export function CircleChatScreen({ circleId }: Props) {
       const v = await repo.getCircleChat(circleId, userId);
       setChat(v);
       setMessages(v?.messages ?? []);
-      // Opening the chat marks it read (drives other members' ✓✓ read receipts).
-      if (v) void repo.markChatRead(circleId, userId);
+      // Opening the chat marks it read (drives other members' ✓✓ read receipts) and
+      // clears this circle's «новое сообщение» push so it doesn't linger unread.
+      if (v) {
+        void repo.markChatRead(circleId, userId);
+        void repo.markChatNotificationsRead(circleId, userId);
+      }
     } catch {
       setError(true);
     } finally {

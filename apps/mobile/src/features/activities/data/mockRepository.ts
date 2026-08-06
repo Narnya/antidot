@@ -383,6 +383,10 @@ export class MockActivitiesRepository implements ActivitiesRepository {
     // No cross-member read tracking in the mock/preview.
   }
 
+  async markChatNotificationsRead(_circleId: Id, _userId: Id): Promise<void> {
+    // Mock notifications aren't per-circle chat rows; nothing to clear.
+  }
+
   subscribeCircleChat(_circleId: Id, _onChange: () => void): () => void {
     // No realtime in mock/preview — the screen reloads after its own send.
     return () => {};

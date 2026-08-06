@@ -278,6 +278,10 @@ export interface ActivitiesRepository {
   sendCircleMessage(circleId: Id, userId: Id, text: string): Promise<void>;
   /** Mark the circle chat read up to now for the current user (read receipts). */
   markChatRead(circleId: Id, userId: Id): Promise<void>;
+  /** Mark this circle's `chat` notifications read for the current user — called on
+   *  opening the chat, so reading messages clears the «новое сообщение в круге»
+   *  notification (it otherwise clears only when the notifications screen opens). */
+  markChatNotificationsRead(circleId: Id, userId: Id): Promise<void>;
   /** Subscribe to new messages in a circle chat (Supabase Realtime); `onChange`
    *  fires on each insert. Returns an unsubscribe fn. No-op (returns a noop) where
    *  realtime isn't available (mock/preview). */

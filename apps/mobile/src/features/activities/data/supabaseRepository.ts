@@ -583,6 +583,20 @@ export class SupabaseActivitiesRepository implements ActivitiesRepository {
     if (error) throw new Error(error.message);
   }
 
+  async markChatNotificationsRead(circleId: Id, userId: Id): Promise<void> {
+    // Reading the chat clears its «новое сообщение в круге» push (migration 017 sets
+    // href = /chat/<circleId>). RLS (notifications_update: user_id = auth.uid()) scopes
+    // this to the caller's own rows.
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('kind', 'chat')
+      .eq('href', `/chat/${circleId}`)
+      .is('read_at', null);
+    if (error) throw new Error(error.message);
+  }
+
   subscribeCircleChat(circleId: Id, onChange: () => void): () => void {
     const channel = supabase
       .channel(`circle_messages:${circleId}`)
