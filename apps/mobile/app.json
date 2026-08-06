@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Social Events App",
+    "name": "Antidot",
     "slug": "social-events-mobile",
-    "version": "0.0.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -12,9 +12,12 @@
       "expo-font"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "space.antidot.app"
     },
-    "android": {},
+    "android": {
+      "package": "space.antidot.app"
+    },
     "web": {
       "bundler": "metro",
       "output": "single"
