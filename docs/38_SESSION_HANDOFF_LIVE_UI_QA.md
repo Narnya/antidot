@@ -344,3 +344,36 @@ shows the read chat notif as unread.
 > verified; **live RLS audit passed 18/18 (§13)**. Remaining: #3 (native build +
 > device, prod-env) needs hardware/prod secrets. `SUPABASE_DB_URL` still in
 > `apps/mobile/.env` (gitignored) per operator request.
+
+## 15. Prod-readiness — dev-backdoor audit ✅ + #3 operator checklist
+
+**Dev-backdoor audit (done, all safe).** Every dev-only shim is double-guarded and
+**cannot ship to a production build**:
+- `PREVIEW_UNLOCK`, `DEV_LOGIN` (`routeGate.ts`) and the dev auto-login
+  (`AuthProvider.tsx:78`) are each `__DEV__ && EXPO_PUBLIC_*==='1'` — `__DEV__` is
+  `false` in release builds, so Metro dead-code-eliminates the whole block.
+- The flags/creds (`EXPO_PUBLIC_DEV_LOGIN/EMAIL/PASSWORD`, `EXPO_PUBLIC_PREVIEW`) are
+  in **no committed file** — not in any `.env.example`, `app.json`, or tracked file;
+  only in the gitignored local `.env` / passed inline to dev servers.
+- **No `service_role`** anywhere in the mobile client (Инв. 12) — only a comment; no
+  hardcoded JWTs/secrets/backdoors. All other client-read `EXPO_PUBLIC_*` vars are
+  non-sensitive (Supabase URL + anon/publishable, PostHog, Sentry DSN, APP_ENV).
+
+**⚠️ Key distinction — 016/017 are IN-APP notifications, not device push.** They
+write `notifications` rows that drive the in-app bell badge live via Realtime. They
+do **not** make a phone buzz when the app is closed — that needs `expo-notifications`
++ push-token registration + a sender (edge fn / `pg_net` → Expo Push API) + APNs/FCM
+credentials. Not started; it's a real #3 item (needs a device + push creds).
+
+**#3 checklist (needs YOUR hardware / prod secrets — I can't do these):**
+1. **Remove the dev-login scaffolding before the first prod build** — grep
+   `/*DEVLOGIN*/` (AuthProvider + routeGate) and delete those blocks. Belt-and-
+   suspenders on top of the `__DEV__` guard, so the dev creds can never be inlined.
+2. **Prod env** — set the real `EXPO_PUBLIC_SUPABASE_*` (prod project), PostHog,
+   Sentry via EAS secrets; never commit them. Keep `SUPABASE_SERVICE_ROLE_KEY`
+   server-only (admin app's `serverEnv.ts`), never in mobile.
+3. **Native build** — `eas build` (needs an Apple/Google account + signing); test the
+   loop on a real device (the web preview can't exercise native gestures/permissions).
+4. **Device push (optional, if wanted)** — add `expo-notifications`, register push
+   tokens, and a sender that fires on a new `notifications` row; configure APNs/FCM.
+5. Remove `SUPABASE_DB_URL` from `apps/mobile/.env` when DB work is done.
