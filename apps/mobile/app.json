@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Antidot",
-    "slug": "social-events-mobile",
+    "slug": "antidot",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -13,7 +13,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "space.antidot.app"
+      "bundleIdentifier": "space.antidot.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "space.antidot.app"
@@ -21,6 +24,15 @@
     "web": {
       "bundler": "metro",
       "output": "single"
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "4d1773a5-de09-4817-a6cf-f2a8aadf7986"
+      }
+    },
+    "owner": "ilnas-team"
   }
 }
