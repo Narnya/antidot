@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- Antidot app icon — 1024×1024 master. Brand language from the welcome wordmark
+     (docs/35 Warm-Green): deep green field, ivory Inter "A", coral tittle-dot.
+     Render: headless Chrome screenshot at 1024×1024 → apps/mobile/assets/images/icon.png -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face {
+    font-family: 'Inter';
+    font-weight: 600;
+    src: url('../node_modules/@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf');
+  }
+  html, body { margin: 0; padding: 0; }
+  .icon {
+    width: 1024px; height: 1024px;
+    background: #18392D; /* action.primary — deep green */
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .letter {
+    font-family: 'Inter';
+    font-weight: 600;
+    font-size: 560px;
+    line-height: 1;
+    color: #FFFDF9; /* surface — warm ivory */
+    letter-spacing: -8px;
+    /* optically center: cap-height sits a touch high, nudge down */
+    transform: translateY(6px);
+  }
+  .dot {
+    position: absolute;
+    width: 118px; height: 118px;
+    border-radius: 50%;
+    background: #F05A3A; /* accent.coral — the brand tittle */
+    /* floats above-right of the A apex, echoing the wordmark's dot over the I */
+    top: 168px; left: 632px;
+  }
+</style>
+</head>
+<body>
+  <div class="icon">
+    <div class="letter">A</div>
+    <div class="dot"></div>
+  </div>
+</body>
+</html>

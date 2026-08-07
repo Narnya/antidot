@@ -1,0 +1,4 @@
+# Native projects are generated from app.json via `expo prebuild` (CNG) —
+# app.json stays the source of truth; do not commit generated native dirs.
+/ios
+/android
