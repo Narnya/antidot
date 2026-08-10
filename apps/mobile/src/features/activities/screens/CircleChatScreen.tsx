@@ -3,9 +3,11 @@
 // (Инв. 2). System lines carry lifecycle events, incl. the only membership signal
 // «Состав круга обновился» (Инв. 11–12).
 //
-// UI port: messages come from repo.getCircleChat (mock = illustrative; live = empty
-// header until the `circle_messages` table + RLS + Realtime land). Sending appends
-// an ephemeral local bubble — NOT persisted yet.
+// Live-backed: repo.getCircleChat reads `circle_messages` (member-only RLS,
+// migration 009), sends persist via sendCircleMessage, read receipts via
+// group_memberships.chat_last_read_at (015), «новое сообщение» pushes clear on
+// open (017), and subscribeCircleChat streams inserts over Realtime. The local
+// bubble on send is an optimistic echo reconciled by the reload.
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
