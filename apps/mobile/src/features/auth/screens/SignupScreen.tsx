@@ -114,7 +114,9 @@ export function SignupScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background.default },
-  body: { paddingHorizontal: spacing[6], paddingTop: 22, paddingBottom: 90 },
+  // paddingTop 14 = the auth/beta family convention (Login / Waitlist / Invite),
+  // so the wordmark+title sit at the same height across all four screens.
+  body: { paddingHorizontal: spacing[6], paddingTop: 14, paddingBottom: 90 },
   title: { marginTop: 22 },
   sub: { ...typography.body, fontSize: 15, lineHeight: 22, color: colors.text.secondary, marginTop: 10 },
 
