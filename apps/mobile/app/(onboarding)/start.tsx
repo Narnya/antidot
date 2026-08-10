@@ -3,16 +3,16 @@
 //   группа, не 1:1; принадлежность), each a full-bleed hero fading to ivory.
 //   step 3   → profile form (frame 03): имя / город+район / interest chips, a
 //   progress bar and a fixed «Далее» CTA. On submit it WRITES the `profiles` row
-//   (durable source of truth) and flips the in-memory gate flag.
+//   (durable source of truth) and flips the OnboardingProvider gate (ONB-014).
 //
 // Per product decision (2026-07-22) the onboarding follows the mockup exactly —
 // no safety-rules card / mandatory accept checkbox. The safety promise is carried
 // by the value slides. A subtle «Выйти» escape is kept (this is a post-auth screen).
 //
-// Durability: on mount we check for an existing profile; returning users skip the
-// flow. The gate flag is still in-memory (dev); the durable gate-from-profiles is
-// the larger ONB-014 step. Interests persist on mock; the live schema stores имя+
-// район until the profiles table gains the column (docs/32 §4.3).
+// Durability (ONB-014): the gate reads the profiles row via OnboardingProvider,
+// so completion survives cold starts. The on-mount profile check below stays as
+// the preview-mode path (PREVIEW_UNLOCK allows /start without the gate redirect)
+// and as a belt against a transient gate-check failure.
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -24,7 +24,7 @@ import { colors, radius, spacing, typography } from '@social-events/ui';
 import { Button, CtaBar, Field, FieldLabel, HeroTitle, IconPin, ScreenHeader } from '../../src/components';
 import { kindImage } from '../../src/features/activities/lib/kindImage';
 import { useActivitiesRepo } from '../../src/features/activities/hooks/useActivitiesRepo';
-import { useAuthSession, useOnboardingPlaceholder } from '../../src/features/auth';
+import { useAuthSession, useOnboarding } from '../../src/features/auth';
 
 const SLIDES = [
   {
@@ -53,7 +53,7 @@ export default function OnboardingStart() {
   const insets = useSafeAreaInsets();
   const { repo, userId } = useActivitiesRepo();
   const { isSigningOut, signOut } = useAuthSession();
-  const { markOnboardedPlaceholder } = useOnboardingPlaceholder();
+  const { markOnboarded } = useOnboarding();
   const router = useRouter();
 
   // Onboarding completion navigates to the feed EXPLICITLY rather than relying on
@@ -62,9 +62,9 @@ export default function OnboardingStart() {
   // `allow` before the onboarded check, so without this the form would just sit
   // there after «Далее». Explicit nav makes completion deterministic everywhere.
   const finishOnboarding = useCallback(() => {
-    markOnboardedPlaceholder();
+    markOnboarded();
     router.replace('/feed');
-  }, [markOnboardedPlaceholder, router]);
+  }, [markOnboarded, router]);
 
   const [checking, setChecking] = useState(true);
   const [step, setStep] = useState(0); // 0–2 value slides · 3 profile form
@@ -101,7 +101,7 @@ export default function OnboardingStart() {
 
   const handleSubmit = useCallback(async () => {
     if (name.trim().length === 0) {
-      setError('Введите имя.');
+      setError('Введи имя.');
       return;
     }
     setError(null);
@@ -115,7 +115,7 @@ export default function OnboardingStart() {
       });
       finishOnboarding();
     } catch {
-      setError('Не удалось сохранить профиль. Попробуйте ещё раз.');
+      setError('Не удалось сохранить профиль. Попробуй ещё раз.');
       setSubmitting(false);
     }
   }, [name, area, interests, repo, userId, finishOnboarding]);

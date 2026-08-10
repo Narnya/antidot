@@ -14,20 +14,20 @@ import {
   SessionLoadingScreen,
   decideRouteAccess,
   useAuthSession,
-  useOnboardingPlaceholder,
+  useOnboarding,
 } from '../../src/features/auth';
 import { useBetaAccess } from '../../src/features/beta';
 
 export default function BetaLayout() {
   const { isLoading: isAuthLoading, isAuthenticated } = useAuthSession();
   const { isLoading: isBetaLoading, hasBetaAccess } = useBetaAccess();
-  const { isOnboardedPlaceholder } = useOnboardingPlaceholder();
+  const { isLoading: isOnboardingLoading, isOnboarded } = useOnboarding();
 
   const decision = decideRouteAccess('beta', {
-    isLoading: isAuthLoading || isBetaLoading,
+    isLoading: isAuthLoading || isBetaLoading || isOnboardingLoading,
     isAuthenticated,
     hasBetaAccess,
-    isOnboardedPlaceholder,
+    isOnboarded,
   });
 
   if (decision.kind === 'loading') return <SessionLoadingScreen />;

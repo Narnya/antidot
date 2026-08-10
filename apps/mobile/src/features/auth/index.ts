@@ -2,12 +2,12 @@
 export { AuthProvider, type AuthContextValue } from './providers/AuthProvider';
 export { useAuthSession } from './hooks/useAuthSession';
 
-// AUTH-007 — protected route gate primitives.
+// AUTH-007 / ONB-014 — protected route gate primitives.
 export {
-  OnboardingPlaceholderProvider,
-  useOnboardingPlaceholder,
-  type OnboardingPlaceholderContextValue,
-} from './providers/OnboardingPlaceholderProvider';
+  OnboardingProvider,
+  useOnboarding,
+  type OnboardingContextValue,
+} from './providers/OnboardingProvider';
 export {
   decideRouteAccess,
   type GroupKind,

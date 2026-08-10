@@ -12,22 +12,22 @@ import {
   SessionLoadingScreen,
   decideRouteAccess,
   useAuthSession,
-  useOnboardingPlaceholder,
+  useOnboarding,
 } from '../src/features/auth';
 import { useBetaAccess } from '../src/features/beta';
 
 export default function Index() {
   const { isLoading: isAuthLoading, isAuthenticated } = useAuthSession();
   const { isLoading: isBetaLoading, hasBetaAccess } = useBetaAccess();
-  const { isOnboardedPlaceholder } = useOnboardingPlaceholder();
+  const { isLoading: isOnboardingLoading, isOnboarded } = useOnboarding();
 
   // The 'app' gate resolves the full forward-routing. 'allow' means the user is
   // authenticated + has beta + is onboarded → send them to the app home.
   const decision = decideRouteAccess('app', {
-    isLoading: isAuthLoading || isBetaLoading,
+    isLoading: isAuthLoading || isBetaLoading || isOnboardingLoading,
     isAuthenticated,
     hasBetaAccess,
-    isOnboardedPlaceholder,
+    isOnboarded,
   });
 
   if (decision.kind === 'loading') return <SessionLoadingScreen />;

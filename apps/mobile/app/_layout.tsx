@@ -18,7 +18,7 @@ import {
   SafeAreaProvider,
 } from 'react-native-safe-area-context';
 
-import { AuthProvider, OnboardingPlaceholderProvider } from '../src/features/auth';
+import { AuthProvider, OnboardingProvider } from '../src/features/auth';
 import { BetaAccessProvider } from '../src/features/beta';
 
 // Dev preview only: this is a phone-shaped app. On web (desktop browser) the app
@@ -69,11 +69,11 @@ const frameStyles = StyleSheet.create({
 //   - BetaAccessProvider (BETA-001) reads a DEV-ONLY placeholder `hasBetaAccess`
 //     flag from AsyncStorage. It is NOT a real beta gate — see the provider
 //     file for the binding boundaries.
-//   - OnboardingPlaceholderProvider (AUTH-007) holds a DEV-ONLY in-memory flag
-//     used by route gates to simulate onboarding completion. Also NOT a real
-//     source of truth.
-// Real beta and onboarding sources of truth will layer on top once Schema v2 /
-// RLS v2 land in Sprint 4 (DBV2-004 / DBV2-006, RLSV2-001…003).
+//   - OnboardingProvider (ONB-014) reads the DURABLE onboarding state — the
+//     session user's `profiles` row (self-only RLS) — so completion survives
+//     cold starts. Beta access is still the AsyncStorage placeholder.
+// The real beta source of truth lands with Schema v2 / RLS v2 (DBV2-006,
+// RLSV2-001…003).
 export default function RootLayout() {
   // Type system (Warm-Green DS v2 — docs/35, pixel-matched to mockups): editorial
   // Playfair Display serif for headlines (500/600/700) + Inter for all body/UI text.
@@ -93,11 +93,11 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthProvider>
         <BetaAccessProvider>
-          <OnboardingPlaceholderProvider>
+          <OnboardingProvider>
             <PhoneFrame>
               <Stack screenOptions={{ headerShown: false }} />
             </PhoneFrame>
-          </OnboardingPlaceholderProvider>
+          </OnboardingProvider>
         </BetaAccessProvider>
       </AuthProvider>
     </SafeAreaProvider>

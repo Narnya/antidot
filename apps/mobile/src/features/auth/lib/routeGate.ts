@@ -22,9 +22,10 @@ export type GateInput = {
   // BETA-001 — temporary placeholder. Replace with server-side check against
   // `invite_codes` (Schema v2 §15.1, RLS v2 §22) in Sprint 4+.
   hasBetaAccess: boolean;
-  // Temporary dev placeholder for onboarding completion (AUTH-007). The real
-  // source of truth will be a `profiles` row column (DBV2-004 / ONB-014).
-  isOnboardedPlaceholder: boolean;
+  // ONB-014 — durable onboarding completion: the session user has a `profiles`
+  // row with a non-empty display_name (OnboardingProvider). Callers include the
+  // provider's isLoading in `isLoading` so the gate waits for the check.
+  isOnboarded: boolean;
 };
 
 // Routes used by gates. Kept as a string-union so a typo would fail typecheck.
@@ -50,7 +51,7 @@ export type GateDecision =
  *   - onboarding (start placeholder): requires a session AND beta access; if
  *     already onboarded, redirect to /home.
  *   - app (authenticated home placeholder): requires a session AND beta access
- *     AND onboarded placeholder true.
+ *     AND onboarded (durable, ONB-014).
  *
  * Beta check is enforced before onboarding check everywhere — no path can
  * reach /start or /home without beta access.
@@ -74,7 +75,7 @@ export function decideRouteAccess(group: GroupKind, input: GateInput): GateDecis
     return { kind: 'allow' };
   }
   /*DEVLOGIN*/ if (DEV_LOGIN) {
-    input = { ...input, hasBetaAccess: true, isOnboardedPlaceholder: true };
+    input = { ...input, hasBetaAccess: true, isOnboarded: true };
   }
 
   if (input.isLoading) {
@@ -85,13 +86,13 @@ export function decideRouteAccess(group: GroupKind, input: GateInput): GateDecis
     case 'public': {
       if (!input.isAuthenticated) return { kind: 'allow' };
       if (!input.hasBetaAccess) return { kind: 'redirect', to: '/invite' };
-      if (!input.isOnboardedPlaceholder) return { kind: 'redirect', to: '/start' };
+      if (!input.isOnboarded) return { kind: 'redirect', to: '/start' };
       return { kind: 'redirect', to: '/feed' };
     }
     case 'beta': {
       if (!input.isAuthenticated) return { kind: 'redirect', to: '/welcome' };
       if (input.hasBetaAccess) {
-        if (!input.isOnboardedPlaceholder) return { kind: 'redirect', to: '/start' };
+        if (!input.isOnboarded) return { kind: 'redirect', to: '/start' };
         return { kind: 'redirect', to: '/feed' };
       }
       return { kind: 'allow' };
@@ -99,13 +100,13 @@ export function decideRouteAccess(group: GroupKind, input: GateInput): GateDecis
     case 'onboarding': {
       if (!input.isAuthenticated) return { kind: 'redirect', to: '/welcome' };
       if (!input.hasBetaAccess) return { kind: 'redirect', to: '/invite' };
-      if (input.isOnboardedPlaceholder) return { kind: 'redirect', to: '/feed' };
+      if (input.isOnboarded) return { kind: 'redirect', to: '/feed' };
       return { kind: 'allow' };
     }
     case 'app': {
       if (!input.isAuthenticated) return { kind: 'redirect', to: '/welcome' };
       if (!input.hasBetaAccess) return { kind: 'redirect', to: '/invite' };
-      if (!input.isOnboardedPlaceholder) return { kind: 'redirect', to: '/start' };
+      if (!input.isOnboarded) return { kind: 'redirect', to: '/start' };
       return { kind: 'allow' };
     }
   }
