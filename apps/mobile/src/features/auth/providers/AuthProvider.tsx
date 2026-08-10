@@ -135,7 +135,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           rawMessage.includes('session_not_found') ||
           rawMessage.includes('not authenticated');
         if (!alreadySignedOut) {
-          setError('Не удалось выйти. Попробуйте ещё раз.');
+          setError('Не удалось выйти. Попробуй ещё раз.');
           return;
         }
       }

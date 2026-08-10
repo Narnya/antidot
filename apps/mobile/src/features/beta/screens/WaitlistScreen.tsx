@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { colors, spacing, typography } from '@social-events/ui';
+import { colors, INTER_REGULAR, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
 
 import { useGoBack } from '../../../lib/useGoBack';
 import { BrandMini, Button, Field, FieldLabel, HeroTitle, ScreenHeader } from '../../../components';
@@ -38,10 +38,10 @@ export function WaitlistScreen() {
     const result = validateWaitlistInput({ email, name, city });
     switch (result.kind) {
       case 'empty_email':
-        setUiState({ status: 'error', message: 'Введите e-mail.' });
+        setUiState({ status: 'error', message: 'Введи e-mail.' });
         return;
       case 'invalid_email':
-        setUiState({ status: 'error', message: 'Проверьте формат e-mail.' });
+        setUiState({ status: 'error', message: 'Проверь формат e-mail.' });
         return;
       case 'valid': {
         setUiState({ status: 'loading' });
@@ -53,7 +53,7 @@ export function WaitlistScreen() {
               : { status: 'error', message: submission.message },
           );
         } catch {
-          setUiState({ status: 'error', message: 'Не удалось отправить. Попробуйте ещё раз.' });
+          setUiState({ status: 'error', message: 'Не удалось отправить. Попробуй ещё раз.' });
         }
         return;
       }
@@ -77,7 +77,7 @@ export function WaitlistScreen() {
 
           {isSuccess ? (
             <View style={styles.successBlock} accessibilityRole="alert">
-              <Text style={styles.successTitle}>Вы в листе ожидания</Text>
+              <Text style={styles.successTitle}>Ты в листе ожидания</Text>
               <Text style={styles.successBody}>Спасибо. Позовём, как только откроем доступ.</Text>
             </View>
           ) : (
@@ -170,12 +170,12 @@ const styles = StyleSheet.create({
   title: { marginTop: 22 },
   sub: { ...typography.body, fontSize: 15, lineHeight: 22, color: colors.text.secondary, marginTop: 10 },
   field: { marginTop: 16 },
-  optional: { fontWeight: '400', color: colors.text.muted },
+  optional: { fontFamily: INTER_REGULAR, color: colors.text.muted },
   error: { ...typography.body, fontSize: 14, color: colors.status.danger, marginTop: 14 },
   cta: { marginTop: 26 },
   link: { alignItems: 'center', paddingVertical: 18 },
   linkText: { ...typography.body, fontSize: 15, color: colors.text.secondary },
-  linkAccent: { fontWeight: '600', color: colors.accent.coral },
+  linkAccent: { fontFamily: INTER_SEMIBOLD, color: colors.accent.coral },
   successBlock: {
     gap: 4,
     marginTop: 24,

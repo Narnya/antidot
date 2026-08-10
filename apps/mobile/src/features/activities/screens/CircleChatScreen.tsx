@@ -8,7 +8,16 @@
 // an ephemeral local bubble — NOT persisted yet.
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, INTER_SEMIBOLD, PLAYFAIR_FAMILY, radius, shadows, spacing, typography } from '@social-events/ui';
@@ -93,7 +102,12 @@ export function CircleChatScreen({ circleId }: Props) {
   }, [draft, repo, circleId, userId, load]);
 
   return (
-    <View style={styles.root}>
+    // KeyboardAvoidingView: the input bar sits in normal flow at the bottom, so the
+    // iOS keyboard pushes it (and the thread) up instead of covering it.
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <SafeAreaView edges={['top']} style={styles.top}>
         <View style={styles.header}>
           <Pressable
@@ -136,7 +150,7 @@ export function CircleChatScreen({ circleId }: Props) {
         ) : (
           <ScrollView
             ref={scrollRef}
-            contentContainerStyle={[styles.wrap, { paddingBottom: 92 + insets.bottom }]}
+            contentContainerStyle={styles.wrap}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
           >
@@ -208,7 +222,7 @@ export function CircleChatScreen({ circleId }: Props) {
           <IconSend color={colors.text.inverse} size={20} />
         </Pressable>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -263,7 +277,7 @@ const styles = StyleSheet.create({
   pt2: { fontSize: 12, color: '#4A5C50', marginTop: 1 },
 
   // messages
-  wrap: { paddingHorizontal: 18, paddingTop: 16, gap: 11, flexGrow: 1 },
+  wrap: { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 16, gap: 11, flexGrow: 1 },
   // Empty chat — a designed centered state, not a lone gray line.
   emptyWrap: {
     flex: 1,
@@ -321,12 +335,9 @@ const styles = StyleSheet.create({
   ticks: { flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center', marginTop: 3, marginRight: -1 },
   tick2: { marginLeft: -7 },
 
-  // input bar
+  // input bar — normal flow (below the flex:1 thread), so KeyboardAvoidingView can
+  // lift it above the iOS keyboard; an absolute bar would stay pinned under it.
   inputBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,

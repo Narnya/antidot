@@ -7,10 +7,11 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, PLAYFAIR_FAMILY, radius, spacing, typography } from '@social-events/ui';
+import { colors, PLAYFAIR_FAMILY, radius, typography } from '@social-events/ui';
 
-import { Button, CtaBar, IconCalendar, IconCheck, IconPin, LoadError } from '../../../components';
+import { Button, CtaBar, IconCalendar, IconCheck, IconPin, LoadError, NotFound } from '../../../components';
 import type { ActivityView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 import { formatWhen } from '../lib/format';
@@ -19,6 +20,7 @@ type Props = { activityId: string };
 
 export function ClaimSuccessScreen({ activityId }: Props) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { repo, userId } = useActivitiesRepo();
   const [view, setView] = useState<ActivityView | null>(null);
   const [location, setLocation] = useState<string | null>(null);
@@ -73,9 +75,20 @@ export function ClaimSuccessScreen({ activityId }: Props) {
         </View>
       ) : error ? (
         <LoadError onRetry={() => void load()} />
+      ) : !view ? (
+        <NotFound
+          onBack={() => router.replace('/')}
+          icon="calendar-outline"
+          title="Активность не найдена"
+          sub="Возможно, её отменили или у тебя нет доступа."
+          backLabel="К ленте"
+        />
       ) : (
         <>
-          <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={[styles.body, { paddingBottom: 120 + insets.bottom }]}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.succIc}>
               <IconCheck color={colors.action.primary} size={44} />
             </View>
@@ -129,7 +142,8 @@ export function ClaimSuccessScreen({ activityId }: Props) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background.default },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  body: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 34, paddingBottom: 120 },
+  // paddingBottom (clearance under the absolute CtaBar) is added inline: 120 + insets.bottom.
+  body: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 34 },
 
   succIc: {
     width: 88,

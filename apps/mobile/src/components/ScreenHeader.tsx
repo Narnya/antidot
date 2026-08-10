@@ -69,7 +69,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...shadows.card,
   },
-  titleWrap: { flex: 1 },
+  // minHeight matches the 38px round button, so the title sits at the same height
+  // on every screen — with a back/action button or without one (tab screens).
+  titleWrap: { flex: 1, minHeight: 38, justifyContent: 'center' },
   title: { fontFamily: PLAYFAIR_FAMILY, fontSize: 24, letterSpacing: -0.3, color: colors.text.primary },
   subtitle: { fontSize: 12.5, color: colors.text.secondary, marginTop: 1 },
 });

@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, INTER_SEMIBOLD, PLAYFAIR_FAMILY, radius, shadows, spacing, typography } from '@social-events/ui';
+import { colors, INTER_REGULAR, INTER_SEMIBOLD, PLAYFAIR_FAMILY, radius, shadows, spacing, typography } from '@social-events/ui';
 
 import { Button, IconButton, IconCircles, IconTile, LoadError, ScreenHeader } from '../../../components';
 import type { ActivityView, MyCircle } from '../data/repository';
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   stripText: { flex: 1, fontFamily: INTER_SEMIBOLD, fontSize: 13.5, color: colors.text.primary },
-  stripMuted: { fontFamily: undefined, fontWeight: '400', color: colors.text.secondary },
+  stripMuted: { fontFamily: INTER_REGULAR, color: colors.text.secondary },
   badge: {
     backgroundColor: colors.trust.verifiedBg,
     paddingHorizontal: 9,

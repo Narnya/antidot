@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, INTER_MEDIUM, radius, spacing, typography } from '@social-events/ui';
 
@@ -23,6 +24,7 @@ const RHYTHMS: { v: CircleRhythm; label: string }[] = [
 export function CreateCircleScreen() {
   const router = useRouter();
   const goBack = useGoBack();
+  const insets = useSafeAreaInsets();
   const { repo, userId } = useActivitiesRepo();
   const [name, setName] = useState('');
   const [area, setArea] = useState('');
@@ -33,11 +35,11 @@ export function CreateCircleScreen() {
 
   const handleSubmit = async () => {
     if (name.trim().length === 0) {
-      setError('Введите название круга.');
+      setError('Введи название круга.');
       return;
     }
     if (area.trim().length === 0) {
-      setError('Укажите район.');
+      setError('Укажи район.');
       return;
     }
     setError(null);
@@ -52,7 +54,7 @@ export function CreateCircleScreen() {
       });
       router.replace(`/circle/${created.id}`);
     } catch {
-      setError('Не удалось создать круг. Попробуйте ещё раз.');
+      setError('Не удалось создать круг. Попробуй ещё раз.');
       setSubmitting(false);
     }
   };
@@ -62,7 +64,7 @@ export function CreateCircleScreen() {
       <ScreenHeader title="Новый круг" onBack={goBack} />
 
       <ScrollView
-        contentContainerStyle={styles.body}
+        contentContainerStyle={[styles.body, { paddingBottom: 120 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -136,7 +138,8 @@ export function CreateCircleScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background.default },
-  body: { paddingHorizontal: spacing[6], paddingTop: spacing[1], paddingBottom: 120 },
+  // paddingBottom (clearance under the absolute CtaBar) is added inline: 120 + insets.bottom.
+  body: { paddingHorizontal: spacing[6], paddingTop: spacing[1] },
   sub: { ...typography.body, fontSize: 15, color: colors.text.secondary, marginBottom: 20 },
   gap: { height: 16 },
   textarea: {

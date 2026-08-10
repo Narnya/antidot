@@ -141,5 +141,5 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[8],
   },
   bottomText: { ...typography.body, fontSize: 15, color: colors.text.secondary },
-  bottomLink: { ...typography.body, fontSize: 15, fontWeight: '600', color: colors.accent.coral },
+  bottomLink: { ...typography.body, fontSize: 15, fontFamily: INTER_SEMIBOLD, color: colors.accent.coral },
 });

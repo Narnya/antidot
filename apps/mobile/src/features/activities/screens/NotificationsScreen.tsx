@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, PLAYFAIR_FAMILY, radius, spacing, typography } from '@social-events/ui';
+import { colors, radius, spacing, typography } from '@social-events/ui';
 
 import {
   IconChat,
@@ -18,6 +18,7 @@ import {
   IconTile,
   IconUsers,
   LoadError,
+  ScreenHeader,
 } from '../../../components';
 import type { NotificationItem, NotificationKind } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
@@ -74,9 +75,8 @@ export function NotificationsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScreenHeader title="Уведомления" />
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Уведомления</Text>
-
         {loading ? (
           <ActivityIndicator color={colors.text.muted} style={styles.loader} />
         ) : error ? (
@@ -137,14 +137,7 @@ export function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.default },
-  body: { padding: spacing[6], paddingTop: spacing[4] },
-  title: {
-    fontFamily: PLAYFAIR_FAMILY,
-    fontSize: 24,
-    letterSpacing: -0.3,
-    color: colors.text.primary,
-    marginBottom: spacing[4],
-  },
+  body: { padding: spacing[6], paddingTop: spacing[1] },
   loader: { alignSelf: 'flex-start' },
   empty: { alignItems: 'center', gap: spacing[3], paddingVertical: spacing[12] },
   emptyText: { ...typography.body, color: colors.text.muted, textAlign: 'center', maxWidth: 260 },

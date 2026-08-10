@@ -5,8 +5,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
+import { colors, INTER_REGULAR, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
 
 import { useGoBack } from '../../../lib/useGoBack';
 import { AppTextInput, Button, CtaBar, FieldLabel, HeroTitle, ScreenHeader } from '../../../components';
@@ -25,6 +26,7 @@ type Props = { subjectType: ReportSubjectType; subjectId: string };
 
 export function ReportScreen({ subjectType, subjectId }: Props) {
   const goBack = useGoBack();
+  const insets = useSafeAreaInsets();
   const { repo, userId } = useActivitiesRepo();
   const [reason, setReason] = useState<ReportReason>('unsafe');
   const [note, setNote] = useState('');
@@ -79,7 +81,7 @@ export function ReportScreen({ subjectType, subjectId }: Props) {
       <ScreenHeader title="Пожаловаться" onBack={goBack} />
 
       <ScrollView
-        contentContainerStyle={styles.body}
+        contentContainerStyle={[styles.body, { paddingBottom: 120 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -111,7 +113,7 @@ export function ReportScreen({ subjectType, subjectId }: Props) {
         <AppTextInput
           value={note}
           onChangeText={setNote}
-          placeholder="Опишите, что произошло…"
+          placeholder="Опиши, что произошло…"
           style={styles.textarea}
           multiline
           testID="rp-note"
@@ -148,7 +150,8 @@ export function ReportScreen({ subjectType, subjectId }: Props) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background.default },
-  body: { paddingHorizontal: spacing[6], paddingTop: spacing[1], paddingBottom: 120 },
+  // paddingBottom (clearance under the absolute CtaBar) is added inline: 120 + insets.bottom.
+  body: { paddingHorizontal: spacing[6], paddingTop: spacing[1] },
   sub: { ...typography.body, fontSize: 15, color: colors.text.secondary, marginBottom: 18 },
 
   radios: { gap: 10, marginBottom: 20 },
@@ -168,7 +171,7 @@ const styles = StyleSheet.create({
   rdotSel: { borderWidth: 7, borderColor: colors.action.primary },
   radioText: { fontFamily: INTER_SEMIBOLD, fontSize: 15.5, color: colors.text.primary },
 
-  optional: { fontFamily: undefined, fontWeight: '400', color: colors.text.muted },
+  optional: { fontFamily: INTER_REGULAR, color: colors.text.muted },
   textarea: {
     backgroundColor: colors.surface.field,
     borderWidth: 1,

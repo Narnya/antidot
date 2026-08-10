@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, INTER_MEDIUM, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
 
@@ -38,6 +39,7 @@ const KIND_OPTIONS: { kind: ActivityKind; label: string }[] = [
 export function CreateActivityScreen() {
   const router = useRouter();
   const goBack = useGoBack();
+  const insets = useSafeAreaInsets();
   const { repo, userId } = useActivitiesRepo();
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupIdx, setGroupIdx] = useState(0);
@@ -78,7 +80,7 @@ export function CreateActivityScreen() {
       return;
     }
     if (title.trim().length === 0) {
-      setError('Введите название активности.');
+      setError('Введи название активности.');
       return;
     }
     if (spots < 2) {
@@ -101,7 +103,7 @@ export function CreateActivityScreen() {
       });
       router.replace(`/activity/${created.id}`);
     } catch {
-      setError('Не удалось создать. Попробуйте ещё раз.');
+      setError('Не удалось создать. Попробуй ещё раз.');
       setSubmitting(false);
     }
   };
@@ -111,7 +113,7 @@ export function CreateActivityScreen() {
       <ScreenHeader title="Новая активность" onBack={goBack} />
 
       <ScrollView
-        contentContainerStyle={styles.body}
+        contentContainerStyle={[styles.body, { paddingBottom: 120 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -222,7 +224,8 @@ export function CreateActivityScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background.default },
-  body: { paddingHorizontal: spacing[6], paddingTop: spacing[1], paddingBottom: 120 },
+  // paddingBottom (clearance under the absolute CtaBar) is added inline: 120 + insets.bottom.
+  body: { paddingHorizontal: spacing[6], paddingTop: spacing[1] },
   gap: { height: 16 },
 
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

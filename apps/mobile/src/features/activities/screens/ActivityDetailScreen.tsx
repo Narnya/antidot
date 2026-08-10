@@ -69,7 +69,7 @@ export function ActivityDetailScreen({ activityId }: Props) {
 
   // The pull moment now runs through the dedicated «Занять место» step (frame C),
   // which claims + routes to the reveal success (frame N). We keep the inline
-  // «Вы записаны» / «Мест нет» states for users who already claimed or a full slot.
+  // «Место за тобой» / «Мест нет» states for users who already claimed or a full slot.
   const handleClaim = useCallback(() => {
     router.push(`/claim/${activityId}`);
   }, [router, activityId]);
@@ -174,7 +174,7 @@ function DetailBody({
   const label = claiming
     ? 'Записываем…'
     : alreadyGoing
-      ? '✓ Вы записаны'
+      ? '✓ Место за тобой'
       : full
         ? 'Мест нет'
         : `Занять место · ${remaining} свободно`;

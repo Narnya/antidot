@@ -67,7 +67,7 @@ export function SettingsScreen() {
       await repo.deleteAccount(userId);
       await signOut();
     } catch {
-      setError('Не удалось удалить аккаунт. Попробуйте ещё раз.');
+      setError('Не удалось удалить аккаунт. Попробуй ещё раз.');
       setDeleting(false);
     }
   }, [repo, userId, signOut]);
@@ -158,7 +158,7 @@ export function SettingsScreen() {
           <View style={styles.confirmBox}>
             <Text style={styles.confirmTitle}>Удалить аккаунт навсегда?</Text>
             <Text style={styles.confirmText}>
-              Профиль, участие и созданные вами круги будут удалены. Это действие нельзя отменить.
+              Профиль, участие и созданные тобой круги будут удалены. Это действие нельзя отменить.
             </Text>
             {error ? (
               <Text style={styles.error} accessibilityRole="alert">

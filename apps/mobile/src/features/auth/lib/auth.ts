@@ -18,14 +18,15 @@ export type FriendlyAuthError = {
   message: string;
 };
 
-// Russian-facing copy. Generic; never leaks the underlying Supabase message.
+// Russian-facing copy («ты»-voice, as everywhere in the product). Generic; never
+// leaks the underlying Supabase message.
 const COPY: Record<AuthErrorReason, string> = {
-  invalid_credentials: 'Не удалось войти. Проверьте email и пароль.',
-  user_already_exists: 'Аккаунт с этим email уже существует. Попробуйте войти.',
-  email_not_confirmed: 'Проверьте почту, чтобы подтвердить аккаунт.',
-  rate_limited: 'Слишком много попыток. Попробуйте позже.',
-  network: 'Проблема с соединением. Попробуйте позже.',
-  unknown: 'Что-то пошло не так. Попробуйте ещё раз.',
+  invalid_credentials: 'Не удалось войти. Проверь email и пароль.',
+  user_already_exists: 'Аккаунт с этим email уже существует. Попробуй войти.',
+  email_not_confirmed: 'Проверь почту, чтобы подтвердить аккаунт.',
+  rate_limited: 'Слишком много попыток. Попробуй позже.',
+  network: 'Проблема с соединением. Попробуй позже.',
+  unknown: 'Что-то пошло не так. Попробуй ещё раз.',
 };
 
 export function mapAuthError(error: AuthError | Error | null | undefined): FriendlyAuthError {

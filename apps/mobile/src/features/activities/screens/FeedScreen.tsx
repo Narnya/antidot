@@ -150,7 +150,10 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   contextText: { fontFamily: INTER_SEMIBOLD, fontSize: 16, letterSpacing: -0.1, color: colors.text.primary },
-  filtersRow: { flexGrow: 0 },
+  // flexShrink: 0 — RN-web ScrollView defaults to flexShrink:1, so on short
+  // viewports (mobile browser with URL bar) the column layout compresses this row
+  // and the chips get clipped top/bottom. The filter row must keep its height.
+  filtersRow: { flexGrow: 0, flexShrink: 0 },
   filters: { paddingHorizontal: spacing[6], gap: spacing[2], paddingBottom: 14 },
   chip: {
     backgroundColor: colors.surface.default,

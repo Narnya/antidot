@@ -1,4 +1,6 @@
-// ACT / DS v2 (docs/35 §7) — Твой ритм (mockup frame 09). The RETURN / belonging
+// ACT / DS v2 (docs/35 §7) — Мой ритм (mockup frame 09; retitled from «Твой ритм»
+// to first person for nav-voice consistency with «Мои круги», product decision
+// 2026-08-07 — mockup updated to match). The RETURN / belonging
 // axis: a gentle streak hero, a «Эта неделя» grid, and «Недавно» attended rows.
 // Private and self-only — NOT a public counter, ranking, or discovery-nag, and
 // framed softly so belonging reads as a success state, never a goal to protect
@@ -10,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, PLAYFAIR_FAMILY, radius, spacing, typography } from '@social-events/ui';
 
-import { IconCheck, IconTile, IconUsers, LoadError, SectionLabel } from '../../../components';
+import { IconCheck, IconTile, IconUsers, LoadError, ScreenHeader, SectionLabel } from '../../../components';
 import type { RhythmView } from '../data/repository';
 import { useActivitiesRepo } from '../hooks/useActivitiesRepo';
 
@@ -52,9 +54,8 @@ export function RhythmScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScreenHeader title="Мой ритм" />
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Твой ритм</Text>
-
         {loading ? (
           <ActivityIndicator color={colors.text.muted} style={styles.loader} />
         ) : error ? (
@@ -139,14 +140,7 @@ export function RhythmScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.default },
-  body: { padding: spacing[6], paddingTop: spacing[4] },
-  title: {
-    fontFamily: PLAYFAIR_FAMILY,
-    fontSize: 24,
-    letterSpacing: -0.3,
-    color: colors.text.primary,
-    marginBottom: spacing[2],
-  },
+  body: { padding: spacing[6], paddingTop: spacing[1] },
   loader: { alignSelf: 'flex-start', marginTop: spacing[4] },
 
   // streak hero

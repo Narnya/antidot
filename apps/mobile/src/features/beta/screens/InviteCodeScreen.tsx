@@ -29,7 +29,7 @@ export function InviteCodeScreen() {
     const result = validateInviteCode(code, mobilePublicConfig.appEnv);
     switch (result.kind) {
       case 'empty':
-        setUiState({ status: 'error', message: 'Введите инвайт-код.' });
+        setUiState({ status: 'error', message: 'Введи инвайт-код.' });
         return;
       case 'production_disabled':
         setUiState({ status: 'error', message: 'Проверка инвайт-кодов пока не настроена.' });
@@ -42,7 +42,7 @@ export function InviteCodeScreen() {
         try {
           await grantBetaAccess();
         } catch {
-          setUiState({ status: 'error', message: 'Не удалось проверить код. Попробуйте ещё раз.' });
+          setUiState({ status: 'error', message: 'Не удалось проверить код. Попробуй ещё раз.' });
         }
         return;
       }
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   cta: { marginTop: 26 },
   link: { alignItems: 'center', paddingVertical: 18 },
   linkText: { ...typography.body, fontSize: 15, color: colors.text.secondary },
-  linkAccent: { fontWeight: '600', color: colors.accent.coral },
+  linkAccent: { fontFamily: INTER_SEMIBOLD, color: colors.accent.coral },
   notice: { flexDirection: 'row', gap: 8, marginTop: 10, justifyContent: 'center' },
   noticeText: { ...typography.caption, color: colors.text.muted },
 });

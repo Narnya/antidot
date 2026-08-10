@@ -8,8 +8,9 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, INTER_SEMIBOLD, radius, spacing, typography } from '@social-events/ui';
+import { colors, INTER_REGULAR, INTER_SEMIBOLD, radius, spacing, typography } from '@social-events/ui';
 
 import { useGoBack } from '../../../lib/useGoBack';
 import { AppTextInput, Button, CtaBar, FieldLabel, IconCheck, IconPin, LoadError, NotFound, ScreenHeader } from '../../../components';
@@ -31,6 +32,7 @@ type Props = { activityId: string };
 export function ClaimSlotScreen({ activityId }: Props) {
   const router = useRouter();
   const goBack = useGoBack();
+  const insets = useSafeAreaInsets();
   const { repo, userId } = useActivitiesRepo();
   const [view, setView] = useState<ActivityView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,7 +93,7 @@ export function ClaimSlotScreen({ activityId }: Props) {
       ) : (
         <>
           <ScrollView
-            contentContainerStyle={styles.body}
+            contentContainerStyle={[styles.body, { paddingBottom: 120 + insets.bottom }]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
@@ -208,7 +210,8 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background.default },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
   empty: { ...typography.body, color: colors.text.muted },
-  body: { paddingHorizontal: spacing[6], paddingTop: spacing[1], paddingBottom: 120 },
+  // paddingBottom (clearance under the absolute CtaBar) is added inline: 120 + insets.bottom.
+  body: { paddingHorizontal: spacing[6], paddingTop: spacing[1] },
 
   summary: {
     flexDirection: 'row',
@@ -252,7 +255,7 @@ const styles = StyleSheet.create({
   rt1: { fontFamily: INTER_SEMIBOLD, fontSize: 15.5, color: colors.text.primary },
   rt2: { fontSize: 12.5, color: colors.text.secondary, marginTop: 1, fontFamily: typography.caption.fontFamily },
 
-  optional: { fontFamily: undefined, fontWeight: '400', color: colors.text.muted },
+  optional: { fontFamily: INTER_REGULAR, color: colors.text.muted },
   textarea: {
     backgroundColor: colors.surface.field,
     borderWidth: 1,

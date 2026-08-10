@@ -23,7 +23,7 @@ export function LoginScreen() {
 
   const send = async () => {
     if (!isValidEmail(email)) {
-      setError('Введите корректный e-mail.');
+      setError('Введи корректный e-mail.');
       return;
     }
     setError(null);
@@ -42,7 +42,7 @@ export function LoginScreen() {
   const handleContinue = async () => {
     if (!sent) return send();
     if (code.trim().length === 0) {
-      setError('Введите код из письма.');
+      setError('Введи код из письма.');
       return;
     }
     setError(null);
