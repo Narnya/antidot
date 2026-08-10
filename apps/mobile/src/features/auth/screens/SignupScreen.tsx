@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { colors, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
@@ -40,7 +41,7 @@ export function SignupScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader onBack={goBack} />
 
       <ScrollView
@@ -108,7 +109,7 @@ export function SignupScreen() {
           <Text style={styles.bottomLink}>Войти</Text>
         </Pressable>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

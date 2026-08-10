@@ -8,7 +8,7 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, INTER_REGULAR, INTER_SEMIBOLD, radius, spacing, typography } from '@social-events/ui';
 
@@ -73,7 +73,7 @@ export function ClaimSlotScreen({ activityId }: Props) {
   }, [repo, activityId, userId, plusOne, note, router]);
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title="Занять место" onBack={goBack} />
 
       {loading ? (
@@ -172,7 +172,7 @@ export function ClaimSlotScreen({ activityId }: Props) {
           </CtaBar>
         </>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

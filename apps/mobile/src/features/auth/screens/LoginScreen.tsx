@@ -5,6 +5,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, spacing, typography } from '@social-events/ui';
 
@@ -59,7 +60,7 @@ export function LoginScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader onBack={goBack} />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -134,7 +135,7 @@ export function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 }
 

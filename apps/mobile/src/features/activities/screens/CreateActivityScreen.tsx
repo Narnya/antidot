@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, INTER_MEDIUM, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
 
@@ -109,7 +109,7 @@ export function CreateActivityScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title="Новая активность" onBack={goBack} />
 
       <ScrollView
@@ -218,7 +218,7 @@ export function CreateActivityScreen() {
         onChange={setStartsAt}
         onClose={() => setPickerOpen(false)}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

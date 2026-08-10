@@ -233,13 +233,15 @@ const styles = StyleSheet.create({
   top: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  // header (ctx-header + stack-top, Inter 18 — not Playfair)
+  // header (ctx-header + stack-top, Inter 18 — not Playfair). paddingTop matches
+  // ScreenHeader (spacing[2]) so the back button sits at the same height as on
+  // every other stack screen.
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     paddingHorizontal: spacing[5],
-    paddingTop: spacing[1],
+    paddingTop: spacing[2],
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.default,

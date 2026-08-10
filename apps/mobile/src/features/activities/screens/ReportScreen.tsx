@@ -5,7 +5,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, INTER_REGULAR, INTER_SEMIBOLD, spacing, typography } from '@social-events/ui';
 
@@ -55,7 +55,7 @@ export function ReportScreen({ subjectType, subjectId }: Props) {
 
   if (done) {
     return (
-      <View style={styles.root}>
+      <SafeAreaView style={styles.root} edges={['top']}>
         <View style={styles.succ}>
           <View style={styles.succIc}>
             <Ionicons name="shield-checkmark-outline" size={42} color={colors.action.primary} />
@@ -72,12 +72,12 @@ export function ReportScreen({ subjectType, subjectId }: Props) {
         <CtaBar>
           <Button label="Готово" onPress={goBack} />
         </CtaBar>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title="Пожаловаться" onBack={goBack} />
 
       <ScrollView
@@ -144,7 +144,7 @@ export function ReportScreen({ subjectType, subjectId }: Props) {
           onPress={handleSubmit}
         />
       </CtaBar>
-    </View>
+    </SafeAreaView>
   );
 }
 

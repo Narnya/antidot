@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, INTER_MEDIUM, radius, spacing, typography } from '@social-events/ui';
 
@@ -60,7 +60,7 @@ export function CreateCircleScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title="Новый круг" onBack={goBack} />
 
       <ScrollView
@@ -132,7 +132,7 @@ export function CreateCircleScreen() {
           onPress={handleSubmit}
         />
       </CtaBar>
-    </View>
+    </SafeAreaView>
   );
 }
 
